@@ -1,0 +1,68 @@
+name: Release
+
+# Build installers for every platform and attach them to the GitHub Release.
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build & attach installers to (e.g. v0.1.1)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows (NSIS)
+            args: --win nsis
+          - os: macos-latest
+            name: macOS (dmg + zip)
+            args: --mac dmg zip
+          - os: ubuntu-latest
+            name: Linux (AppImage)
+            args: --linux AppImage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # full install (runs postinstall) so electron-builder can rebuild better-sqlite3
+      # for this platform's Electron ABI and pack it into the app.
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build renderer + main
+        run: bun run build
+
+      - name: Package installer
+        run: bunx electron-builder ${{ matrix.args }} --publish never
+
+      - name: Attach installers to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}
+          fail_on_unmatched_files: false
+          files: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
