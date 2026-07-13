@@ -4,6 +4,11 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] — 2026-07-13
+
+### Added
+- **Export a note as PDF** — renders the note to a clean, print-styled document via Electron's `printToPDF`. The note toolbar's Export button now offers **Markdown** or **PDF**.
+
 ## [0.1.2] — 2026-07-13
 
 ### Added
