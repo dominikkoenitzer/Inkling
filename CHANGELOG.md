@@ -4,6 +4,12 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] — 2026-07-13
+
+### Added
+- **Export a note as Markdown** — a toolbar button serializes the note (headings, lists, task lists, quotes, code, links, inline marks) and saves it via a native dialog. The pure converter is unit-tested.
+- README **Themes** section showing the Dark and Cozy themes side by side.
+
 ## [0.1.1] — 2026-07-13
 
 ### Added
