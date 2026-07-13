@@ -1,5 +1,6 @@
-import { ipcMain, BrowserWindow, dialog } from 'electron'
+import { ipcMain, BrowserWindow, dialog, app } from 'electron'
 import fs from 'fs'
+import { join } from 'path'
 import * as repos from './repos'
 import { printableDocument } from '@shared/tiptapHtml'
 import type { QuickAddPayload } from '@shared/types'
@@ -128,11 +129,17 @@ export function registerIpc(hideQuickAdd: () => void): void {
       ]
     })
     if (result.canceled || !result.filePath) return { saved: false, path: null }
-    fs.writeFileSync(result.filePath, contents, 'utf8')
-    return { saved: true, path: result.filePath }
+    try {
+      fs.writeFileSync(result.filePath, contents, 'utf8')
+      return { saved: true, path: result.filePath }
+    } catch (err) {
+      console.error('saveFile failed', err)
+      return { saved: false, path: null, error: String(err) }
+    }
   })
 
-  // Export rendered note HTML to a PDF via an offscreen print window.
+  // Export rendered note HTML to a PDF via a hidden print window. We render from a temp
+  // file (not a data: URL) so large notebooks don't hit Chromium's ~2MB URL cap.
   ipcMain.handle('app.savePdf', async (event, bodyHtml: string, title: string, defaultName: string) => {
     const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
     const result = await dialog.showSaveDialog(win!, {
@@ -140,17 +147,27 @@ export function registerIpc(hideQuickAdd: () => void): void {
       filters: [{ name: 'PDF', extensions: ['pdf'] }]
     })
     if (result.canceled || !result.filePath) return { saved: false, path: null }
+    const tmpPath = join(app.getPath('temp'), `inkling-print-${process.pid}-${Date.now()}.html`)
     const printer = new BrowserWindow({ show: false, webPreferences: { sandbox: false } })
     try {
-      await printer.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(printableDocument(title, bodyHtml)))
+      fs.writeFileSync(tmpPath, printableDocument(title, bodyHtml), 'utf8')
+      await printer.loadFile(tmpPath)
       const pdf = await printer.webContents.printToPDF({
         printBackground: true,
         margins: { top: 0.6, bottom: 0.6, left: 0.6, right: 0.6 }
       })
       fs.writeFileSync(result.filePath, pdf)
+      return { saved: true, path: result.filePath }
+    } catch (err) {
+      console.error('savePdf failed', err)
+      return { saved: false, path: null, error: String(err) }
     } finally {
       if (!printer.isDestroyed()) printer.destroy()
+      try {
+        fs.unlinkSync(tmpPath)
+      } catch {
+        /* temp file may not exist */
+      }
     }
-    return { saved: true, path: result.filePath }
   })
 }

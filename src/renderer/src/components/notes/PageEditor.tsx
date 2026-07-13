@@ -194,6 +194,9 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     if (res.saved) {
       setFlashMsg('Exported to Markdown ✓')
       setTimeout(() => setFlashMsg(null), 2500)
+    } else if (res.error) {
+      setFlashMsg('Export failed — could not write the file.')
+      setTimeout(() => setFlashMsg(null), 3500)
     }
   }
 
@@ -206,6 +209,9 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     if (res.saved) {
       setFlashMsg('Exported to PDF ✓')
       setTimeout(() => setFlashMsg(null), 2500)
+    } else if (res.error) {
+      setFlashMsg('Export failed — could not write the PDF.')
+      setTimeout(() => setFlashMsg(null), 3500)
     }
   }
 
