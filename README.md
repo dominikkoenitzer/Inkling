@@ -12,6 +12,7 @@
 [![better-sqlite3](https://img.shields.io/badge/better--sqlite3-FTS5-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-1D9E75.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/dominikkoenitzer/Inkling?color=1D9E75)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-1D9E75)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
 
 **A warm, local-first desktop hub where you can dump a quick thought, write a full essay, track assignments, see your week at a glance, and study for a test — all without leaving one app.**
 
@@ -122,7 +123,7 @@ bun run build       # production bundle
 bun run dist        # Windows installer (NSIS) → release/
 ```
 
-Prefer a prebuilt binary? Grab the latest installer from the [**Releases**](https://github.com/dominikkoenitzer/Inkling/releases/latest) page.
+Prefer a prebuilt binary? Grab the latest installer for **Windows (`.exe`)**, **macOS (`.dmg`)**, or **Linux (`.AppImage`)** from the [**Releases**](https://github.com/dominikkoenitzer/Inkling/releases/latest) page — each platform is built and attached automatically by the [release workflow](.github/workflows/release.yml).
 
 > **Note:** `trustedDependencies` in `package.json` lets Bun run the postinstall scripts of `electron` (binary download) and `better-sqlite3` — don't remove it.
 
@@ -157,11 +158,11 @@ The main process reads a few env vars for isolated, reproducible runs:
 
 - [x] Four pillars, command palette, quick-add, themes, onboarding, mascot
 - [x] SM-2 flashcards, Pomodoro, streak
-- [x] Windows installer + CI
+- [x] CI + Windows, macOS & Linux installers (built automatically on release)
 - [ ] Markdown / PDF export
 - [ ] Grade tracker
 - [ ] Optional end-to-end-encrypted cloud sync
-- [ ] macOS & Linux builds
+- [ ] Auto-update (electron-updater)
 
 ---
 
