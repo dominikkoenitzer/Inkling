@@ -1,7 +1,7 @@
 {
   "name": "inkling",
   "productName": "Inkling",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Notes, tasks, schedule and study — together",
   "main": "out/main/index.js",
   "author": "Dominik Könitzer <dominik.koenitzer@gmail.com>",
@@ -32,6 +32,7 @@
     "@tiptap/starter-kit": "^2.11.5",
     "better-sqlite3": "^11.8.1",
     "date-fns": "^4.1.0",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.474.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -57,6 +58,7 @@
     "appId": "app.inkling.desktop",
     "productName": "Inkling",
     "files": ["out/**", "resources/**"],
+    "publish": [{ "provider": "github", "owner": "dominikkoenitzer", "repo": "Inkling" }],
     "directories": {
       "output": "release",
       "buildResources": "resources"

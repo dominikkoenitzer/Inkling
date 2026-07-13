@@ -13,13 +13,17 @@ import {
   Sun,
   CalendarRange,
   Layers,
-  BookOpen
+  BookOpen,
+  Percent,
+  FileDown
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { RAMPS, COLOR_KEYS, isColorKey } from '@/lib/colors'
+import { RAMPS, COLOR_KEYS, isColorKey, ramp } from '@/lib/colors'
+import { weightedPercentage, gpaPoints } from '@shared/grades'
+import { tiptapDocToHtml, escapeHtml } from '@shared/tiptapHtml'
 import { Modal, Field, inputCls, Button, IconBtn } from '@/components/ui'
-import type { Note, Deck, ModuleTab, ColorKey } from '@shared/types'
+import type { Note, Deck, Grade, ModuleTab, ColorKey } from '@shared/types'
 
 const api = window.inkling
 
@@ -27,7 +31,8 @@ const TABS: Array<{ id: ModuleTab; icon: React.JSX.Element; label: string }> = [
   { id: 'notes', icon: <FileText size={15} />, label: 'Notes' },
   { id: 'tasks', icon: <CheckSquare size={15} />, label: 'Tasks' },
   { id: 'calendar', icon: <CalendarDays size={15} />, label: 'Calendar' },
-  { id: 'study', icon: <GraduationCap size={15} />, label: 'Study' }
+  { id: 'study', icon: <GraduationCap size={15} />, label: 'Study' },
+  { id: 'grades', icon: <Percent size={15} />, label: 'Grades' }
 ]
 
 export function Sidebar(): React.JSX.Element {
@@ -46,7 +51,7 @@ export function Sidebar(): React.JSX.Element {
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-1 px-2 pb-2 pt-1">
+      <div className="grid grid-cols-5 gap-0.5 px-2 pb-2 pt-1">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -81,6 +86,7 @@ export function Sidebar(): React.JSX.Element {
             {app.tab === 'tasks' && <TasksSidebar />}
             {app.tab === 'calendar' && <CalendarSidebar />}
             {app.tab === 'study' && <StudySidebar notebookId={notebook.id} />}
+            {app.tab === 'grades' && <GradesSidebar />}
           </>
         ) : (
           <p className="px-2 py-4 text-sm text-muted">Create a notebook to get going — the + button on the left.</p>
@@ -365,6 +371,63 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
   )
 }
 
+/* ------------------------------ Grades sidebar ----------------------------- */
+
+function GradesSidebar(): React.JSX.Element {
+  const { notebooks, activeNotebookId, setActiveNotebook } = useApp()
+  const version = useVersion('grades')
+  const [all, setAll] = useState<Grade[]>([])
+
+  useEffect(() => {
+    void api.grades.all().then(setAll)
+  }, [version])
+
+  const bySubject = notebooks
+    .map((nb) => ({ nb, pct: weightedPercentage(all.filter((g) => g.notebook_id === nb.id)) }))
+    .filter((x) => x.pct !== null)
+  const gpaList = bySubject.map((x) => gpaPoints(x.pct as number))
+  const overall = gpaList.length ? gpaList.reduce((a, b) => a + b, 0) / gpaList.length : null
+
+  return (
+    <div className="fade-up">
+      <SectionLabel>Overall</SectionLabel>
+      <div className="mb-2 rounded-lg bg-sunken px-3 py-2">
+        {overall === null ? (
+          <p className="text-xs text-faint">No grades yet — add some in the main panel.</p>
+        ) : (
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-faint">GPA</div>
+              <div className="text-xl font-bold tabular-nums">{overall.toFixed(2)}</div>
+            </div>
+            <div className="text-xs text-muted">
+              {bySubject.length} subject{bySubject.length === 1 ? '' : 's'}
+            </div>
+          </div>
+        )}
+      </div>
+      <SectionLabel>By subject</SectionLabel>
+      {bySubject.length === 0 && <p className="px-2 py-2 text-xs text-faint">Weighted averages show up here.</p>}
+      {bySubject.map(({ nb, pct }) => (
+        <button
+          key={nb.id}
+          type="button"
+          onClick={() => setActiveNotebook(nb.id)}
+          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+            activeNotebookId === nb.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
+          }`}
+        >
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: ramp(nb.color)[500] }} />
+          <span className="truncate">{nb.name}</span>
+          <span className="ml-auto font-semibold tabular-nums" style={{ color: 'var(--accent-text)' }}>
+            {(pct as number).toFixed(0)}%
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /* --------------------------------- Shared --------------------------------- */
 
 function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }): React.JSX.Element {
@@ -392,6 +455,24 @@ function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: (
     bumpData('decks')
     onClose()
   }
+  const exportPdf = async (): Promise<void> => {
+    const pages = await api.notes.list(notebookId, 'page')
+    if (pages.length === 0) return
+    const body = pages
+      .map((n) => {
+        let content = ''
+        try {
+          content = tiptapDocToHtml(JSON.parse(n.content))
+        } catch {
+          /* skip malformed */
+        }
+        return `<h1>${escapeHtml(n.title || 'Untitled')}</h1>${content}`
+      })
+      .join('<hr />')
+    const base = nb.name.replace(/[\\/:*?"<>|]/g, '').trim() || 'notebook'
+    await api.app.savePdf(body, nb.name, `${base}.pdf`)
+    onClose()
+  }
 
   return (
     <Modal title="Notebook settings" onClose={onClose}>
@@ -412,6 +493,12 @@ function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: (
           ))}
         </div>
       </Field>
+      <div className="mt-4 border-t border-edge pt-3">
+        <Button variant="ghost" onClick={() => void exportPdf()}>
+          <FileDown size={14} /> Export all pages as PDF
+        </Button>
+      </div>
+
       <div className="mt-4 flex items-center justify-between">
         {confirmDelete ? (
           <Button variant="danger" onClick={() => void remove()}>

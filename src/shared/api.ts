@@ -13,7 +13,8 @@ import type {
   NotebookKind,
   NoteType,
   ReviewGrade,
-  QuickAddPayload
+  QuickAddPayload,
+  Grade
 } from './types'
 
 export interface InklingApi {
@@ -103,6 +104,13 @@ export interface InklingApi {
   }
   search: {
     query(q: string): Promise<SearchResult[]>
+  }
+  grades: {
+    list(notebookId: number): Promise<Grade[]>
+    all(): Promise<Grade[]>
+    create(input: { notebook_id: number; title: string; score: number; max: number; weight: number }): Promise<Grade>
+    update(id: number, patch: Partial<Pick<Grade, 'title' | 'score' | 'max' | 'weight'>>): Promise<Grade>
+    remove(id: number): Promise<void>
   }
   app: {
     completeOnboarding(payload: OnboardingPayload): Promise<void>

@@ -32,7 +32,10 @@ jobs:
             name: Windows (NSIS)
             args: --win nsis
           - os: macos-latest
-            name: macOS (dmg + zip)
+            name: macOS · Apple Silicon (dmg + zip)
+            args: --mac dmg zip
+          - os: macos-13
+            name: macOS · Intel (dmg + zip)
             args: --mac dmg zip
           - os: ubuntu-latest
             name: Linux (AppImage)
@@ -77,5 +80,7 @@ jobs:
             release/*.dmg
             release/*.zip
             release/*.AppImage
+            release/*.yml
+            release/*.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
