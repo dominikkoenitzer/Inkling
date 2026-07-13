@@ -65,6 +65,13 @@ const api: InklingApi = {
   search: {
     query: invoke('search.query')
   },
+  grades: {
+    list: invoke('grades.list'),
+    all: invoke('grades.all'),
+    create: invoke('grades.create'),
+    update: invoke('grades.update'),
+    remove: invoke('grades.remove')
+  },
   app: {
     completeOnboarding: invoke('app.completeOnboarding'),
     setTitlebar: invoke('app.setTitlebar'),

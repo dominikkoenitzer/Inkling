@@ -3,7 +3,7 @@ export type NotebookKind = 'general' | 'school_subject'
 export type NoteType = 'page' | 'sticky'
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type Priority = 'low' | 'medium' | 'high'
-export type ModuleTab = 'notes' | 'tasks' | 'calendar' | 'study'
+export type ModuleTab = 'notes' | 'tasks' | 'calendar' | 'study' | 'grades'
 
 export interface Notebook {
   id: number
@@ -74,6 +74,16 @@ export interface Card {
   interval_days: number
   repetitions: number
   next_review_date: string
+}
+
+export interface Grade {
+  id: number
+  notebook_id: number
+  title: string
+  score: number
+  max: number
+  weight: number
+  created_at: string
 }
 
 export interface FocusSession {
