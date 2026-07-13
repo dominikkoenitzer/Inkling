@@ -1,4 +1,5 @@
 import { app, BrowserWindow, globalShortcut, shell } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
 import { openDb } from './db'
@@ -143,6 +144,12 @@ app.whenReady().then(() => {
   createMainWindow()
 
   globalShortcut.register('Control+Alt+N', toggleQuickAdd)
+
+  // Auto-update against GitHub Releases — only for packaged builds, never during
+  // dev or headless screenshot capture.
+  if (app.isPackaged && !process.env['INKLING_SCREENSHOT']) {
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow()

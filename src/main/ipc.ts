@@ -73,6 +73,12 @@ export function registerIpc(hideQuickAdd: () => void): void {
 
   handle('search.query', repos.searchQuery)
 
+  handle('grades.list', repos.listGrades)
+  handle('grades.all', repos.listAllGrades)
+  handle('grades.create', repos.createGrade, 'grades')
+  handle('grades.update', repos.updateGrade, 'grades')
+  handle('grades.remove', repos.removeGrade, 'grades')
+
   handle('app.completeOnboarding', repos.completeOnboarding, 'notebooks')
 
   ipcMain.handle('app.setTitlebar', (event, colors: { color: string; symbolColor: string }) => {
