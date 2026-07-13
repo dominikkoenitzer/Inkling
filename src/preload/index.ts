@@ -71,6 +71,7 @@ const api: InklingApi = {
     quickAdd: invoke('app.quickAdd'),
     hideQuickAdd: invoke('app.hideQuickAdd'),
     saveFile: invoke('app.saveFile'),
+    savePdf: invoke('app.savePdf'),
     onDataChanged: (cb: (domain: string) => void) => {
       const listener = (_e: unknown, domain: string): void => cb(domain)
       ipcRenderer.on('data:changed', listener)

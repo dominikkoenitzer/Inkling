@@ -110,6 +110,7 @@ export interface InklingApi {
     quickAdd(payload: QuickAddPayload): Promise<void>
     hideQuickAdd(): Promise<void>
     saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null }>
+    savePdf(bodyHtml: string, title: string, defaultName: string): Promise<{ saved: boolean; path: string | null }>
     onDataChanged(cb: (domain: string) => void): () => void
   }
 }
