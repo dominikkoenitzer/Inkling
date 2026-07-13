@@ -4,13 +4,23 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] — 2026-07-13
+
+### Fixed
+Findings from an adversarial review of the 0.2.0 additions (all verified):
+- **Markdown export no longer drops content** — a list item's second paragraph, code block, or blockquote is now preserved (previously only the first paragraph + nested lists survived).
+- **Markdown export escapes metacharacters** — literal text like `- not a list` or `*args` round-trips instead of being reinterpreted as formatting.
+- **PDF export handles large notebooks** — renders via a temp file instead of a `data:` URL, so big exports no longer fail silently past Chromium's ~2 MB URL cap.
+- **Export failures surface an error** instead of failing silently (and the PDF print window is always cleaned up).
+- **Grade header is internally consistent** — the shown percentage, letter, and GPA are derived from one rounded value, so they can't disagree at a cutoff.
+
 ## [0.2.0] — 2026-07-13
 
 ### Added
 - **Grade tracker** — a new per-subject module: log assessments (score / max / weight) and see a live **weighted average, letter grade, and 4.0 GPA**, with an overall GPA across subjects in the sidebar. (DB migration v2, additive.)
 - **Export a whole notebook as PDF** — from Notebook settings, render every page into one print-styled document.
 - **Auto-updates** — packaged builds check GitHub Releases for new versions via `electron-updater`.
-- **Intel macOS builds** — releases now include x64 (Intel) macOS installers alongside Apple Silicon.
+- **Universal macOS build** — a single `.dmg`/`.zip` runs natively on both Intel and Apple Silicon.
 
 ### Changed
 - The sidebar gained a fifth module tab, **Grades**.
