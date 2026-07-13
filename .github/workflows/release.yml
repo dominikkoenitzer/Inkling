@@ -15,6 +15,12 @@ on:
 permissions:
   contents: write
 
+# `gh release create` fires both `release` and `push`-tag events; collapse them so a
+# tag only ever builds once.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: ${{ matrix.name }}
