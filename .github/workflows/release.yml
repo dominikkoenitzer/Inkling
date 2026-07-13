@@ -49,6 +49,13 @@ jobs:
         with:
           bun-version: latest
 
+      # node-gyp (used to rebuild better-sqlite3) needs Python's distutils, which was
+      # removed in 3.12+. The macOS runner defaults to 3.14, so pin a version that has it.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       # full install (runs postinstall) so electron-builder can rebuild better-sqlite3
       # for this platform's Electron ABI and pack it into the app.
       - name: Install dependencies
