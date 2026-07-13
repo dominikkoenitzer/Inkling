@@ -1,0 +1,111 @@
+import { ipcMain, BrowserWindow } from 'electron'
+import * as repos from './repos'
+import type { QuickAddPayload } from '@shared/types'
+
+/** Broadcast a data change to every window except the one that caused it. */
+function broadcast(senderId: number, domain: string): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.webContents.id !== senderId && !win.isDestroyed()) {
+      win.webContents.send('data:changed', domain)
+    }
+  }
+}
+
+type Handler = (...args: never[]) => unknown
+
+function handle(channel: string, fn: Handler, mutates?: string): void {
+  ipcMain.handle(channel, (event, ...args) => {
+    const result = (fn as (...a: unknown[]) => unknown)(...args)
+    if (mutates) broadcast(event.sender.id, mutates)
+    return result
+  })
+}
+
+export function registerIpc(hideQuickAdd: () => void): void {
+  handle('notebooks.list', repos.listNotebooks)
+  handle('notebooks.create', repos.createNotebook, 'notebooks')
+  handle('notebooks.update', repos.updateNotebook, 'notebooks')
+  handle('notebooks.remove', repos.removeNotebook, 'notebooks')
+
+  handle('notes.list', repos.listNotes)
+  handle('notes.get', repos.getNote)
+  handle('notes.create', repos.createNote, 'notes')
+  handle('notes.update', repos.updateNote, 'notes')
+  handle('notes.remove', repos.removeNote, 'notes')
+  handle('notes.syncTasks', repos.syncNoteTasks, 'tasks')
+
+  handle('tasks.list', repos.listTasks)
+  handle('tasks.smart', repos.smartTasks)
+  handle('tasks.forNote', repos.tasksForNote)
+  handle('tasks.get', repos.getTask)
+  handle('tasks.create', repos.createTask, 'tasks')
+  handle('tasks.update', repos.updateTask, 'tasks')
+  handle('tasks.remove', repos.removeTask, 'tasks')
+
+  handle('events.window', repos.eventsWindow)
+  handle('events.create', repos.createEvent, 'events')
+  handle('events.update', repos.updateEvent, 'events')
+  handle('events.remove', repos.removeEvent, 'events')
+
+  handle('decks.list', repos.listDecks)
+  handle('decks.create', repos.createDeck, 'decks')
+  handle('decks.rename', repos.renameDeck, 'decks')
+  handle('decks.remove', repos.removeDeck, 'decks')
+  handle('decks.cards', repos.listCards)
+  handle('decks.dueCards', repos.dueCards)
+  handle('decks.addCard', repos.addCard, 'decks')
+  handle('decks.updateCard', repos.updateCard, 'decks')
+  handle('decks.removeCard', repos.removeCard, 'decks')
+  handle('decks.review', repos.reviewCard, 'decks')
+  handle('decks.createFromPairs', repos.createDeckFromPairs, 'decks')
+
+  handle('focus.start', repos.startFocus)
+  handle('focus.complete', repos.completeFocus, 'focus')
+  handle('focus.todayMinutes', repos.todayFocusMinutes)
+
+  handle('streak.get', repos.getStreak)
+  handle('streak.bump', repos.bumpStreak, 'streak')
+
+  handle('settings.all', repos.allSettings)
+  handle('settings.set', repos.setSetting, 'settings')
+
+  handle('search.query', repos.searchQuery)
+
+  handle('app.completeOnboarding', repos.completeOnboarding, 'notebooks')
+
+  ipcMain.handle('app.setTitlebar', (event, colors: { color: string; symbolColor: string }) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    try {
+      win?.setTitleBarOverlay({ color: colors.color, symbolColor: colors.symbolColor, height: 36 })
+    } catch {
+      /* not supported on this platform */
+    }
+  })
+
+  ipcMain.handle('app.quickAdd', (event, payload: QuickAddPayload) => {
+    const notebooks = repos.listNotebooks()
+    const nb = notebooks.find((n) => !n.is_journal) ?? notebooks[0]
+    if (!nb) return
+    if (payload.kind === 'task') {
+      repos.createTask({ notebook_id: nb.id, title: payload.text, due_date: payload.due ?? null })
+    } else if (payload.kind === 'event') {
+      const start = payload.start ?? new Date().toISOString()
+      repos.createEvent({
+        notebook_id: nb.id,
+        title: payload.text,
+        start_time: start,
+        end_time: payload.end ?? new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString()
+      })
+    } else {
+      repos.createNote({
+        notebook_id: nb.id,
+        type: 'page',
+        title: payload.text.slice(0, 80),
+        content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: payload.text }] }] })
+      })
+    }
+    broadcast(event.sender.id, payload.kind === 'task' ? 'tasks' : payload.kind === 'event' ? 'events' : 'notes')
+  })
+
+  ipcMain.handle('app.hideQuickAdd', () => hideQuickAdd())
+}
