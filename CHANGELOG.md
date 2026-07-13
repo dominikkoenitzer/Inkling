@@ -4,6 +4,15 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] — 2026-07-13
+
+### Added
+- **Cross-platform builds** — macOS (`.dmg` + `.zip`) and Linux (`.AppImage`) targets alongside the Windows NSIS installer.
+- **Release automation** — a GitHub Actions matrix workflow builds installers for Windows, macOS, and Linux and attaches them to the release.
+
+### Changed
+- Redesigned the README hero banner into a product shot.
+
 ## [0.1.0] — 2026-07-13
 
 First public release.
