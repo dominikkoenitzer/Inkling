@@ -109,6 +109,7 @@ export interface InklingApi {
     setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>
     quickAdd(payload: QuickAddPayload): Promise<void>
     hideQuickAdd(): Promise<void>
+    saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null }>
     onDataChanged(cb: (domain: string) => void): () => void
   }
 }

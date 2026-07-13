@@ -1,4 +1,5 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
+import fs from 'fs'
 import * as repos from './repos'
 import type { QuickAddPayload } from '@shared/types'
 
@@ -108,4 +109,19 @@ export function registerIpc(hideQuickAdd: () => void): void {
   })
 
   ipcMain.handle('app.hideQuickAdd', () => hideQuickAdd())
+
+  // Native "save as" for exporting text (e.g. a note as Markdown).
+  ipcMain.handle('app.saveFile', async (event, defaultName: string, contents: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const result = await dialog.showSaveDialog(win!, {
+      defaultPath: defaultName,
+      filters: [
+        { name: 'Markdown', extensions: ['md'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled || !result.filePath) return { saved: false, path: null }
+    fs.writeFileSync(result.filePath, contents, 'utf8')
+    return { saved: true, path: result.filePath }
+  })
 }

@@ -25,10 +25,12 @@ import {
   Undo2,
   Redo2,
   Sparkles,
-  Code2
+  Code2,
+  FileDown
 } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { extractNoteTaskItems, extractFlashcardPairs } from '@/lib/parse'
+import { tiptapDocToMarkdown } from '@shared/markdown'
 import { IconBtn } from '@/components/ui'
 import type { Notebook, Note, NoteTaskItem } from '@shared/types'
 
@@ -182,9 +184,21 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     useApp.getState().openDeck(notebook.id, deck.id)
   }
 
+  const exportMarkdown = async (): Promise<void> => {
+    if (!editor) return
+    await doSave() // flush latest edits so the file matches what's on screen
+    const md = tiptapDocToMarkdown(editor.getJSON())
+    const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
+    const res = await api.app.saveFile(`${base}.md`, md)
+    if (res.saved) {
+      setFlashMsg('Exported to Markdown ✓')
+      setTimeout(() => setFlashMsg(null), 2500)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
-      {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} savedAt={savedAt} />}
+      {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExport={() => void exportMarkdown()} savedAt={savedAt} />}
       {flashMsg && <div className="mx-auto mt-2 rounded-lg border border-edge bg-raised px-3 py-1.5 text-xs text-muted pop-in">{flashMsg}</div>}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-10 pb-24 pt-8">
@@ -238,7 +252,17 @@ function safeParse(content: string): object {
 
 /* --------------------------------- Toolbar -------------------------------- */
 
-function Toolbar({ editor, onFlashcards, savedAt }: { editor: Editor; onFlashcards: () => void; savedAt: Date | null }): React.JSX.Element {
+function Toolbar({
+  editor,
+  onFlashcards,
+  onExport,
+  savedAt
+}: {
+  editor: Editor
+  onFlashcards: () => void
+  onExport: () => void
+  savedAt: Date | null
+}): React.JSX.Element {
   // subscribe to selection/transaction changes so active states repaint
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -325,6 +349,9 @@ function Toolbar({ editor, onFlashcards, savedAt }: { editor: Editor; onFlashcar
       <IconBtn title="Make flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1 px-2 text-xs font-medium">
         <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
         Flashcards
+      </IconBtn>
+      <IconBtn title="Export this note as Markdown (.md)" onClick={onExport}>
+        <FileDown size={15} />
       </IconBtn>
       <span className="ml-auto pr-1 text-[11px] text-faint">
         {savedAt ? `Saved ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Auto-saves as you type'}
