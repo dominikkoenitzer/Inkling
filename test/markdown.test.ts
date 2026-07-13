@@ -69,4 +69,17 @@ describe('tiptapDocToMarkdown', () => {
     expect(tiptapDocToMarkdown(null)).toBe('')
     expect(tiptapDocToMarkdown('nonsense')).toBe('')
   })
+
+  it('preserves non-first-paragraph blocks inside a list item (regression)', () => {
+    const item = { type: 'listItem', content: [para([text('step one')]), { type: 'codeBlock', content: [text('run()')] }] }
+    const md = tiptapDocToMarkdown(doc([{ type: 'bulletList', content: [item] }]))
+    expect(md).toContain('- step one')
+    expect(md).toContain('run()') // second block no longer dropped
+  })
+
+  it('escapes markdown metacharacters so literal text round-trips (regression)', () => {
+    expect(tiptapDocToMarkdown(doc([para([text('- not a list')])]))).toBe('\\- not a list\n')
+    expect(tiptapDocToMarkdown(doc([para([text('# not a heading')])]))).toBe('\\# not a heading\n')
+    expect(tiptapDocToMarkdown(doc([para([text('use *args and _kw_')])]))).toBe('use \\*args and \\_kw\\_\n')
+  })
 })

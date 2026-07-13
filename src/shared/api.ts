@@ -117,8 +117,8 @@ export interface InklingApi {
     setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>
     quickAdd(payload: QuickAddPayload): Promise<void>
     hideQuickAdd(): Promise<void>
-    saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null }>
-    savePdf(bodyHtml: string, title: string, defaultName: string): Promise<{ saved: boolean; path: string | null }>
+    saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null; error?: string }>
+    savePdf(bodyHtml: string, title: string, defaultName: string): Promise<{ saved: boolean; path: string | null; error?: string }>
     onDataChanged(cb: (domain: string) => void): () => void
   }
 }
