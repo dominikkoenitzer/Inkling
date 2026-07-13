@@ -4,6 +4,17 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-07-13
+
+### Added
+- **Grade tracker** — a new per-subject module: log assessments (score / max / weight) and see a live **weighted average, letter grade, and 4.0 GPA**, with an overall GPA across subjects in the sidebar. (DB migration v2, additive.)
+- **Export a whole notebook as PDF** — from Notebook settings, render every page into one print-styled document.
+- **Auto-updates** — packaged builds check GitHub Releases for new versions via `electron-updater`.
+- **Intel macOS builds** — releases now include x64 (Intel) macOS installers alongside Apple Silicon.
+
+### Changed
+- The sidebar gained a fifth module tab, **Grades**.
+
 ## [0.1.3] — 2026-07-13
 
 ### Added

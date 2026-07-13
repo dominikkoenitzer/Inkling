@@ -6,6 +6,7 @@ import { StickyBoard } from '@/components/notes/StickyBoard'
 import { TasksView } from '@/components/tasks/TasksView'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { StudyView } from '@/components/study/StudyView'
+import { GradesView } from '@/components/grades/GradesView'
 
 export function MainPane(): React.JSX.Element {
   const { tab, notesView, activeNotebookId, selectedNoteId, notebooks } = useApp()
@@ -30,5 +31,6 @@ export function MainPane(): React.JSX.Element {
   }
   if (tab === 'tasks') return <TasksView notebook={notebook} />
   if (tab === 'calendar') return <CalendarView notebook={notebook} />
-  return <StudyView notebook={notebook} />
+  if (tab === 'study') return <StudyView notebook={notebook} />
+  return <GradesView notebook={notebook} />
 }

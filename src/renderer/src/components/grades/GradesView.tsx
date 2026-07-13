@@ -1,0 +1,130 @@
+import { useEffect, useState } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
+import { useApp, useVersion, bumpData } from '@/stores/app'
+import { isColorKey } from '@/lib/colors'
+import { EmptyState } from '@/components/Inky'
+import { Button, IconBtn } from '@/components/ui'
+import { weightedPercentage, letterGrade, gpaPoints } from '@shared/grades'
+import type { Notebook, Grade } from '@shared/types'
+
+const api = window.inkling
+
+const fmt = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1))
+// local field class WITHOUT w-full so the fixed widths below actually apply
+const fieldCls = 'rounded-lg border border-edge bg-sunken px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent'
+
+export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Element {
+  const version = useVersion('grades')
+  const [grades, setGrades] = useState<Grade[]>([])
+  const [title, setTitle] = useState('')
+  const [score, setScore] = useState('')
+  const [max, setMax] = useState('100')
+  const [weight, setWeight] = useState('1')
+
+  useEffect(() => {
+    void api.grades.list(notebook.id).then(setGrades)
+  }, [notebook.id, version])
+
+  const pct = weightedPercentage(grades)
+
+  const add = async (): Promise<void> => {
+    const s = parseFloat(score)
+    const m = parseFloat(max)
+    const w = parseFloat(weight)
+    if (!title.trim() || !Number.isFinite(s)) return
+    await api.grades.create({
+      notebook_id: notebook.id,
+      title: title.trim(),
+      score: s,
+      max: Number.isFinite(m) && m > 0 ? m : 100,
+      weight: Number.isFinite(w) && w > 0 ? w : 1
+    })
+    setTitle('')
+    setScore('')
+    setMax('100')
+    setWeight('1')
+    bumpData('grades')
+  }
+
+  const onEnter = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Enter') void add()
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-3 border-b border-edge px-5 py-2.5">
+        <h2 className="text-[15px] font-bold">Grades · {notebook.name}</h2>
+        {pct !== null && (
+          <div className="ml-auto flex items-center gap-5">
+            <Stat label="Grade" value={`${pct.toFixed(1)}%`} />
+            <Stat label="Letter" value={letterGrade(pct)} accent />
+            <Stat label="GPA" value={gpaPoints(pct).toFixed(1)} />
+          </div>
+        )}
+      </div>
+
+      <div className="border-b border-edge px-5 py-2">
+        <div className="mx-auto flex max-w-2xl items-center gap-2">
+          <input className={`${fieldCls} min-w-0 flex-1`} placeholder="Assessment (e.g. Midterm)" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={onEnter} />
+          <input className={`${fieldCls} w-16 px-2 text-center`} placeholder="Score" value={score} onChange={(e) => setScore(e.target.value)} onKeyDown={onEnter} />
+          <span className="text-faint">/</span>
+          <input className={`${fieldCls} w-16 px-2 text-center`} placeholder="Max" value={max} onChange={(e) => setMax(e.target.value)} onKeyDown={onEnter} />
+          <span className="text-xs text-faint" title="weight">×</span>
+          <input className={`${fieldCls} w-12 px-2 text-center`} title="Weight" value={weight} onChange={(e) => setWeight(e.target.value)} onKeyDown={onEnter} />
+          <Button variant="primary" onClick={() => void add()}>
+            <Plus size={14} /> Add
+          </Button>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 pt-3">
+        {grades.length === 0 ? (
+          <EmptyState
+            pose="neutral"
+            color={isColorKey(notebook.color) ? notebook.color : 'teal'}
+            title="No grades yet"
+            hint="Add an assessment above — Inkling keeps a weighted average and your letter grade for this subject."
+          />
+        ) : (
+          <div className="mx-auto max-w-2xl">
+            {grades.map((g) => {
+              const p = g.max > 0 ? (g.score / g.max) * 100 : 0
+              return (
+                <div key={g.id} className="group flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-hover">
+                  <span className="min-w-0 flex-1 truncate text-sm">{g.title}</span>
+                  <span className="tabular-nums text-sm text-muted">
+                    {fmt(g.score)} / {fmt(g.max)}
+                  </span>
+                  <span className="w-12 text-right text-sm font-semibold tabular-nums" style={{ color: 'var(--accent-text)' }}>
+                    {p.toFixed(0)}%
+                  </span>
+                  {g.weight !== 1 && <span className="rounded-full bg-raised px-1.5 py-0.5 text-[10px] text-muted">×{fmt(g.weight)}</span>}
+                  <IconBtn
+                    title="Remove"
+                    className="opacity-0 group-hover:opacity-100"
+                    onClick={() => {
+                      void api.grades.remove(g.id).then(() => bumpData('grades'))
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </IconBtn>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }): React.JSX.Element {
+  return (
+    <div className="text-right leading-tight">
+      <div className="text-[10px] uppercase tracking-wider text-faint">{label}</div>
+      <div className="text-sm font-bold tabular-nums" style={accent ? { color: 'var(--accent-text)' } : undefined}>
+        {value}
+      </div>
+    </div>
+  )
+}

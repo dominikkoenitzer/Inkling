@@ -120,11 +120,29 @@ export function getDb(): Database.Database {
   return db
 }
 
+const GRADES_SCHEMA = `
+CREATE TABLE IF NOT EXISTS grades (
+  id INTEGER PRIMARY KEY,
+  notebook_id INTEGER REFERENCES notebooks(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  score REAL NOT NULL,
+  max REAL NOT NULL DEFAULT 100,
+  weight REAL NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_grades_notebook ON grades(notebook_id);
+`
+
 function migrate(d: Database.Database): void {
   const version = d.pragma('user_version', { simple: true }) as number
   if (version < 1) {
     d.exec(SCHEMA)
     d.pragma('user_version = 1')
+  }
+  if (version < 2) {
+    // Grade tracker (added in v0.2.0) — additive, keeps existing data intact.
+    d.exec(GRADES_SCHEMA)
+    d.pragma('user_version = 2')
   }
 }
 
