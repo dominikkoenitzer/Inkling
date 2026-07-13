@@ -71,6 +71,7 @@ Week and month grids with **recurring class blocks** (`WEEKLY;BYDAY=MO,WE,FR` �
 | 👋 **Onboarding** | 3-step first-launch flow with Inky; sensible starter notebooks for school/work/personal |
 | 🐙 **Inky the mascot** | Original SVG character — idle bob, blink, cursor-tracking eyes, celebratory bounces |
 | 💾 **Data safety** | WAL-mode SQLite with rolling local backups (last 5), crash-safe writes |
+| 📤 **Markdown export** | One click turns any note into a portable `.md` file — headings, lists, task lists, quotes, code, and links |
 | 🛡️ **Secure by default** | `contextIsolation: true`, `nodeIntegration: false`, DB access only via the preload IPC bridge |
 
 ### Keyboard shortcuts
@@ -83,6 +84,16 @@ Week and month grids with **recurring class blocks** (`WEEKLY;BYDAY=MO,WE,FR` �
 | `#`, `-`, `1.`, `>`, `[]` | Markdown block shortcuts (in the editor) |
 | `Ctrl` + `B` / `I` / `U` | Bold / italic / underline |
 | `Space` then `1`–`4` | Reveal card, then grade (Again / Hard / Good / Easy) |
+
+---
+
+## Themes
+
+Pick the sleek **Dark** theme or the warm **Cozy** one — with a high-contrast mode and adjustable font size on top.
+
+| Dark | Cozy |
+|:---:|:---:|
+| <img src="docs/theme-dark.png" alt="Inkling Dark theme" /> | <img src="docs/theme-cozy.png" alt="Inkling Cozy theme" /> |
 
 ---
 
@@ -159,7 +170,8 @@ The main process reads a few env vars for isolated, reproducible runs:
 - [x] Four pillars, command palette, quick-add, themes, onboarding, mascot
 - [x] SM-2 flashcards, Pomodoro, streak
 - [x] CI + Windows, macOS & Linux installers (built automatically on release)
-- [ ] Markdown / PDF export
+- [x] Markdown export
+- [ ] PDF export
 - [ ] Grade tracker
 - [ ] Optional end-to-end-encrypted cloud sync
 - [ ] Auto-update (electron-updater)
