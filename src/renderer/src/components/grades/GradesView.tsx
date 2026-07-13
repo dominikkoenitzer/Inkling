@@ -26,6 +26,8 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
   }, [notebook.id, version])
 
   const pct = weightedPercentage(grades)
+  // round once so the shown %, letter, and GPA can't disagree at a grade cutoff
+  const shown = pct === null ? null : Math.round(pct * 10) / 10
 
   const add = async (): Promise<void> => {
     const s = parseFloat(score)
@@ -54,11 +56,11 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-edge px-5 py-2.5">
         <h2 className="text-[15px] font-bold">Grades · {notebook.name}</h2>
-        {pct !== null && (
+        {shown !== null && (
           <div className="ml-auto flex items-center gap-5">
-            <Stat label="Grade" value={`${pct.toFixed(1)}%`} />
-            <Stat label="Letter" value={letterGrade(pct)} accent />
-            <Stat label="GPA" value={gpaPoints(pct).toFixed(1)} />
+            <Stat label="Grade" value={`${shown.toFixed(1)}%`} />
+            <Stat label="Letter" value={letterGrade(shown)} accent />
+            <Stat label="GPA" value={gpaPoints(shown).toFixed(1)} />
           </div>
         )}
       </div>

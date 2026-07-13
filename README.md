@@ -140,7 +140,7 @@ bun run build       # production bundle
 bun run dist        # Windows installer (NSIS) → release/
 ```
 
-Prefer a prebuilt binary? Grab the latest installer for **Windows (`.exe`)**, **macOS (`.dmg`)**, or **Linux (`.AppImage`)** from the [**Releases**](https://github.com/dominikkoenitzer/Inkling/releases/latest) page — each platform is built and attached automatically by the [release workflow](.github/workflows/release.yml).
+Prefer a prebuilt binary? Grab the latest installer for **Windows (`.exe`)**, **macOS (`.dmg`, universal — Intel + Apple Silicon)**, or **Linux (`.AppImage`)** from the [**Releases**](https://github.com/dominikkoenitzer/Inkling/releases/latest) page — each platform is built and attached automatically by the [release workflow](.github/workflows/release.yml).
 
 > **Note:** `trustedDependencies` in `package.json` lets Bun run the postinstall scripts of `electron` (binary download) and `better-sqlite3` — don't remove it.
 
@@ -178,7 +178,7 @@ The main process reads a few env vars for isolated, reproducible runs:
 - [x] CI + Windows, macOS & Linux installers (built automatically on release)
 - [x] Markdown & PDF export (per note or whole notebook)
 - [x] Grade tracker (weighted averages, letter grades, GPA)
-- [x] Auto-update (electron-updater) + Intel & Apple-Silicon macOS builds
+- [x] Auto-update (electron-updater) + universal macOS build (Intel + Apple Silicon)
 - [ ] Optional end-to-end-encrypted cloud sync
 - [ ] Mobile companion
 

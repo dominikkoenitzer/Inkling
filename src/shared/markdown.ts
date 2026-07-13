@@ -15,17 +15,29 @@ interface PMNode {
   content?: PMNode[]
 }
 
+// escape characters that are meaningful inline so literal text survives a round-trip
+function escapeInline(t: string): string {
+  return t.replace(/([\\`*_[\]])/g, '\\$1')
+}
+// escape a leading block marker so a plain paragraph isn't reparsed as a list/heading/quote
+function escapeLeadingBlock(line: string): string {
+  return line
+    .replace(/^(\s*)([#>])/, '$1\\$2')
+    .replace(/^(\s*)([-+])(\s)/, '$1\\$2$3')
+    .replace(/^(\s*)(\d+)([.)])(\s)/, '$1$2\\$3$4')
+}
+
 function renderInline(nodes: PMNode[] | undefined): string {
   if (!nodes) return ''
   return nodes
     .map((n) => {
       if (n.type === 'hardBreak') return '  \n'
       if (n.type !== 'text') return renderInline(n.content)
-      let t = n.text ?? ''
       const marks = n.marks ?? []
       const has = (m: string): boolean => marks.some((x) => x.type === m)
-      // inline code can't contain other markdown, so return early
-      if (has('code')) return '`' + t + '`'
+      // inline code can't contain other markdown, so keep it raw and return early
+      if (has('code')) return '`' + (n.text ?? '') + '`'
+      let t = escapeInline(n.text ?? '')
       if (has('bold')) t = `**${t}**`
       if (has('italic')) t = `*${t}*`
       if (has('strike')) t = `~~${t}~~`
@@ -43,15 +55,15 @@ function renderList(node: PMNode, indent: string, marker: (index: number, item: 
   let out = ''
   items.forEach((item, i) => {
     const kids = item.content ?? []
-    const firstPara = kids.find((k) => k.type === 'paragraph')
-    const text = firstPara ? renderInline(firstPara.content) : renderInline(item.content)
-    out += `${indent}${marker(i, item)}${text}\n`
-    // nested lists are indented two spaces per level
-    for (const k of kids) {
-      if (k.type === 'bulletList' || k.type === 'orderedList' || k.type === 'taskList') {
-        out += renderBlock(k, indent + '  ')
-      }
-    }
+    // the leading paragraph sits on the marker line; every OTHER block child (a second
+    // paragraph, code block, blockquote, nested list, …) is emitted indented so nothing is lost
+    const firstParaIdx = kids.findIndex((k) => k.type === 'paragraph')
+    const firstText = firstParaIdx >= 0 ? renderInline(kids[firstParaIdx].content) : renderInline(item.content)
+    out += `${indent}${marker(i, item)}${firstText}\n`
+    kids.forEach((k, ki) => {
+      if (ki === firstParaIdx) return
+      out += renderBlock(k, indent + '  ')
+    })
   })
   return out + '\n'
 }
@@ -59,7 +71,7 @@ function renderList(node: PMNode, indent: string, marker: (index: number, item: 
 function renderBlock(node: PMNode, indent = ''): string {
   switch (node.type) {
     case 'paragraph':
-      return `${indent}${renderInline(node.content)}\n\n`
+      return `${indent}${escapeLeadingBlock(renderInline(node.content))}\n\n`
     case 'heading': {
       const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 6)
       return `${'#'.repeat(level)} ${renderInline(node.content)}\n\n`
