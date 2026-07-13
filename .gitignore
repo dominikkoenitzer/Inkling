@@ -23,5 +23,6 @@ Thumbs.db
 .env
 .env.local
 
-# Bundled source archive (kept out of VCS; blueprint lives in files/)
+# Starter-prompt material — not part of the deliverable
+files/
 files.zip
