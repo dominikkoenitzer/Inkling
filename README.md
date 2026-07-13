@@ -1,20 +1,21 @@
 <div align="center">
 
-<img src="resources/logo.svg" width="112" alt="Inkling logo" />
+<img src="docs/banner.png" alt="Inkling — notes, tasks, schedule and study, together" width="820" />
 
-# Inkling
+<br />
 
-### notes, tasks, schedule and study — together
-
-A warm, local-first desktop hub where you can dump a quick thought, write a full essay, track assignments, see your week at a glance, and study for a test — all without leaving one app.
-
+[![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
+[![tests](https://img.shields.io/badge/tests-24%20passing-1D9E75)](test)
 [![Electron](https://img.shields.io/badge/Electron-33-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![SQLite](https://img.shields.io/badge/better--sqlite3-FTS5-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
+[![better-sqlite3](https://img.shields.io/badge/better--sqlite3-FTS5-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-1D9E75.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#getting-started)
+[![Release](https://img.shields.io/github/v/release/dominikkoenitzer/Inkling?color=1D9E75)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
+
+**A warm, local-first desktop hub where you can dump a quick thought, write a full essay, track assignments, see your week at a glance, and study for a test — all without leaving one app.**
+
+[Download](https://github.com/dominikkoenitzer/Inkling/releases/latest) · [Features](#the-four-pillars) · [Getting started](#getting-started) · [Architecture](#project-layout)
 
 </div>
 
@@ -26,7 +27,7 @@ A warm, local-first desktop hub where you can dump a quick thought, write a full
 
 ## Why Inkling
 
-Four things students and busy people juggle — **notes, tasks, a schedule, and studying** — usually live in four different apps that don't talk to each other. Inkling unifies them and cross-links them, so one piece of content flows everywhere:
+Four things students and busy people juggle — **notes, tasks, a schedule, and studying** — usually live in four different apps that don't talk to each other. Inkling unifies them and *cross-links* them, so one piece of content flows everywhere:
 
 > A page of *Chapter 4 notes* can hold a checkbox (`[] Finish reading by Friday`) that becomes a **real task**, which shows up on the **calendar**, while its `Term :: Definition` lines turn into **flashcards** — all from the same text, no duplicate entry.
 
@@ -71,6 +72,17 @@ Week and month grids with **recurring class blocks** (`WEEKLY;BYDAY=MO,WE,FR` �
 | 💾 **Data safety** | WAL-mode SQLite with rolling local backups (last 5), crash-safe writes |
 | 🛡️ **Secure by default** | `contextIsolation: true`, `nodeIntegration: false`, DB access only via the preload IPC bridge |
 
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl` + `K` | Command palette / search |
+| `Ctrl` + `Alt` + `N` | Global quick-add popup |
+| `Ctrl` + `,` | Settings |
+| `#`, `-`, `1.`, `>`, `[]` | Markdown block shortcuts (in the editor) |
+| `Ctrl` + `B` / `I` / `U` | Bold / italic / underline |
+| `Space` then `1`–`4` | Reveal card, then grade (Again / Hard / Good / Easy) |
+
 ---
 
 ## Tech stack
@@ -87,7 +99,8 @@ Week and month grids with **recurring class blocks** (`WEEKLY;BYDAY=MO,WE,FR` �
 | Dates | **date-fns** |
 | Spaced repetition | Custom **SM-2** implementation |
 | Icons | **lucide-react** |
-| Packaging | **electron-builder** (NSIS) |
+| Tests | **Vitest** (recurrence, parsing, color-system logic) |
+| CI / Packaging | **GitHub Actions** · **electron-builder** (NSIS) |
 
 ---
 
@@ -100,18 +113,16 @@ bun install     # also rebuilds better-sqlite3 for Electron (postinstall)
 bun run dev     # dev mode with hot reload
 ```
 
-Production build & launch:
+Everyday scripts:
 
 ```bash
-bun run build
-bunx electron .
+bun run typecheck   # tsc across renderer + main/preload
+bun run test        # vitest unit suite
+bun run build       # production bundle
+bun run dist        # Windows installer (NSIS) → release/
 ```
 
-Build the Windows installer (NSIS → `release/`):
-
-```bash
-bun run dist
-```
+Prefer a prebuilt binary? Grab the latest installer from the [**Releases**](https://github.com/dominikkoenitzer/Inkling/releases/latest) page.
 
 > **Note:** `trustedDependencies` in `package.json` lets Bun run the postinstall scripts of `electron` (binary download) and `better-sqlite3` — don't remove it.
 
@@ -124,13 +135,12 @@ src/main       Electron main — db.ts (schema/backups), repos.ts (all queries, 
 src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
 src/renderer   React app — stores/ (zustand), components/{shell,notes,tasks,calendar,study}, lib/
 src/shared     types + API contract shared across processes
+test           Vitest suites for the pure logic (recur, parse, colors)
 ```
 
-## Where's my data?
+Data lives in a single WAL-mode SQLite file in `%APPDATA%/Inkling`, with a `backups/` folder beside it. Fully offline — nothing leaves your machine.
 
-A single SQLite file (WAL mode) in `%APPDATA%/Inkling`, with a `backups/` folder beside it. Fully offline — nothing leaves your machine.
-
-## Dev / test hooks
+### Dev / test hooks
 
 The main process reads a few env vars for isolated, reproducible runs:
 
@@ -142,6 +152,28 @@ The main process reads a few env vars for isolated, reproducible runs:
 | `INKLING_EVAL=<js>` | Run JS in the renderer before capture (`window.__app` exposes the store) |
 
 ---
+
+## Roadmap
+
+- [x] Four pillars, command palette, quick-add, themes, onboarding, mascot
+- [x] SM-2 flashcards, Pomodoro, streak
+- [x] Windows installer + CI
+- [ ] Markdown / PDF export
+- [ ] Grade tracker
+- [ ] Optional end-to-end-encrypted cloud sync
+- [ ] macOS & Linux builds
+
+---
+
+## Contributing
+
+Issues and PRs welcome. Before opening a PR, please run:
+
+```bash
+bun run typecheck && bun run test && bun run build
+```
+
+See [`CHANGELOG.md`](CHANGELOG.md) for release history.
 
 ## License
 
