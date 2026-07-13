@@ -31,6 +31,7 @@ import {
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { extractNoteTaskItems, extractFlashcardPairs } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
+import { tiptapDocToHtml } from '@shared/tiptapHtml'
 import { IconBtn } from '@/components/ui'
 import type { Notebook, Note, NoteTaskItem } from '@shared/types'
 
@@ -196,9 +197,29 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     }
   }
 
+  const exportPdf = async (): Promise<void> => {
+    if (!editor) return
+    await doSave()
+    const body = tiptapDocToHtml(editor.getJSON())
+    const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
+    const res = await api.app.savePdf(body, titleRef.current || 'Untitled', `${base}.pdf`)
+    if (res.saved) {
+      setFlashMsg('Exported to PDF ✓')
+      setTimeout(() => setFlashMsg(null), 2500)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
-      {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExport={() => void exportMarkdown()} savedAt={savedAt} />}
+      {editor && (
+        <Toolbar
+          editor={editor}
+          onFlashcards={() => void makeFlashcards()}
+          onExportMd={() => void exportMarkdown()}
+          onExportPdf={() => void exportPdf()}
+          savedAt={savedAt}
+        />
+      )}
       {flashMsg && <div className="mx-auto mt-2 rounded-lg border border-edge bg-raised px-3 py-1.5 text-xs text-muted pop-in">{flashMsg}</div>}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-10 pb-24 pt-8">
@@ -255,16 +276,19 @@ function safeParse(content: string): object {
 function Toolbar({
   editor,
   onFlashcards,
-  onExport,
+  onExportMd,
+  onExportPdf,
   savedAt
 }: {
   editor: Editor
   onFlashcards: () => void
-  onExport: () => void
+  onExportMd: () => void
+  onExportPdf: () => void
   savedAt: Date | null
 }): React.JSX.Element {
   // subscribe to selection/transaction changes so active states repaint
   const [, setTick] = useState(0)
+  const [exportOpen, setExportOpen] = useState(false)
   useEffect(() => {
     const rerender = (): void => setTick((t) => t + 1)
     editor.on('transaction', rerender)
@@ -350,9 +374,38 @@ function Toolbar({
         <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
         Flashcards
       </IconBtn>
-      <IconBtn title="Export this note as Markdown (.md)" onClick={onExport}>
-        <FileDown size={15} />
-      </IconBtn>
+      <div className="relative">
+        <IconBtn title="Export note…" active={exportOpen} onClick={() => setExportOpen((v) => !v)}>
+          <FileDown size={15} />
+        </IconBtn>
+        {exportOpen && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setExportOpen(false)} />
+            <div className="absolute right-0 top-full z-40 mt-1 w-44 overflow-hidden rounded-lg border border-edge bg-raised py-1 shadow-lg">
+              <button
+                type="button"
+                className="block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-hover"
+                onClick={() => {
+                  setExportOpen(false)
+                  onExportMd()
+                }}
+              >
+                Markdown (.md)
+              </button>
+              <button
+                type="button"
+                className="block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-hover"
+                onClick={() => {
+                  setExportOpen(false)
+                  onExportPdf()
+                }}
+              >
+                PDF (.pdf)
+              </button>
+            </div>
+          </>
+        )}
+      </div>
       <span className="ml-auto pr-1 text-[11px] text-faint">
         {savedAt ? `Saved ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Auto-saves as you type'}
       </span>
