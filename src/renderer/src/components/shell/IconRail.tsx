@@ -8,6 +8,19 @@ import type { ColorKey } from '@shared/types'
 
 const api = window.inkling
 
+/** Discord-style word initials for notebooks without a glyph: "My Notebook" → "MN". */
+function initials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '?'
+  )
+}
+
 export function IconRail(): React.JSX.Element {
   const { notebooks, activeNotebookId, setActiveNotebook, refreshNotebooks } = useApp()
   const [adding, setAdding] = useState(false)
@@ -47,7 +60,7 @@ export function IconRail(): React.JSX.Element {
             ) : nb.is_journal ? (
               <JournalIcon size={20} />
             ) : (
-              nb.name.slice(0, 2)
+              initials(nb.name)
             )}
           </button>
         )

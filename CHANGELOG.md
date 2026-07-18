@@ -4,6 +4,18 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] — 2026-07-18
+
+The clean pass, from a direct side-by-side against Discord.
+
+### Changed
+- **Surfaces separate by elevation, not borders.** The rail, sidebar, and content each sit on their own background shade (rail darkest); hairline borders between panes are now nearly invisible in the normal themes. High-contrast mode restores strong borders.
+- **Cards are raised again.** Plan cards, deck cards, the focus timer, flashcards, and form panels use the raised surface, so they float above the content instead of reading as cut-outs.
+- **The titlebar blends in.** Window chrome now matches the app background in both themes; the black seam at the top is gone.
+- **Context panel sections are cards**, like Discord's Active Now panel.
+- **Rail initials are word initials** ("My Notebook" → MN), uppercase, so notebooks without a glyph still look deliberate.
+- **A cleared Today plan centers itself** and offers three quick actions (new page, build a deck, add a task) instead of leaving the pane empty.
+
 ## [0.3.0] — 2026-07-18
 
 The "make studying fun" release: Inkling sharpens from a four-pillar organizer into a study companion that tells you what to do today.

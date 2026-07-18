@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Layers, TrendingUp, Timer, Flame, ArrowRight, Play } from 'lucide-react'
+import { Layers, TrendingUp, Timer, Flame, ArrowRight, Play, Plus, CheckSquare } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { useTimer } from '@/stores/timer'
@@ -88,9 +88,16 @@ export function TodayView(): React.JSX.Element {
     app.setTab('study')
   }
 
+  const newPage = async (): Promise<void> => {
+    if (app.activeNotebookId === null) return
+    const note = await api.notes.create({ notebook_id: app.activeNotebookId, type: 'page' })
+    bumpData('notes')
+    app.openNote(app.activeNotebookId, note.id)
+  }
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto w-full max-w-2xl px-6 pb-16 pt-10">
+      <div className={`mx-auto flex w-full max-w-2xl flex-col px-6 pb-16 ${cleared ? 'min-h-full justify-center' : 'pt-10'}`}>
         <div className="fade-up mb-6 flex items-center gap-4">
           <Inky pose={cleared ? 'happy' : 'wave'} color={inkyColor} size={76} />
           <div>
@@ -114,13 +121,27 @@ export function TodayView(): React.JSX.Element {
         </div>
 
         {cleared && (
-          <div className="pop-in relative overflow-hidden rounded-xl border border-edge bg-panel p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
-            <Confetti />
-            <div className="text-lg font-bold">Plan cleared 🎉</div>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-              No cards due, no tasks pending. Add a page of notes, build a deck, or just enjoy being ahead.
-            </p>
-          </div>
+          <>
+            <div className="pop-in relative overflow-hidden rounded-xl bg-raised p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
+              <Confetti />
+              <div className="text-lg font-bold">Plan cleared 🎉</div>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+                No cards due, no tasks pending. Get ahead, or just enjoy it.
+              </p>
+            </div>
+            <div className="stagger mt-3 grid grid-cols-3 gap-2">
+              <QuickAction icon={<Plus size={18} />} label="New page" onClick={() => void newPage()} />
+              <QuickAction
+                icon={<Layers size={18} />}
+                label="Build a deck"
+                onClick={() => {
+                  app.setSelectedDeck(null)
+                  app.setTab('study')
+                }}
+              />
+              <QuickAction icon={<CheckSquare size={18} />} label="Add a task" onClick={() => app.setTab('tasks')} />
+            </div>
+          </>
         )}
 
         {minutes > 0 && (
@@ -151,7 +172,7 @@ export function TodayView(): React.JSX.Element {
             return (
               <div
                 key={`t${t.id}`}
-                className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-panel px-4 py-3"
+                className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-raised px-4 py-3"
                 onClick={() => app.openTask(t.notebook_id, t.id)}
               >
                 <input
@@ -220,7 +241,7 @@ function PlanCard({
   onAction: () => void
 }): React.JSX.Element {
   return (
-    <div className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-panel px-4 py-3" onClick={onAction}>
+    <div className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-raised px-4 py-3" onClick={onAction}>
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg"
         style={{ background: tint.bg, color: tint.text }}
@@ -238,6 +259,19 @@ function PlanCard({
         {actionLabel} <ArrowRight size={12} />
       </span>
     </div>
+  )
+}
+
+function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="plan-card flex flex-col items-center gap-1.5 rounded-xl bg-raised px-3 py-4 text-xs font-medium text-muted hover:text-ink"
+    >
+      <span style={{ color: 'var(--accent-text)' }}>{icon}</span>
+      {label}
+    </button>
   )
 }
 

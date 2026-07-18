@@ -232,7 +232,7 @@ function TodaySidebar(): React.JSX.Element {
   return (
     <div className="fade-up">
       <SectionLabel>Due this week</SectionLabel>
-      {dueSoon.length === 0 && <p className="px-2 py-2 text-xs text-faint">Nothing due this week. Enjoy it ✨</p>}
+      {dueSoon.length === 0 && <div className="rounded-lg bg-sunken px-3 py-3 text-xs text-faint">Nothing due this week. Enjoy it ✨</div>}
       {dueSoon.map((t) => (
         <button
           key={t.id}
