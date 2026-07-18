@@ -2,7 +2,6 @@ import type {
   Notebook,
   Note,
   Task,
-  CalEvent,
   Deck,
   Card,
   SearchResult,
@@ -20,7 +19,7 @@ import type {
 export interface InklingApi {
   notebooks: {
     list(): Promise<Notebook[]>
-    create(input: { name: string; color: ColorKey; kind?: NotebookKind; is_journal?: boolean }): Promise<Notebook>
+    create(input: { name: string; color: ColorKey; icon?: string | null; kind?: NotebookKind; is_journal?: boolean }): Promise<Notebook>
     update(id: number, patch: Partial<Pick<Notebook, 'name' | 'color' | 'icon' | 'kind' | 'sort_order'>>): Promise<Notebook>
     remove(id: number): Promise<void>
   }
@@ -60,20 +59,6 @@ export interface InklingApi {
       note_id?: number | null
     }): Promise<Task>
     update(id: number, patch: Partial<Pick<Task, 'title' | 'status' | 'priority' | 'due_date' | 'notebook_id' | 'parent_task_id'>>): Promise<Task>
-    remove(id: number): Promise<void>
-  }
-  events: {
-    window(startISO: string, endISO: string): Promise<CalEvent[]>
-    create(input: {
-      notebook_id: number
-      title: string
-      start_time: string
-      end_time?: string | null
-      recurrence_rule?: string | null
-      linked_task_id?: number | null
-      color?: string | null
-    }): Promise<CalEvent>
-    update(id: number, patch: Partial<Omit<CalEvent, 'id'>>): Promise<CalEvent>
     remove(id: number): Promise<void>
   }
   decks: {

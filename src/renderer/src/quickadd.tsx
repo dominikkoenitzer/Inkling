@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { StickyNote, CheckSquare, CalendarDays } from 'lucide-react'
+import { StickyNote, CheckSquare } from 'lucide-react'
 import { parseQuickText } from './lib/parse'
 import './styles/index.css'
 
 const api = window.inkling
 
-type Kind = 'note' | 'task' | 'event'
+type Kind = 'note' | 'task'
 
 function QuickAdd(): React.JSX.Element {
   const [text, setText] = useState('')
@@ -38,8 +38,7 @@ function QuickAdd(): React.JSX.Element {
       await api.app.quickAdd({
         kind,
         text: parsed.text,
-        due: kind === 'task' && parsed.when ? parsed.when.toISOString() : null,
-        start: kind === 'event' && parsed.when ? parsed.when.toISOString() : null
+        due: kind === 'task' && parsed.when ? parsed.when.toISOString() : null
       })
     } finally {
       savingRef.current = false
@@ -55,9 +54,8 @@ function QuickAdd(): React.JSX.Element {
   }
 
   const kinds: Array<{ id: Kind; icon: React.JSX.Element; label: string }> = [
-    { id: 'note', icon: <StickyNote size={13} />, label: 'Note' },
-    { id: 'task', icon: <CheckSquare size={13} />, label: 'Task' },
-    { id: 'event', icon: <CalendarDays size={13} />, label: 'Event' }
+    { id: 'note', icon: <StickyNote size={14} />, label: 'Note' },
+    { id: 'task', icon: <CheckSquare size={14} />, label: 'Task' }
   ]
 
   return (

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   FileText,
   CheckSquare,
-  CalendarDays,
   GraduationCap,
   Search,
   Plus,
@@ -20,19 +19,21 @@ import {
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { RAMPS, COLOR_KEYS, isColorKey, ramp } from '@/lib/colors'
-import { weightedPercentage, gpaPoints } from '@shared/grades'
+import { subjectAverage, gpaPoints } from '@shared/grades'
 import { tiptapDocToHtml, escapeHtml } from '@shared/tiptapHtml'
-import { Modal, Field, inputCls, Button, IconBtn } from '@/components/ui'
-import type { Note, Deck, Grade, ModuleTab, ColorKey } from '@shared/types'
+import { Modal, Field, inputCls, Button, IconBtn, IconPicker } from '@/components/ui'
+import { NotebookGlyph } from '@/lib/icons'
+import { UserBar } from '@/components/shell/UserBar'
+import type { Note, Deck, Grade, Task, ModuleTab, ColorKey } from '@shared/types'
 
 const api = window.inkling
 
 const TABS: Array<{ id: ModuleTab; icon: React.JSX.Element; label: string }> = [
-  { id: 'notes', icon: <FileText size={15} />, label: 'Notes' },
-  { id: 'tasks', icon: <CheckSquare size={15} />, label: 'Tasks' },
-  { id: 'calendar', icon: <CalendarDays size={15} />, label: 'Calendar' },
-  { id: 'study', icon: <GraduationCap size={15} />, label: 'Study' },
-  { id: 'grades', icon: <Percent size={15} />, label: 'Grades' }
+  { id: 'today', icon: <Sun size={18} />, label: 'Today' },
+  { id: 'notes', icon: <FileText size={18} />, label: 'Notes' },
+  { id: 'tasks', icon: <CheckSquare size={18} />, label: 'Tasks' },
+  { id: 'study', icon: <GraduationCap size={18} />, label: 'Study' },
+  { id: 'grades', icon: <Percent size={18} />, label: 'Grades' }
 ]
 
 export function Sidebar(): React.JSX.Element {
@@ -43,10 +44,13 @@ export function Sidebar(): React.JSX.Element {
   return (
     <aside className="flex w-60 shrink-0 flex-col rounded-tl-xl border-l border-t border-edge bg-panel">
       <div className="flex items-center justify-between px-3 pb-1 pt-3">
-        <h1 className="truncate text-[15px] font-bold">{notebook?.name ?? 'Inkling'}</h1>
+        <h1 className="flex min-w-0 items-center gap-1.5 text-base font-bold">
+          {notebook && <NotebookGlyph icon={notebook.icon} size={16} className="shrink-0" style={{ color: 'var(--accent-text)' }} />}
+          <span className="truncate">{notebook?.name ?? 'Inkling'}</span>
+        </h1>
         {notebook && (
           <IconBtn title="Notebook options" onClick={() => setEditing(true)}>
-            <MoreHorizontal size={15} />
+            <MoreHorizontal size={16} />
           </IconBtn>
         )}
       </div>
@@ -58,8 +62,8 @@ export function Sidebar(): React.JSX.Element {
             type="button"
             onClick={() => app.setTab(t.id)}
             title={t.label}
-            className={`flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[10.5px] font-medium transition-colors ${
-              app.tab === t.id ? 'text-white' : 'text-muted hover:bg-hover hover:text-ink'
+            className={`flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[11px] font-medium transition-all active:scale-95 ${
+              app.tab === t.id ? 'text-white' : 'text-muted hover:-translate-y-px hover:bg-hover hover:text-ink'
             }`}
             style={app.tab === t.id ? { background: 'var(--accent)' } : undefined}
           >
@@ -72,26 +76,28 @@ export function Sidebar(): React.JSX.Element {
       <button
         type="button"
         onClick={() => app.setPaletteOpen(true)}
-        className="mx-2 mb-2 flex items-center gap-2 rounded-lg border border-edge bg-sunken px-2.5 py-1.5 text-sm text-faint hover:text-muted"
+        className="mx-2 mb-2 flex items-center gap-2 rounded-lg border border-edge bg-sunken px-2.5 py-1.5 text-sm text-faint transition-colors hover:text-muted"
       >
-        <Search size={14} />
+        <Search size={16} />
         Search everything…
-        <span className="ml-auto rounded border border-edge px-1 text-[10px]">Ctrl K</span>
+        <span className="ml-auto rounded border border-edge px-1 text-[11px]">Ctrl K</span>
       </button>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {notebook ? (
           <>
+            {app.tab === 'today' && <TodaySidebar />}
             {app.tab === 'notes' && <NotesList notebookId={notebook.id} />}
             {app.tab === 'tasks' && <TasksSidebar />}
-            {app.tab === 'calendar' && <CalendarSidebar />}
             {app.tab === 'study' && <StudySidebar notebookId={notebook.id} />}
             {app.tab === 'grades' && <GradesSidebar />}
           </>
         ) : (
-          <p className="px-2 py-4 text-sm text-muted">Create a notebook to get going — the + button on the left.</p>
+          <p className="px-2 py-4 text-sm text-muted">Create a notebook to get going. The + button on the left is waiting.</p>
         )}
       </div>
+
+      <UserBar />
 
       {editing && notebook && <NotebookModal notebookId={notebook.id} onClose={() => setEditing(false)} />}
     </aside>
@@ -145,18 +151,18 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
         <button
           type="button"
           onClick={() => void newPage()}
-          className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-edge bg-raised py-1.5 text-xs font-medium hover:bg-active"
+          className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-edge bg-raised py-1.5 text-xs font-medium transition-all hover:bg-active active:scale-95"
         >
-          <Plus size={13} /> Page
+          <Plus size={14} /> Page
         </button>
         <button
           type="button"
           onClick={() => setNotesView('board')}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-lg border border-edge py-1.5 text-xs font-medium ${
+          className={`flex flex-1 items-center justify-center gap-1 rounded-lg border border-edge py-1.5 text-xs font-medium transition-all active:scale-95 ${
             notesView === 'board' ? 'bg-active text-ink' : 'bg-raised hover:bg-active'
           }`}
         >
-          <StickyNote size={13} /> Sticky board
+          <StickyNote size={14} /> Sticky board
         </button>
       </div>
 
@@ -164,18 +170,18 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
         <button
           type="button"
           onClick={() => void openJournalToday()}
-          className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted hover:bg-hover hover:text-ink"
+          className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
         >
-          <BookOpen size={14} style={{ color: 'var(--accent-text)' }} /> Today’s journal
+          <BookOpen size={16} style={{ color: 'var(--accent-text)' }} /> Today’s journal
         </button>
       )}
 
       <SectionLabel>Pages</SectionLabel>
-      {pages.length === 0 && <p className="px-2 py-2 text-xs text-faint">No pages yet — hit “+ Page” above.</p>}
+      {pages.length === 0 && <p className="px-2 py-2 text-xs text-faint">No pages yet. Hit “+ Page” above.</p>}
       {pages.map((n) => (
         <div
           key={n.id}
-          className={`group flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm ${
+          className={`group flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors ${
             notesView === 'pages' && selectedNoteId === n.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
           }`}
           onClick={() => {
@@ -183,7 +189,7 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
             setSelectedNote(n.id)
           }}
         >
-          {n.pinned === 1 && <Pin size={11} className="shrink-0" style={{ color: 'var(--accent-text)' }} />}
+          {n.pinned === 1 && <Pin size={12} className="shrink-0" style={{ color: 'var(--accent-text)' }} />}
           <span className="truncate">{n.title || 'Untitled'}</span>
           <span className="ml-auto hidden shrink-0 gap-0.5 group-hover:flex">
             <IconBtn
@@ -193,7 +199,7 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
                 void api.notes.update(n.id, { pinned: n.pinned ? 0 : 1 }).then(() => bumpData('notes'))
               }}
             >
-              <Pin size={12} />
+              <Pin size={14} />
             </IconBtn>
             <IconBtn
               title="Delete page"
@@ -203,10 +209,40 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
                 void api.notes.remove(n.id).then(() => bumpData('notes'))
               }}
             >
-              <Trash2 size={12} />
+              <Trash2 size={14} />
             </IconBtn>
           </span>
         </div>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------ Today sidebar ------------------------------ */
+
+function TodaySidebar(): React.JSX.Element {
+  const version = useVersion('tasks')
+  const { openTask } = useApp()
+  const [dueSoon, setDueSoon] = useState<Task[]>([])
+
+  useEffect(() => {
+    void api.tasks.smart('week').then((tasks) => setDueSoon(tasks.slice(0, 12)))
+  }, [version])
+
+  return (
+    <div className="fade-up">
+      <SectionLabel>Due this week</SectionLabel>
+      {dueSoon.length === 0 && <p className="px-2 py-2 text-xs text-faint">Nothing due this week. Enjoy it ✨</p>}
+      {dueSoon.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => openTask(t.notebook_id, t.id)}
+          className="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-muted transition-colors hover:bg-hover"
+        >
+          <span className="block truncate text-ink">{t.title}</span>
+          <span className="block text-xs text-faint">{t.due_date ? format(new Date(t.due_date), 'EEE d MMM') : ''}</span>
+        </button>
       ))}
     </div>
   )
@@ -237,7 +273,7 @@ function TasksSidebar(): React.JSX.Element {
     <button
       type="button"
       onClick={() => setSmartView(id)}
-      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+      className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
         smartView === id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
       }`}
     >
@@ -254,42 +290,10 @@ function TasksSidebar(): React.JSX.Element {
   return (
     <div className="fade-up">
       <SectionLabel>Smart views</SectionLabel>
-      <Item id="today" icon={<Sun size={14} />} label="Today" count={counts.today} />
-      <Item id="week" icon={<CalendarRange size={14} />} label="This Week" count={counts.week} />
+      <Item id="today" icon={<Sun size={16} />} label="Today" count={counts.today} />
+      <Item id="week" icon={<CalendarRange size={16} />} label="This Week" count={counts.week} />
       <SectionLabel className="mt-3">This notebook</SectionLabel>
-      <Item id={null} icon={<Layers size={14} />} label="All tasks" />
-    </div>
-  )
-}
-
-/* ---------------------------- Calendar sidebar ---------------------------- */
-
-function CalendarSidebar(): React.JSX.Element {
-  const version = useVersion('tasks') + useVersion('events')
-  const [dueSoon, setDueSoon] = useState<Array<{ id: number; title: string; due: string }>>([])
-
-  useEffect(() => {
-    void api.tasks.smart('week').then((tasks) =>
-      setDueSoon(
-        tasks.slice(0, 12).map((t) => ({
-          id: t.id,
-          title: t.title,
-          due: t.due_date ? format(new Date(t.due_date), 'EEE d MMM') : ''
-        }))
-      )
-    )
-  }, [version])
-
-  return (
-    <div className="fade-up">
-      <SectionLabel>Due this week</SectionLabel>
-      {dueSoon.length === 0 && <p className="px-2 py-2 text-xs text-faint">Nothing due this week — enjoy it ✨</p>}
-      {dueSoon.map((t) => (
-        <div key={t.id} className="rounded-lg px-2 py-1.5 text-sm text-muted">
-          <div className="truncate text-ink">{t.title}</div>
-          <div className="text-[11px] text-faint">{t.due}</div>
-        </div>
-      ))}
+      <Item id={null} icon={<Layers size={16} />} label="All tasks" />
     </div>
   )
 }
@@ -321,11 +325,11 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
       <button
         type="button"
         onClick={() => setSelectedDeck(null)}
-        className={`mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+        className={`mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
           selectedDeckId === null ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
         }`}
       >
-        <GraduationCap size={14} /> Study home
+        <GraduationCap size={16} /> Study home
       </button>
       <SectionLabel>Decks</SectionLabel>
       {decks.map((d) => (
@@ -333,7 +337,7 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
           key={d.id}
           type="button"
           onClick={() => setSelectedDeck(d.id)}
-          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
             selectedDeckId === d.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
           }`}
         >
@@ -362,9 +366,9 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-faint hover:bg-hover hover:text-ink"
+          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-faint transition-colors hover:bg-hover hover:text-ink"
         >
-          <Plus size={14} /> New deck
+          <Plus size={16} /> New deck
         </button>
       )}
     </div>
@@ -374,7 +378,7 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
 /* ------------------------------ Grades sidebar ----------------------------- */
 
 function GradesSidebar(): React.JSX.Element {
-  const { notebooks, activeNotebookId, setActiveNotebook } = useApp()
+  const { notebooks, activeNotebookId, setActiveNotebook, gradingSystem } = useApp()
   const version = useVersion('grades')
   const [all, setAll] = useState<Grade[]>([])
 
@@ -383,22 +387,36 @@ function GradesSidebar(): React.JSX.Element {
   }, [version])
 
   const bySubject = notebooks
-    .map((nb) => ({ nb, pct: weightedPercentage(all.filter((g) => g.notebook_id === nb.id)) }))
-    .filter((x) => x.pct !== null)
-  const gpaList = bySubject.map((x) => gpaPoints(x.pct as number))
-  const overall = gpaList.length ? gpaList.reduce((a, b) => a + b, 0) / gpaList.length : null
+    .map((nb) => ({ nb, avg: subjectAverage(all.filter((g) => g.notebook_id === nb.id), gradingSystem) }))
+    .filter((x): x is { nb: (typeof notebooks)[number]; avg: NonNullable<ReturnType<typeof subjectAverage>> } => x.avg !== null)
+
+  // Overall: mean Swiss grade, mean GPA, or mean percentage — depending on the system.
+  let overallLabel = 'Average'
+  let overallValue: string | null = null
+  if (bySubject.length > 0) {
+    if (gradingSystem === 'swiss') {
+      overallLabel = 'Ø Grade'
+      overallValue = (bySubject.reduce((a, x) => a + x.avg.value, 0) / bySubject.length).toFixed(2)
+    } else if (gradingSystem === 'us') {
+      // avg.value for the us system IS the rounded percentage; no second pass needed
+      overallLabel = 'GPA'
+      overallValue = (bySubject.reduce((a, x) => a + gpaPoints(x.avg.value), 0) / bySubject.length).toFixed(2)
+    } else {
+      overallValue = `${(bySubject.reduce((a, x) => a + x.avg.value, 0) / bySubject.length).toFixed(0)}%`
+    }
+  }
 
   return (
     <div className="fade-up">
       <SectionLabel>Overall</SectionLabel>
       <div className="mb-2 rounded-lg bg-sunken px-3 py-2">
-        {overall === null ? (
-          <p className="text-xs text-faint">No grades yet — add some in the main panel.</p>
+        {overallValue === null ? (
+          <p className="text-xs text-faint">No grades yet. Add some in the main panel.</p>
         ) : (
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-faint">GPA</div>
-              <div className="text-xl font-bold tabular-nums">{overall.toFixed(2)}</div>
+              <div className="text-[11px] uppercase tracking-wider text-faint">{overallLabel}</div>
+              <div className="text-xl font-bold tabular-nums">{overallValue}</div>
             </div>
             <div className="text-xs text-muted">
               {bySubject.length} subject{bySubject.length === 1 ? '' : 's'}
@@ -408,19 +426,19 @@ function GradesSidebar(): React.JSX.Element {
       </div>
       <SectionLabel>By subject</SectionLabel>
       {bySubject.length === 0 && <p className="px-2 py-2 text-xs text-faint">Weighted averages show up here.</p>}
-      {bySubject.map(({ nb, pct }) => (
+      {bySubject.map(({ nb, avg }) => (
         <button
           key={nb.id}
           type="button"
           onClick={() => setActiveNotebook(nb.id)}
-          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
             activeNotebookId === nb.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
           }`}
         >
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: ramp(nb.color)[500] }} />
           <span className="truncate">{nb.name}</span>
           <span className="ml-auto font-semibold tabular-nums" style={{ color: 'var(--accent-text)' }}>
-            {(pct as number).toFixed(0)}%
+            {avg.display}
           </span>
         </button>
       ))}
@@ -431,7 +449,7 @@ function GradesSidebar(): React.JSX.Element {
 /* --------------------------------- Shared --------------------------------- */
 
 function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }): React.JSX.Element {
-  return <div className={`px-2 pb-1 pt-2 text-[10.5px] font-bold uppercase tracking-wider text-faint ${className}`}>{children}</div>
+  return <div className={`px-2 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-faint ${className}`}>{children}</div>
 }
 
 function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: () => void }): React.JSX.Element {
@@ -439,10 +457,11 @@ function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: (
   const nb = notebooks.find((n) => n.id === notebookId)!
   const [name, setName] = useState(nb.name)
   const [color, setColor] = useState<ColorKey>(isColorKey(nb.color) ? nb.color : 'teal')
+  const [icon, setIcon] = useState<string | null>(nb.icon)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const save = async (): Promise<void> => {
-    await api.notebooks.update(notebookId, { name: name.trim() || nb.name, color })
+    await api.notebooks.update(notebookId, { name: name.trim() || nb.name, color, icon })
     await refreshNotebooks()
     onClose()
   }
@@ -451,8 +470,8 @@ function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: (
     await refreshNotebooks()
     bumpData('notes')
     bumpData('tasks')
-    bumpData('events')
     bumpData('decks')
+    bumpData('grades')
     onClose()
   }
   const exportPdf = async (): Promise<void> => {
@@ -492,6 +511,9 @@ function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: (
             />
           ))}
         </div>
+      </Field>
+      <Field label="Icon">
+        <IconPicker value={icon} onChange={setIcon} />
       </Field>
       <div className="mt-4 border-t border-edge pt-3">
         <Button variant="ghost" onClick={() => void exportPdf()}>
