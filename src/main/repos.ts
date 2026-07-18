@@ -3,7 +3,6 @@ import type {
   Notebook,
   Note,
   Task,
-  CalEvent,
   Deck,
   Card,
   SearchResult,
@@ -86,11 +85,11 @@ export function listNotebooks(): Notebook[] {
   return getDb().prepare(`SELECT * FROM notebooks ORDER BY sort_order, id`).all() as Notebook[]
 }
 
-export function createNotebook(input: { name: string; color: ColorKey; kind?: string; is_journal?: boolean }): Notebook {
+export function createNotebook(input: { name: string; color: ColorKey; icon?: string | null; kind?: string; is_journal?: boolean }): Notebook {
   const max = (getDb().prepare(`SELECT COALESCE(MAX(sort_order), -1) AS m FROM notebooks`).get() as { m: number }).m
   const info = getDb()
-    .prepare(`INSERT INTO notebooks (name, color, kind, sort_order, is_journal) VALUES (?, ?, ?, ?, ?)`)
-    .run(input.name, input.color, input.kind ?? 'general', max + 1, input.is_journal ? 1 : 0)
+    .prepare(`INSERT INTO notebooks (name, color, icon, kind, sort_order, is_journal) VALUES (?, ?, ?, ?, ?, ?)`)
+    .run(input.name, input.color, input.icon ?? null, input.kind ?? 'general', max + 1, input.is_journal ? 1 : 0)
   return getDb().prepare(`SELECT * FROM notebooks WHERE id = ?`).get(info.lastInsertRowid) as Notebook
 }
 
@@ -351,59 +350,6 @@ export function removeTask(id: number): void {
   for (const s of subs) ftsDelete('task', s.id)
 }
 
-/* --------------------------------- Events --------------------------------- */
-
-export function eventsWindow(startISO: string, endISO: string): CalEvent[] {
-  return getDb()
-    .prepare(
-      `SELECT * FROM events
-       WHERE recurrence_rule IS NOT NULL
-          OR (start_time < ? AND COALESCE(end_time, start_time) >= ?)
-       ORDER BY start_time`
-    )
-    .all(endISO, startISO) as CalEvent[]
-}
-
-export function createEvent(input: {
-  notebook_id: number
-  title: string
-  start_time: string
-  end_time?: string | null
-  recurrence_rule?: string | null
-  linked_task_id?: number | null
-  color?: string | null
-}): CalEvent {
-  const info = getDb()
-    .prepare(
-      `INSERT INTO events (notebook_id, title, start_time, end_time, recurrence_rule, linked_task_id, color)
-       VALUES (@notebook_id, @title, @start_time, @end_time, @recurrence_rule, @linked_task_id, @color)`
-    )
-    .run({
-      notebook_id: input.notebook_id,
-      title: input.title,
-      start_time: input.start_time,
-      end_time: input.end_time ?? null,
-      recurrence_rule: input.recurrence_rule ?? null,
-      linked_task_id: input.linked_task_id ?? null,
-      color: input.color ?? null
-    })
-  return getDb().prepare(`SELECT * FROM events WHERE id = ?`).get(info.lastInsertRowid) as CalEvent
-}
-
-export function updateEvent(id: number, patch: Record<string, unknown>): CalEvent {
-  const allowed = ['notebook_id', 'title', 'start_time', 'end_time', 'recurrence_rule', 'linked_task_id', 'color'] as const
-  const keys = allowed.filter((k) => k in patch)
-  if (keys.length > 0) {
-    const sets = keys.map((k) => `${k} = @${k}`).join(', ')
-    getDb().prepare(`UPDATE events SET ${sets} WHERE id = @id`).run({ ...patch, id })
-  }
-  return getDb().prepare(`SELECT * FROM events WHERE id = ?`).get(id) as CalEvent
-}
-
-export function removeEvent(id: number): void {
-  getDb().prepare(`DELETE FROM events WHERE id = ?`).run(id)
-}
-
 /* -------------------------------- Flashcards ------------------------------ */
 
 export function listDecks(notebookId?: number): Deck[] {
@@ -633,12 +579,12 @@ export function completeOnboarding(payload: OnboardingPayload): void {
   const first = createNotebook({ name: payload.notebookName || 'My Notebook', color: 'teal', kind: payload.purpose === 'school' ? 'school_subject' : 'general' })
   createNote({ notebook_id: first.id, type: 'page', title: 'Welcome to Inkling', content: welcomeDoc() })
   if (payload.purpose === 'school') {
-    createNotebook({ name: 'Assignments', color: 'coral', kind: 'school_subject' })
-    createNotebook({ name: 'Class Notes', color: 'amber', kind: 'school_subject' })
-    createNotebook({ name: 'Study Decks', color: 'pink', kind: 'school_subject' })
+    createNotebook({ name: 'Assignments', color: 'coral', icon: 'pen-tool', kind: 'school_subject' })
+    createNotebook({ name: 'Class Notes', color: 'amber', icon: 'book-open', kind: 'school_subject' })
+    createNotebook({ name: 'Study Decks', color: 'pink', icon: 'brain', kind: 'school_subject' })
   } else if (payload.purpose === 'work') {
-    createNotebook({ name: 'Projects', color: 'coral' })
-    createNotebook({ name: 'Meetings', color: 'amber' })
+    createNotebook({ name: 'Projects', color: 'coral', icon: 'briefcase' })
+    createNotebook({ name: 'Meetings', color: 'amber', icon: 'coffee' })
   }
   if (payload.journal) {
     createNotebook({ name: 'Journal', color: 'gray', is_journal: true })

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
+import type { GradingSystem } from '@shared/grades'
 
 const api = window.inkling
 
@@ -7,12 +8,20 @@ export type Theme = 'dark' | 'cozy'
 export type FontScale = 's' | 'm' | 'l'
 export type NotesView = 'pages' | 'board'
 
+const isGradingSystem = (v: string | undefined): v is GradingSystem => v === 'percent' || v === 'us' || v === 'swiss'
+
+/** Local YYYY-MM-DD key for streak bookkeeping. The single source of what "today" means. */
+export function localDayKey(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 interface AppState {
   ready: boolean
   onboardingDone: boolean
   theme: Theme
   contrast: boolean
   fontScale: FontScale
+  gradingSystem: GradingSystem
   notebooks: Notebook[]
   activeNotebookId: number | null
   tab: ModuleTab
@@ -32,6 +41,7 @@ interface AppState {
   setTheme(t: Theme): void
   setContrast(v: boolean): void
   setFontScale(v: FontScale): void
+  setGradingSystem(v: GradingSystem): void
   setActiveNotebook(id: number): void
   setTab(tab: ModuleTab): void
   setNotesView(v: NotesView): void
@@ -55,9 +65,10 @@ export const useApp = create<AppState>((set, get) => ({
   theme: 'dark',
   contrast: false,
   fontScale: 'm',
+  gradingSystem: 'percent',
   notebooks: [],
   activeNotebookId: null,
-  tab: 'notes',
+  tab: 'today',
   notesView: 'pages',
   selectedNoteId: null,
   selectedTaskId: null,
@@ -76,6 +87,7 @@ export const useApp = create<AppState>((set, get) => ({
       theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
       contrast: settings['contrast'] === '1',
       fontScale: (settings['font_scale'] as FontScale) || 'm',
+      gradingSystem: isGradingSystem(settings['grading_system']) ? settings['grading_system'] : 'percent',
       notebooks,
       activeNotebookId: notebooks[0]?.id ?? null,
       streak
@@ -109,6 +121,10 @@ export const useApp = create<AppState>((set, get) => ({
     set({ fontScale })
     void api.settings.set('font_scale', fontScale)
   },
+  setGradingSystem: (gradingSystem) => {
+    set({ gradingSystem })
+    void api.settings.set('grading_system', gradingSystem)
+  },
 
   setActiveNotebook: (id) => set({ activeNotebookId: id, selectedNoteId: null, selectedTaskId: null, selectedDeckId: null, smartView: null }),
   setTab: (tab) => set({ tab }),
@@ -131,9 +147,7 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   bumpStreak: async () => {
-    const d = new Date()
-    const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const streak = await api.streak.bump(day)
+    const streak = await api.streak.bump(localDayKey())
     set({ streak })
   },
 

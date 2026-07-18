@@ -195,7 +195,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       setFlashMsg('Exported to Markdown ✓')
       setTimeout(() => setFlashMsg(null), 2500)
     } else if (res.error) {
-      setFlashMsg('Export failed — could not write the file.')
+      setFlashMsg('Export failed: could not write the file.')
       setTimeout(() => setFlashMsg(null), 3500)
     }
   }
@@ -210,7 +210,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       setFlashMsg('Exported to PDF ✓')
       setTimeout(() => setFlashMsg(null), 2500)
     } else if (res.error) {
-      setFlashMsg('Export failed — could not write the PDF.')
+      setFlashMsg('Export failed: could not write the PDF.')
       setTimeout(() => setFlashMsg(null), 3500)
     }
   }
@@ -325,56 +325,56 @@ function Toolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-edge bg-sunken px-3 py-1.5">
-      <B icon={<Bold size={15} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
-      <B icon={<Italic size={15} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
+      <B icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
+      <B icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
       <B
-        icon={<UnderlineIcon size={15} />}
+        icon={<UnderlineIcon size={16} />}
         title="Underline (Ctrl+U)"
         active={editor.isActive('underline')}
         action={() => c.toggleUnderline().run()}
       />
-      <B icon={<Strikethrough size={15} />} title="Strikethrough" active={editor.isActive('strike')} action={() => c.toggleStrike().run()} />
-      <B icon={<Highlighter size={15} />} title="Highlight" active={editor.isActive('highlight')} action={() => c.toggleHighlight().run()} />
-      <B icon={<Code size={15} />} title="Inline code" active={editor.isActive('code')} action={() => c.toggleCode().run()} />
+      <B icon={<Strikethrough size={16} />} title="Strikethrough" active={editor.isActive('strike')} action={() => c.toggleStrike().run()} />
+      <B icon={<Highlighter size={16} />} title="Highlight" active={editor.isActive('highlight')} action={() => c.toggleHighlight().run()} />
+      <B icon={<Code size={16} />} title="Inline code" active={editor.isActive('code')} action={() => c.toggleCode().run()} />
       <Divider />
       <B
-        icon={<Heading1 size={15} />}
+        icon={<Heading1 size={16} />}
         title="Heading 1 (or type #)"
         active={editor.isActive('heading', { level: 1 })}
         action={() => c.toggleHeading({ level: 1 }).run()}
       />
       <B
-        icon={<Heading2 size={15} />}
+        icon={<Heading2 size={16} />}
         title="Heading 2"
         active={editor.isActive('heading', { level: 2 })}
         action={() => c.toggleHeading({ level: 2 }).run()}
       />
       <B
-        icon={<Heading3 size={15} />}
+        icon={<Heading3 size={16} />}
         title="Heading 3"
         active={editor.isActive('heading', { level: 3 })}
         action={() => c.toggleHeading({ level: 3 }).run()}
       />
       <Divider />
-      <B icon={<List size={15} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={() => c.toggleBulletList().run()} />
+      <B icon={<List size={16} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={() => c.toggleBulletList().run()} />
       <B
-        icon={<ListOrdered size={15} />}
+        icon={<ListOrdered size={16} />}
         title="Numbered list (or type 1.)"
         active={editor.isActive('orderedList')}
         action={() => c.toggleOrderedList().run()}
       />
       <B
-        icon={<ListChecks size={15} />}
-        title="Task list (or type []) — items become real tasks"
+        icon={<ListChecks size={16} />}
+        title="Task list (or type []). Items become real tasks"
         active={editor.isActive('taskList')}
         action={() => c.toggleTaskList().run()}
       />
-      <B icon={<Quote size={15} />} title="Quote (or type >)" active={editor.isActive('blockquote')} action={() => c.toggleBlockquote().run()} />
-      <B icon={<Code2 size={15} />} title="Code block" active={editor.isActive('codeBlock')} action={() => c.toggleCodeBlock().run()} />
-      <B icon={<Minus size={15} />} title="Divider" action={() => c.setHorizontalRule().run()} />
+      <B icon={<Quote size={16} />} title="Quote (or type >)" active={editor.isActive('blockquote')} action={() => c.toggleBlockquote().run()} />
+      <B icon={<Code2 size={16} />} title="Code block" active={editor.isActive('codeBlock')} action={() => c.toggleCodeBlock().run()} />
+      <B icon={<Minus size={16} />} title="Divider" action={() => c.setHorizontalRule().run()} />
       <Divider />
-      <B icon={<Undo2 size={15} />} title="Undo (Ctrl+Z)" action={() => c.undo().run()} />
-      <B icon={<Redo2 size={15} />} title="Redo (Ctrl+Y)" action={() => c.redo().run()} />
+      <B icon={<Undo2 size={16} />} title="Undo (Ctrl+Z)" action={() => c.undo().run()} />
+      <B icon={<Redo2 size={16} />} title="Redo (Ctrl+Y)" action={() => c.redo().run()} />
       <Divider />
       <IconBtn title="Make flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1 px-2 text-xs font-medium">
         <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
@@ -382,7 +382,7 @@ function Toolbar({
       </IconBtn>
       <div className="relative">
         <IconBtn title="Export note…" active={exportOpen} onClick={() => setExportOpen((v) => !v)}>
-          <FileDown size={15} />
+          <FileDown size={16} />
         </IconBtn>
         {exportOpen && (
           <>

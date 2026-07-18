@@ -30,12 +30,6 @@ const api: InklingApi = {
     update: invoke('tasks.update'),
     remove: invoke('tasks.remove')
   },
-  events: {
-    window: invoke('events.window'),
-    create: invoke('events.create'),
-    update: invoke('events.update'),
-    remove: invoke('events.remove')
-  },
   decks: {
     list: invoke('decks.list'),
     create: invoke('decks.create'),

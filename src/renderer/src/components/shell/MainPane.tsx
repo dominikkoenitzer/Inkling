@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/Inky'
 import { PageEditor } from '@/components/notes/PageEditor'
 import { StickyBoard } from '@/components/notes/StickyBoard'
 import { TasksView } from '@/components/tasks/TasksView'
-import { CalendarView } from '@/components/calendar/CalendarView'
+import { TodayView } from '@/components/today/TodayView'
 import { StudyView } from '@/components/study/StudyView'
 import { GradesView } from '@/components/grades/GradesView'
 
@@ -25,12 +25,12 @@ export function MainPane(): React.JSX.Element {
         pose="neutral"
         color={color}
         title="Pick a page, or start a fresh one"
-        hint="Pages live in the sidebar. Stickies live on the board. Everything auto-saves — no save button, ever."
+        hint="Pages live in the sidebar. Stickies live on the board. Everything auto-saves. No save button, ever."
       />
     )
   }
+  if (tab === 'today') return <TodayView />
   if (tab === 'tasks') return <TasksView notebook={notebook} />
-  if (tab === 'calendar') return <CalendarView notebook={notebook} />
   if (tab === 'study') return <StudyView notebook={notebook} />
   return <GradesView notebook={notebook} />
 }

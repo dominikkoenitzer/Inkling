@@ -1,7 +1,14 @@
 import { create } from 'zustand'
-import { useApp } from './app'
+import { useApp, bumpData } from './app'
 
 const api = window.inkling
+
+/** mm:ss for countdown displays. The Study timer and the UserBar chip both use this. */
+export function fmtClock(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 interface TimerState {
   running: boolean
@@ -37,7 +44,8 @@ export const useTimer = create<TimerState>((set, get) => {
       stopTicking()
       if (s.mode === 'focus') {
         const minutes = Math.round(s.totalSeconds / 60)
-        if (s.sessionId !== null) void api.focus.complete(s.sessionId, minutes)
+        // broadcast only reaches OTHER windows; bump locally so Today/RightPanel refresh too
+        if (s.sessionId !== null) void api.focus.complete(s.sessionId, minutes).then(() => bumpData('focus'))
         void useApp.getState().bumpStreak()
         useApp.getState().celebrate()
         set({ running: false, secondsLeft: 0, justFinished: true, sessionId: null })
