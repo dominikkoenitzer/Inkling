@@ -10,15 +10,18 @@ const api = window.inkling
 
 export function RightPanel(): React.JSX.Element | null {
   const { tab, selectedNoteId, selectedTaskId, notesView } = useApp()
-  const [open, setOpen] = useState(true)
+  const hasContext = (tab === 'notes' && notesView === 'pages' && selectedNoteId !== null) || (tab === 'tasks' && selectedTaskId !== null)
+  // Auto-open only when there is real context to show; a manual toggle wins for the session.
+  const [override, setOverride] = useState<boolean | null>(null)
+  const open = override ?? hasContext
 
   if (!open) {
     return (
       <button
         type="button"
         title="Open context panel"
-        onClick={() => setOpen(true)}
-        className="flex w-7 shrink-0 items-start justify-center border-l border-edge pt-3 text-faint hover:text-ink"
+        onClick={() => setOverride(true)}
+        className="flex w-7 shrink-0 items-start justify-center pt-3 text-faint hover:text-ink"
       >
         <PanelRightOpen size={16} />
       </button>
@@ -29,7 +32,7 @@ export function RightPanel(): React.JSX.Element | null {
     <aside className="flex w-[264px] shrink-0 flex-col border-l border-edge bg-panel">
       <div className="flex items-center justify-between px-3 py-2">
         <span className="text-[11px] font-bold uppercase tracking-wider text-faint">Context</span>
-        <button type="button" title="Collapse panel" onClick={() => setOpen(false)} className="text-faint hover:text-ink">
+        <button type="button" title="Collapse panel" onClick={() => setOverride(false)} className="text-faint hover:text-ink">
           <PanelRightClose size={16} />
         </button>
       </div>
