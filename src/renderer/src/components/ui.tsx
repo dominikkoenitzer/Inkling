@@ -89,7 +89,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6" onMouseDown={onClose}>
       <div
-        className="pop-in max-h-[85vh] overflow-y-auto rounded-xl border border-edge bg-panel p-5"
+        className="pop-in max-h-[85vh] overflow-y-auto rounded-lg border border-edge bg-panel p-5"
         style={{ width, boxShadow: 'var(--shadow)' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -115,7 +115,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 }
 
 export const inputCls =
-  'w-full rounded-lg border border-edge bg-sunken px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent'
+  'w-full rounded-lg border border-edge bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent'
 
 /** Notebook cover glyph picker — monochrome icon grid, "Aa" falls back to initials. */
 export function IconPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }): React.JSX.Element {

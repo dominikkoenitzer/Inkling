@@ -4,6 +4,19 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.2] — 2026-07-18
+
+A design-review pass applying an 8-point critique against Discord's visual system.
+
+### Changed
+- **Strict 4-tone surface ladder** (rail → sidebar → content → cards/inputs), using Discord's exact dark values; nothing in between.
+- **Sidebar nav is now vertical rows**: icon left, label right, 32px height, neutral pill highlight on the active tab instead of a green square.
+- **Accent discipline**: green is reserved for interactive and active states; streak text is default foreground with only the flame colored.
+- **One corner radius (8px) everywhere**; separation comes from background tone, not strokes.
+- **Flat context panel**: tiny uppercase labels and plain rows instead of boxed cards; empty sections hide instead of repeating "nothing due" three times.
+- **Today view density**: 28px greeting on a tighter type scale, compact 36px quick actions, and a "Jump back in" list of recent pages so the canvas is useful, not empty.
+- Titlebar shows just "Inkling"; the notebook name lives in the sidebar header only.
+
 ## [0.3.1] — 2026-07-18
 
 The clean pass, from a direct side-by-side against Discord.

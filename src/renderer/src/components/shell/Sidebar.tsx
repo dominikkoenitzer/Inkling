@@ -29,11 +29,11 @@ import type { Note, Deck, Grade, Task, ModuleTab, ColorKey } from '@shared/types
 const api = window.inkling
 
 const TABS: Array<{ id: ModuleTab; icon: React.JSX.Element; label: string }> = [
-  { id: 'today', icon: <Sun size={18} />, label: 'Today' },
-  { id: 'notes', icon: <FileText size={18} />, label: 'Notes' },
-  { id: 'tasks', icon: <CheckSquare size={18} />, label: 'Tasks' },
-  { id: 'study', icon: <GraduationCap size={18} />, label: 'Study' },
-  { id: 'grades', icon: <Percent size={18} />, label: 'Grades' }
+  { id: 'today', icon: <Sun size={16} />, label: 'Today' },
+  { id: 'notes', icon: <FileText size={16} />, label: 'Notes' },
+  { id: 'tasks', icon: <CheckSquare size={16} />, label: 'Tasks' },
+  { id: 'study', icon: <GraduationCap size={16} />, label: 'Study' },
+  { id: 'grades', icon: <Percent size={16} />, label: 'Grades' }
 ]
 
 export function Sidebar(): React.JSX.Element {
@@ -55,23 +55,21 @@ export function Sidebar(): React.JSX.Element {
         )}
       </div>
 
-      <div className="grid grid-cols-5 gap-0.5 px-2 pb-2 pt-1">
+      <nav className="space-y-0.5 px-2 pb-2 pt-1">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => app.setTab(t.id)}
-            title={t.label}
-            className={`flex flex-col items-center gap-0.5 rounded-lg py-1.5 text-[11px] font-medium transition-all active:scale-95 ${
-              app.tab === t.id ? 'text-white' : 'text-muted hover:-translate-y-px hover:bg-hover hover:text-ink'
+            className={`flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-sm font-medium transition-colors ${
+              app.tab === t.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
             }`}
-            style={app.tab === t.id ? { background: 'var(--accent)' } : undefined}
           >
             {t.icon}
             {t.label}
           </button>
         ))}
-      </div>
+      </nav>
 
       <button
         type="button"

@@ -244,13 +244,11 @@ function UpcomingContext(): React.JSX.Element {
   }, [version])
 
   return (
-    <div className="fade-up space-y-2.5">
-      <div className="rounded-xl bg-sunken p-3">
-        <PanelHeading icon={<CalendarClock size={14} />}>Due soon</PanelHeading>
-        {due.length === 0 ? (
-          <p className="text-xs text-faint">Nothing due this week. Enjoy the calm.</p>
-        ) : (
-          due.map((t) => (
+    <div className="fade-up space-y-4">
+      {due.length > 0 && (
+        <div>
+          <PanelHeading icon={<CalendarClock size={14} />}>Due soon</PanelHeading>
+          {due.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -266,24 +264,22 @@ function UpcomingContext(): React.JSX.Element {
                 <span className="block text-xs text-faint">{t.due_date ? `due ${format(new Date(t.due_date), 'EEE d MMM')}` : ''}</span>
               </span>
             </button>
-          ))
-        )}
-      </div>
-      <div className="rounded-xl bg-sunken p-3">
-        <PanelHeading icon={<Layers size={14} />}>Cards to review</PanelHeading>
-        {dueCards > 0 ? (
+          ))}
+        </div>
+      )}
+      {dueCards > 0 && (
+        <div>
+          <PanelHeading icon={<Layers size={14} />}>Cards to review</PanelHeading>
           <button type="button" className="text-sm font-medium" style={{ color: 'var(--accent-text)' }} onClick={() => setTab('today')}>
             {dueCards} card{dueCards === 1 ? '' : 's'} ready. See your plan →
           </button>
-        ) : (
-          <p className="text-sm">All caught up. 🃏</p>
-        )}
-      </div>
-      <div className="rounded-xl bg-sunken p-3">
+        </div>
+      )}
+      <div>
         <PanelHeading icon={<Timer size={14} />}>Focus today</PanelHeading>
         <p className="text-sm">{minutes > 0 ? `${minutes} focused minutes. Keep it up.` : 'No focus sessions yet today.'}</p>
       </div>
-      <div className="rounded-xl bg-sunken p-3">
+      <div>
         <PanelHeading icon={<Flame size={14} />}>Streak</PanelHeading>
         <p className="text-sm">
           {streak.count > 0 ? `${streak.count} day${streak.count === 1 ? '' : 's'} of showing up. Quietly impressive.` : 'Review cards or finish a focus session to start one.'}

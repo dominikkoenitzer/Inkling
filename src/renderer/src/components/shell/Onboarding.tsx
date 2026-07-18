@@ -23,7 +23,7 @@ export function Onboarding(): React.JSX.Element {
 
   return (
     <div className="flex h-full items-center justify-center bg-app p-6">
-      <div className="pop-in w-full max-w-md rounded-2xl border border-edge bg-panel p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
+      <div className="pop-in w-full max-w-md rounded-lg border border-edge bg-panel p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
         <div className="mb-2 flex justify-center">
           <Inky pose="wave" size={110} />
         </div>

@@ -11,10 +11,10 @@
 /* Elevation ladder does the separating (rail darkest → content lightest), Discord-style.
    Borders are almost invisible here; high-contrast mode turns them back up. */
 :root[data-theme='dark'] {
-  --bg-app: #141519;
-  --bg-panel: #1e2024;
-  --bg-sunken: #292b31;
-  --bg-raised: #35373d;
+  --bg-app: #1e1f22;
+  --bg-panel: #2b2d31;
+  --bg-sunken: #313338;
+  --bg-raised: #383a40;
   --bg-hover: rgba(255, 255, 255, 0.06);
   --bg-active: rgba(255, 255, 255, 0.1);
   --text-primary: #e8e9ec;
@@ -27,9 +27,9 @@
 
 /* ---------- Cozy theme (warm off-white) ---------- */
 :root[data-theme='cozy'] {
-  --bg-app: #eadfcf;
-  --bg-panel: #f4eee4;
-  --bg-sunken: #fbf8f2;
+  --bg-app: #e7dbc8;
+  --bg-panel: #f2ebdf;
+  --bg-sunken: #f9f5ed;
   --bg-raised: #ffffff;
   --bg-hover: rgba(93, 78, 55, 0.07);
   --bg-active: rgba(93, 78, 55, 0.12);
