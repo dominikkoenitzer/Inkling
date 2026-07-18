@@ -21,6 +21,7 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
   const [score, setScore] = useState('')
   const [max, setMax] = useState('100')
   const [weight, setWeight] = useState('1')
+  const [adding, setAdding] = useState(false)
   const swiss = gradingSystem === 'swiss'
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
 
   const onEnter = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter') void add()
+    if (e.key === 'Escape') setAdding(false)
   }
 
   return (
@@ -94,8 +96,15 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
       </div>
 
       <div className="border-b border-edge px-5 py-2">
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
+        <div className="mx-auto max-w-2xl">
+          {!adding ? (
+            <Button variant="ghost" onClick={() => setAdding(true)}>
+              <Plus size={14} /> Add assessment
+            </Button>
+          ) : (
+        <div className="flex items-center gap-2">
           <input
+            autoFocus
             className={`${fieldCls} min-w-0 flex-1`}
             placeholder="Assessment (e.g. Midterm)"
             value={title}
@@ -123,6 +132,11 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
           <Button variant="primary" onClick={() => void add()}>
             <Plus size={14} /> Add
           </Button>
+          <Button variant="ghost" onClick={() => setAdding(false)}>
+            Cancel
+          </Button>
+        </div>
+          )}
         </div>
       </div>
 

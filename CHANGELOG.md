@@ -4,6 +4,19 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.3] — 2026-07-18
+
+Round two of the design review: tone separation, empty states, and width discipline.
+
+### Changed
+- **Wider surface ladder**: the content area is now visibly lighter than the sidebar and the rail visibly darker than both, in both themes.
+- **Context panel auto-collapses**: it opens only when a note or task is selected (real context); otherwise it stays a slim strip. A manual toggle always wins.
+- **Width discipline**: the tasks add-row is capped to the same 720px column as the list; the grades add-row collapsed into a "+ Add assessment" button that expands on demand.
+- **Empty states**: a completed-only task list shows an explicit empty "To do" group; percentages round to one decimal everywhere (header and sidebar can no longer disagree).
+- **Today**: the cleared banner is a slim one-liner so "Jump back in" moves up; the duplicated focus-minutes line is gone.
+- **Notes sidebar**: Page and Sticky board are equal-width siblings; the journal shortcut has its own labeled section.
+- **Focus timer**: tightened vertical rhythm and a visible progress track; segmented controls sit on a darker pill track everywhere.
+
 ## [0.3.2] — 2026-07-18
 
 A design-review pass applying an 8-point critique against Discord's visual system.

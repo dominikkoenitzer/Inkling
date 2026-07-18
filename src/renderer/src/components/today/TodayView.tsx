@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Layers, TrendingUp, Timer, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
+import { Layers, TrendingUp, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { useTimer } from '@/stores/timer'
@@ -131,14 +131,12 @@ export function TodayView(): React.JSX.Element {
 
         {cleared && (
           <>
-            <div className="pop-in relative overflow-hidden rounded-lg bg-raised p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
-              <Confetti />
-              <div className="text-lg font-bold">Plan cleared 🎉</div>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-                No cards due, no tasks pending. Get ahead, or just enjoy it.
-              </p>
+            <div className="pop-in flex items-center gap-2 rounded-lg bg-raised px-3 py-2 text-sm">
+              <span aria-hidden>🎉</span>
+              <span className="font-semibold">Plan cleared.</span>
+              <span className="text-muted">Nothing due. Get ahead, or enjoy it.</span>
             </div>
-            <div className="stagger mt-3 grid grid-cols-3 gap-2">
+            <div className="stagger mt-2 grid grid-cols-3 gap-2">
               <QuickAction icon={<Plus size={18} />} label="New page" onClick={() => void newPage()} />
               <QuickAction
                 icon={<Layers size={18} />}
@@ -151,12 +149,6 @@ export function TodayView(): React.JSX.Element {
               <QuickAction icon={<CheckSquare size={18} />} label="Add a task" onClick={() => app.setTab('tasks')} />
             </div>
           </>
-        )}
-
-        {minutes > 0 && (
-          <p className="fade-up mb-4 flex items-center gap-1.5 text-sm text-muted">
-            <Timer size={16} style={{ color: 'var(--accent-text)' }} /> {minutes} focused minute{minutes === 1 ? '' : 's'} today already.
-          </p>
         )}
 
         <div className="stagger space-y-2">
@@ -304,22 +296,3 @@ function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: s
   )
 }
 
-/** Pure-CSS confetti burst for the cleared state. */
-function Confetti(): React.JSX.Element {
-  const colors = ['#1D9E75', '#D85A30', '#BA7517', '#D4537E', '#3DB58B', '#E48CA8']
-  return (
-    <div className="confetti pointer-events-none absolute inset-0" aria-hidden>
-      {Array.from({ length: 14 }, (_, i) => (
-        <span
-          key={i}
-          style={{
-            left: `${6 + i * 6.5}%`,
-            background: colors[i % colors.length],
-            animationDelay: `${(i % 7) * 0.12}s`,
-            animationDuration: `${1.8 + (i % 5) * 0.3}s`
-          }}
-        />
-      ))}
-    </div>
-  )
-}
