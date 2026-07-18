@@ -59,7 +59,7 @@ export function TasksView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
       </div>
 
       <div className="border-b border-edge px-5 py-2">
-        <div className="flex items-center gap-2 rounded-lg border border-edge bg-panel px-3 py-1.5">
+        <div className="flex items-center gap-2 rounded-lg border border-edge bg-raised px-3 py-1.5">
           <Plus size={16} className="text-faint" />
           <input
             value={newTitle}

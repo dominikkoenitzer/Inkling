@@ -1,7 +1,7 @@
 {
   "name": "inkling",
   "productName": "Inkling",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Notes, tasks, schedule and study — together",
   "main": "out/main/index.js",
   "author": "Dominik Könitzer <dominik.koenitzer@gmail.com>",
