@@ -40,7 +40,7 @@ export default function App(): React.JSX.Element {
     root.dataset.contrast = app.contrast ? 'high' : 'normal'
     root.style.setProperty('--font-base', FONT_SIZES[app.fontScale])
     void api.app.setTitlebar(
-      app.theme === 'dark' ? { color: '#1a1b1f', symbolColor: '#b9bbc2' } : { color: '#efe7db', symbolColor: '#6b6355' }
+      app.theme === 'dark' ? { color: '#141519', symbolColor: '#b9bbc2' } : { color: '#eadfcf', symbolColor: '#6b6355' }
     )
   }, [app.theme, app.contrast, app.fontScale])
 

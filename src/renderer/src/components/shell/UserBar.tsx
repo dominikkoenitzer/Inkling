@@ -20,7 +20,7 @@ export function UserBar(): React.JSX.Element {
   const showChip = timer.running || midway
 
   return (
-    <div className="flex shrink-0 items-center gap-1 border-t border-edge px-2 py-1.5">
+    <div className="flex shrink-0 items-center gap-1 border-t border-edge bg-app px-2 py-1.5">
       <button
         type="button"
         onClick={() => app.setTab('today')}
