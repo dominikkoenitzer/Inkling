@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Layers, TrendingUp, Timer, Flame, ArrowRight, Play, Plus, CheckSquare } from 'lucide-react'
+import { Layers, TrendingUp, Timer, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { useTimer } from '@/stores/timer'
@@ -7,7 +7,7 @@ import { subjectAverage } from '@shared/grades'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
 import { hasGlyph, NotebookGlyph } from '@/lib/icons'
 import { Inky } from '@/components/Inky'
-import type { Deck, Task, Grade, Notebook } from '@shared/types'
+import type { Deck, Task, Grade, Note, Notebook } from '@shared/types'
 
 const api = window.inkling
 
@@ -34,6 +34,8 @@ export function TodayView(): React.JSX.Element {
   const [loaded, setLoaded] = useState(false)
   // tasks mid-completion: keeps the checkbox visibly ticked until the refetch removes the row
   const [completing, setCompleting] = useState<Set<number>>(new Set())
+  const [recent, setRecent] = useState<Note[]>([])
+  const notesVersion = useVersion('notes')
 
   useEffect(() => {
     // Overlapping fetches can resolve out of order; only the newest may write state.
@@ -50,6 +52,13 @@ export function TodayView(): React.JSX.Element {
       stale = true
     }
   }, [version])
+
+  useEffect(() => {
+    if (app.activeNotebookId === null) return
+    void api.notes.list(app.activeNotebookId, 'page').then((pages) => {
+      setRecent([...pages].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4))
+    })
+  }, [app.activeNotebookId, notesVersion])
 
   const nbOf = (id: number): Notebook | undefined => app.notebooks.find((n) => n.id === id)
   const active = nbOf(app.activeNotebookId ?? -1)
@@ -97,16 +106,16 @@ export function TodayView(): React.JSX.Element {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className={`mx-auto flex w-full max-w-2xl flex-col px-6 pb-16 ${cleared ? 'min-h-full justify-center' : 'pt-10'}`}>
+      <div className="mx-auto flex w-full max-w-2xl flex-col px-6 pb-16 pt-10">
         <div className="fade-up mb-6 flex items-center gap-4">
           <Inky pose={cleared ? 'happy' : 'wave'} color={inkyColor} size={76} />
           <div>
-            <h1 className="text-2xl font-bold">{greeting()}!</h1>
+            <h1 className="text-[28px] font-bold leading-tight">{greeting()}!</h1>
             <p className="text-sm text-muted">
               {format(new Date(), 'EEEE, MMMM d')}
               {app.streak.count > 0 && (
-                <span className="ml-2 inline-flex items-center gap-1 font-semibold" style={{ color: 'var(--accent-text)' }}>
-                  <Flame size={14} className="flame" /> {app.streak.count}-day streak
+                <span className="ml-2 inline-flex items-center gap-1 font-semibold text-ink">
+                  <Flame size={14} className="flame" style={{ color: 'var(--accent-text)' }} /> {app.streak.count}-day streak
                 </span>
               )}
             </p>
@@ -122,7 +131,7 @@ export function TodayView(): React.JSX.Element {
 
         {cleared && (
           <>
-            <div className="pop-in relative overflow-hidden rounded-xl bg-raised p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
+            <div className="pop-in relative overflow-hidden rounded-lg bg-raised p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
               <Confetti />
               <div className="text-lg font-bold">Plan cleared 🎉</div>
               <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
@@ -172,7 +181,7 @@ export function TodayView(): React.JSX.Element {
             return (
               <div
                 key={`t${t.id}`}
-                className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-raised px-4 py-3"
+                className="plan-card group flex cursor-pointer items-center gap-3 rounded-lg border border-edge bg-raised px-4 py-3"
                 onClick={() => app.openTask(t.notebook_id, t.id)}
               >
                 <input
@@ -220,6 +229,26 @@ export function TodayView(): React.JSX.Element {
             />
           )}
         </div>
+
+        {recent.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-faint">Jump back in</div>
+            <div className="stagger space-y-0.5">
+              {recent.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => app.openNote(n.notebook_id, n.id)}
+                  className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
+                >
+                  <FileText size={16} className="shrink-0" />
+                  <span className="truncate">{n.title || 'Untitled'}</span>
+                  <span className="ml-auto shrink-0 text-xs text-faint">{format(new Date(n.updated_at), 'd MMM')}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -241,7 +270,7 @@ function PlanCard({
   onAction: () => void
 }): React.JSX.Element {
   return (
-    <div className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-raised px-4 py-3" onClick={onAction}>
+    <div className="plan-card group flex cursor-pointer items-center gap-3 rounded-lg border border-edge bg-raised px-4 py-3" onClick={onAction}>
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg"
         style={{ background: tint.bg, color: tint.text }}
@@ -267,9 +296,9 @@ function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: s
     <button
       type="button"
       onClick={onClick}
-      className="plan-card flex flex-col items-center gap-1.5 rounded-xl bg-raised px-3 py-4 text-xs font-medium text-muted hover:text-ink"
+      className="plan-card flex h-9 items-center justify-center gap-2 rounded-lg bg-raised px-3 text-xs font-medium text-muted hover:text-ink"
     >
-      <span style={{ color: 'var(--accent-text)' }}>{icon}</span>
+      {icon}
       {label}
     </button>
   )

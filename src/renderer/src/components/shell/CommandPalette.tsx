@@ -127,7 +127,7 @@ export function CommandPalette(): React.JSX.Element {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[14vh]" onMouseDown={close}>
       <div
-        className="pop-in w-[560px] overflow-hidden rounded-xl border border-edge bg-panel"
+        className="pop-in w-[560px] overflow-hidden rounded-lg border border-edge bg-panel"
         style={{ boxShadow: 'var(--shadow)' }}
         onMouseDown={(e) => e.stopPropagation()}
       >

@@ -11,7 +11,7 @@ const api = window.inkling
 
 const fmt = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 // local field class WITHOUT w-full so the fixed widths below actually apply
-const fieldCls = 'rounded-lg border border-edge bg-sunken px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent'
+const fieldCls = 'rounded-lg border border-edge bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent'
 
 export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Element {
   const { gradingSystem, setGradingSystem } = useApp()
