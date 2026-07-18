@@ -244,8 +244,8 @@ function UpcomingContext(): React.JSX.Element {
   }, [version])
 
   return (
-    <div className="fade-up space-y-4">
-      <div>
+    <div className="fade-up space-y-2.5">
+      <div className="rounded-xl bg-sunken p-3">
         <PanelHeading icon={<CalendarClock size={14} />}>Due soon</PanelHeading>
         {due.length === 0 ? (
           <p className="text-xs text-faint">Nothing due this week. Enjoy the calm.</p>
@@ -269,7 +269,7 @@ function UpcomingContext(): React.JSX.Element {
           ))
         )}
       </div>
-      <div>
+      <div className="rounded-xl bg-sunken p-3">
         <PanelHeading icon={<Layers size={14} />}>Cards to review</PanelHeading>
         {dueCards > 0 ? (
           <button type="button" className="text-sm font-medium" style={{ color: 'var(--accent-text)' }} onClick={() => setTab('today')}>
@@ -279,11 +279,11 @@ function UpcomingContext(): React.JSX.Element {
           <p className="text-sm">All caught up. 🃏</p>
         )}
       </div>
-      <div>
+      <div className="rounded-xl bg-sunken p-3">
         <PanelHeading icon={<Timer size={14} />}>Focus today</PanelHeading>
         <p className="text-sm">{minutes > 0 ? `${minutes} focused minutes. Keep it up.` : 'No focus sessions yet today.'}</p>
       </div>
-      <div>
+      <div className="rounded-xl bg-sunken p-3">
         <PanelHeading icon={<Flame size={14} />}>Streak</PanelHeading>
         <p className="text-sm">
           {streak.count > 0 ? `${streak.count} day${streak.count === 1 ? '' : 's'} of showing up. Quietly impressive.` : 'Review cards or finish a focus session to start one.'}

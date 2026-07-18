@@ -120,7 +120,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         ) : card ? (
           <>
             <div
-              className="pop-in flex min-h-[220px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border border-edge bg-panel p-8 text-center shadow-lg"
+              className="pop-in flex min-h-[220px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border border-edge bg-raised p-8 text-center shadow-lg"
               onClick={() => setShowBack(true)}
               key={`${card.id}-${index}`}
             >
@@ -141,7 +141,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                     key={g.grade}
                     type="button"
                     onClick={() => void grade(g.grade)}
-                    className="min-w-[86px] rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm font-semibold transition-transform hover:scale-105"
+                    className="min-w-[86px] rounded-xl border border-edge bg-raised px-4 py-2.5 text-sm font-semibold transition-transform hover:scale-105"
                     style={{ color: g.tone }}
                   >
                     {g.label}
