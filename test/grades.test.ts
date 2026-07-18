@@ -93,7 +93,7 @@ describe('subjectAverage', () => {
   it('returns a percentage in percent mode', () => {
     const r = subjectAverage(items, 'percent')
     expect(r?.value).toBeCloseTo(91.7)
-    expect(r?.display).toBe('92%')
+    expect(r?.display).toBe('91.7%')
   })
   it('returns a letter in us mode with a comparable percent value', () => {
     const r = subjectAverage(items, 'us')

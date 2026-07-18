@@ -70,7 +70,7 @@ export function SettingsModal(): React.JSX.Element {
 
         <div className="flex items-center gap-2 border-t border-edge pt-4 text-xs text-faint">
           <LogoMark size={18} />
-          Inkling 0.3.2 · notes, tasks, study and grades. Studying, made fun.
+          Inkling 0.3.3 · notes, tasks, study and grades. Studying, made fun.
         </div>
       </div>
     </Modal>

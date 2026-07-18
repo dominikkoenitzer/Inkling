@@ -74,7 +74,7 @@ export function Sidebar(): React.JSX.Element {
       <button
         type="button"
         onClick={() => app.setPaletteOpen(true)}
-        className="mx-2 mb-2 flex items-center gap-2 rounded-lg border border-edge bg-sunken px-2.5 py-1.5 text-sm text-faint transition-colors hover:text-muted"
+        className="mx-2 mb-2 flex items-center gap-2 rounded-lg bg-app px-2 py-1.5 text-sm text-faint transition-colors hover:text-muted"
       >
         <Search size={16} />
         Search everything…
@@ -145,18 +145,18 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
 
   return (
     <div className="fade-up">
-      <div className="mb-2 flex gap-1">
+      <div className="mb-2 grid grid-cols-2 gap-1">
         <button
           type="button"
           onClick={() => void newPage()}
-          className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-edge bg-raised py-1.5 text-xs font-medium transition-all hover:bg-active active:scale-95"
+          className="flex items-center justify-center gap-1 rounded-lg bg-raised py-1.5 text-xs font-medium transition-all hover:bg-active active:scale-95"
         >
           <Plus size={14} /> Page
         </button>
         <button
           type="button"
           onClick={() => setNotesView('board')}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-lg border border-edge py-1.5 text-xs font-medium transition-all active:scale-95 ${
+          className={`flex items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-medium transition-all active:scale-95 ${
             notesView === 'board' ? 'bg-active text-ink' : 'bg-raised hover:bg-active'
           }`}
         >
@@ -165,13 +165,16 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
       </div>
 
       {journal && (
-        <button
-          type="button"
-          onClick={() => void openJournalToday()}
-          className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
-        >
-          <BookOpen size={16} style={{ color: 'var(--accent-text)' }} /> Today’s journal
-        </button>
+        <>
+          <SectionLabel>Journal</SectionLabel>
+          <button
+            type="button"
+            onClick={() => void openJournalToday()}
+            className="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
+          >
+            <BookOpen size={16} /> Today’s entry
+          </button>
+        </>
       )}
 
       <SectionLabel>Pages</SectionLabel>
@@ -400,7 +403,7 @@ function GradesSidebar(): React.JSX.Element {
       overallLabel = 'GPA'
       overallValue = (bySubject.reduce((a, x) => a + gpaPoints(x.avg.value), 0) / bySubject.length).toFixed(2)
     } else {
-      overallValue = `${(bySubject.reduce((a, x) => a + x.avg.value, 0) / bySubject.length).toFixed(0)}%`
+      overallValue = `${(bySubject.reduce((a, x) => a + x.avg.value, 0) / bySubject.length).toFixed(1)}%`
     }
   }
 

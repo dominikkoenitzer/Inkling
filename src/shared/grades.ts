@@ -101,7 +101,8 @@ export function subjectAverage(items: GradeItem[], system: GradingSystem): { val
   const pct = weightedPercentage(items)
   if (pct === null) return null
   const rounded = Math.round(pct * 10) / 10
-  return system === 'us' ? { value: rounded, display: letterGrade(rounded) } : { value: rounded, display: `${rounded.toFixed(0)}%` }
+  // one decimal everywhere, matching the Grades header, so the same number never shows twice with different rounding
+  return system === 'us' ? { value: rounded, display: letterGrade(rounded) } : { value: rounded, display: `${rounded.toFixed(1)}%` }
 }
 
 /** 4.0-scale GPA points from a percentage (standard US mapping). */

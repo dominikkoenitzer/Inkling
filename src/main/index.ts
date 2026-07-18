@@ -23,9 +23,9 @@ function createMainWindow(): void {
     minWidth: 960,
     minHeight: 600,
     show: false,
-    backgroundColor: '#1e1f22',
+    backgroundColor: '#191a1d',
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#1e1f22', symbolColor: '#b9bbc2', height: 36 },
+    titleBarOverlay: { color: '#191a1d', symbolColor: '#b9bbc2', height: 36 },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -79,7 +79,7 @@ function createQuickAddWindow(): BrowserWindow {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
-    backgroundColor: '#2b2d31',
+    backgroundColor: '#26282c',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
