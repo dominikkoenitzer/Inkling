@@ -59,7 +59,7 @@ export function TasksView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
       </div>
 
       <div className="border-b border-edge px-5 py-2">
-        <div className="flex items-center gap-2 rounded-lg border border-edge bg-raised px-3 py-1.5">
+        <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-lg bg-raised px-3 py-1.5">
           <Plus size={16} className="text-faint" />
           <input
             value={newTitle}
@@ -114,8 +114,18 @@ function ListView({ tasks, showNotebook }: { tasks: Task[]; showNotebook: boolea
     else groups[2].items.push(t)
   }
 
+  // Only done tasks left: show an explicit empty "To do" group so the list doesn't
+  // read as broken with a lone crossed-out section.
+  const onlyDone = groups.slice(0, 4).every((g) => g.items.length === 0) && groups[4].items.length > 0
+
   return (
     <div className="mx-auto max-w-2xl">
+      {onlyDone && (
+        <div className="mb-4">
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-faint">To do</div>
+          <p className="px-1 py-1 text-sm text-faint">All clear. Add the next one above.</p>
+        </div>
+      )}
       {groups
         .filter((g) => g.items.length > 0)
         .map((g) => (

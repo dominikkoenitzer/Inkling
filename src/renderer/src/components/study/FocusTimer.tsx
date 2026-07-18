@@ -55,10 +55,10 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
   }
 
   return (
-    <div className="rounded-lg border border-edge bg-raised p-5">
-      <div className="relative mx-auto mb-4 flex h-40 w-40 items-center justify-center">
+    <div className="rounded-lg border border-edge bg-raised p-4">
+      <div className="relative mx-auto mb-3 flex h-36 w-36 items-center justify-center">
         <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90">
-          <circle cx="50" cy="50" r="44" fill="none" stroke="var(--bg-raised)" strokeWidth="7" />
+          <circle cx="50" cy="50" r="44" fill="none" stroke="var(--bg-app)" strokeWidth="7" />
           <circle
             cx="50"
             cy="50"
@@ -98,7 +98,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
           <select
             value={link}
             onChange={(e) => setLink(e.target.value)}
-            className="mb-3 w-full rounded-lg border border-edge bg-sunken px-2 py-1.5 text-xs text-muted"
+            className="mb-2 w-full rounded-lg border border-edge bg-sunken px-2 py-1.5 text-xs text-muted"
           >
             <option value="none">No link, just focus</option>
             <optgroup label="Tasks">

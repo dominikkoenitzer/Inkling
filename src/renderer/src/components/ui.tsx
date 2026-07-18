@@ -161,7 +161,7 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void
 }): React.JSX.Element {
   return (
-    <div className="inline-flex rounded-lg border border-edge bg-sunken p-0.5">
+    <div className="inline-flex rounded-lg bg-app p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
