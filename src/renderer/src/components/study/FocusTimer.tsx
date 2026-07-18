@@ -38,7 +38,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
 
   if (timer.justFinished && timer.mode === 'focus') {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-edge bg-raised p-5 text-center fade-up">
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-edge bg-raised p-5 text-center fade-up">
         <Inky pose="happy" size={84} />
         <div className="font-semibold">Nice focus session!</div>
         <div className="text-xs text-muted">{minutesToday} focused minutes today. Take a breather, you earned it.</div>
@@ -55,7 +55,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
   }
 
   return (
-    <div className="rounded-xl border border-edge bg-raised p-5">
+    <div className="rounded-lg border border-edge bg-raised p-5">
       <div className="relative mx-auto mb-4 flex h-40 w-40 items-center justify-center">
         <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90">
           <circle cx="50" cy="50" r="44" fill="none" stroke="var(--bg-raised)" strokeWidth="7" />

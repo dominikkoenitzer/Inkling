@@ -37,7 +37,7 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
         <section>
           <h2 className="mb-3 text-base font-bold">Flashcard decks</h2>
           {decks.length === 0 ? (
-            <div className="rounded-xl border border-edge bg-raised">
+            <div className="rounded-lg border border-edge bg-raised">
               <EmptyState
                 pose="wave"
                 color={color}
@@ -48,7 +48,7 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {decks.map((d) => (
-                <div key={d.id} className="rounded-xl border border-edge bg-raised p-4 transition-colors hover:bg-active">
+                <div key={d.id} className="rounded-lg border border-edge bg-raised p-4 transition-colors hover:bg-active">
                   <button type="button" className="mb-1 flex w-full items-center gap-2 text-left" onClick={() => useApp.getState().setSelectedDeck(d.id)}>
                     <Layers size={16} style={{ color: ramp(notebook.color)[500] }} />
                     <span className="truncate font-semibold">{d.name}</span>
@@ -145,7 +145,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
           </div>
         </div>
 
-        <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-xl border border-edge bg-raised p-3">
+        <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-lg border border-edge bg-raised p-3">
           <input className={inputCls} placeholder="Front: the question or term" value={front} onChange={(e) => setFront(e.target.value)} />
           <input
             className={inputCls}
