@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
+import { NOTEBOOK_ICONS, NOTEBOOK_ICON_KEYS } from '@/lib/icons'
 
 export function Button({
   children,
@@ -32,7 +33,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       style={variant === 'primary' ? { background: 'var(--accent)' } : undefined}
-      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
     >
       {children}
     </button>
@@ -58,7 +59,7 @@ export function IconBtn({
       title={title}
       aria-label={title}
       onClick={onClick}
-      className={`no-drag inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+      className={`no-drag inline-flex h-7 w-7 items-center justify-center rounded-md transition-all active:scale-90 ${
         active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
       } ${className}`}
     >
@@ -115,6 +116,40 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 
 export const inputCls =
   'w-full rounded-lg border border-edge bg-sunken px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent'
+
+/** Notebook cover glyph picker — monochrome icon grid, "Aa" falls back to initials. */
+export function IconPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }): React.JSX.Element {
+  return (
+    <div className="grid max-h-44 grid-cols-8 gap-1 overflow-y-auto rounded-lg border border-edge bg-sunken p-2">
+      <button
+        type="button"
+        title="No icon, use initials"
+        onClick={() => onChange(null)}
+        className={`flex h-8 w-8 items-center justify-center rounded-md text-xs font-bold transition-transform hover:scale-110 ${
+          value === null ? 'bg-active text-ink ring-1 ring-[var(--accent)]' : 'text-muted hover:bg-hover'
+        }`}
+      >
+        Aa
+      </button>
+      {NOTEBOOK_ICON_KEYS.map((k) => {
+        const Icon = NOTEBOOK_ICONS[k]
+        return (
+          <button
+            key={k}
+            type="button"
+            title={k.replace(/-/g, ' ')}
+            onClick={() => onChange(k)}
+            className={`flex h-8 w-8 items-center justify-center rounded-md transition-transform hover:scale-110 ${
+              value === k ? 'bg-active text-ink ring-1 ring-[var(--accent)]' : 'text-muted hover:bg-hover hover:text-ink'
+            }`}
+          >
+            <Icon size={16} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export function Segmented<T extends string>({
   options,

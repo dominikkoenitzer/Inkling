@@ -31,7 +31,7 @@ export function Onboarding(): React.JSX.Element {
         {step === 0 && (
           <div className="fade-up">
             <h1 className="mb-1 text-xl font-bold">Hi! I’m Inky.</h1>
-            <p className="mb-5 text-sm text-muted">Welcome to Inkling — notes, tasks, schedule and study, together. What should we call your first notebook?</p>
+            <p className="mb-5 text-sm text-muted">Welcome to Inkling, where studying gets fun. What should we call your first notebook?</p>
             <input
               autoFocus
               className={`${inputCls} mb-4 text-center`}
@@ -49,7 +49,7 @@ export function Onboarding(): React.JSX.Element {
         {step === 1 && (
           <div className="fade-up">
             <h1 className="mb-1 text-xl font-bold">What’s this mostly for?</h1>
-            <p className="mb-5 text-sm text-muted">We’ll set up sensible starter notebooks — rename or delete them anytime.</p>
+            <p className="mb-5 text-sm text-muted">We’ll set up sensible starter notebooks. Rename or delete them anytime.</p>
             <div className="mb-4 grid grid-cols-3 gap-2">
               {(
                 [

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Play, Pause, RotateCcw, Coffee } from 'lucide-react'
-import { useTimer } from '@/stores/timer'
+import { useTimer, fmtClock } from '@/stores/timer'
 import { useVersion } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button } from '@/components/ui'
@@ -25,8 +25,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
     void api.focus.todayMinutes().then(setMinutesToday)
   }, [focusVersion, timer.justFinished])
 
-  const mm = String(Math.floor(timer.secondsLeft / 60)).padStart(2, '0')
-  const ss = String(timer.secondsLeft % 60).padStart(2, '0')
+  const clock = fmtClock(timer.secondsLeft)
   const progress = timer.totalSeconds > 0 ? 1 - timer.secondsLeft / timer.totalSeconds : 0
 
   const start = (): void => {
@@ -42,10 +41,10 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
       <div className="flex flex-col items-center gap-3 rounded-xl border border-edge bg-panel p-5 text-center fade-up">
         <Inky pose="happy" size={84} />
         <div className="font-semibold">Nice focus session!</div>
-        <div className="text-xs text-muted">{minutesToday} focused minutes today. Take a breather — you earned it.</div>
+        <div className="text-xs text-muted">{minutesToday} focused minutes today. Take a breather, you earned it.</div>
         <div className="flex gap-2">
           <Button variant="primary" onClick={() => timer.startBreak(5)}>
-            <Coffee size={13} /> 5 min break
+            <Coffee size={14} /> 5 min break
           </Button>
           <Button variant="ghost" onClick={timer.dismissFinished}>
             Skip
@@ -75,7 +74,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
         </svg>
         <div className="text-center">
           <div className="text-3xl font-bold tabular-nums">
-            {mm}:{ss}
+            {clock}
           </div>
           <div className="text-[11px] text-muted">{timer.mode === 'break' ? 'break ☕' : timer.linkedLabel ?? 'focus'}</div>
         </div>
@@ -101,7 +100,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
             onChange={(e) => setLink(e.target.value)}
             className="mb-3 w-full rounded-lg border border-edge bg-sunken px-2 py-1.5 text-xs text-muted"
           >
-            <option value="none">No link — just focus</option>
+            <option value="none">No link, just focus</option>
             <optgroup label="Tasks">
               {tasks.map((t) => (
                 <option key={t.id} value={`task:${t.id}`}>

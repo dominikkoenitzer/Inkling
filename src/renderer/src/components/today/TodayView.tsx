@@ -1,0 +1,262 @@
+import { useEffect, useState } from 'react'
+import { Layers, TrendingUp, Timer, Flame, ArrowRight, Play } from 'lucide-react'
+import { format, isToday } from 'date-fns'
+import { useApp, useVersion, bumpData } from '@/stores/app'
+import { useTimer } from '@/stores/timer'
+import { subjectAverage } from '@shared/grades'
+import { ramp, isColorKey, softTint } from '@/lib/colors'
+import { hasGlyph, NotebookGlyph } from '@/lib/icons'
+import { Inky } from '@/components/Inky'
+import type { Deck, Task, Grade, Notebook } from '@shared/types'
+
+const api = window.inkling
+
+function greeting(): string {
+  const h = new Date().getHours()
+  if (h < 5) return 'Up late'
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+/**
+ * The daily study plan — assembles "what should I do right now" from due flashcards,
+ * open tasks, the weakest graded subject and today's focus time, each with a one-click
+ * start. Solves the blank-page problem that keeps people from starting at all.
+ */
+export function TodayView(): React.JSX.Element {
+  const app = useApp()
+  const version = useVersion('decks') + useVersion('tasks') + useVersion('grades') + useVersion('focus')
+  const [decks, setDecks] = useState<Deck[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [grades, setGrades] = useState<Grade[]>([])
+  const [minutes, setMinutes] = useState(0)
+  const [loaded, setLoaded] = useState(false)
+  // tasks mid-completion: keeps the checkbox visibly ticked until the refetch removes the row
+  const [completing, setCompleting] = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    // Overlapping fetches can resolve out of order; only the newest may write state.
+    let stale = false
+    void Promise.all([api.decks.list(), api.tasks.smart('today'), api.grades.all(), api.focus.todayMinutes()]).then(([d, t, g, m]) => {
+      if (stale) return
+      setDecks(d)
+      setTasks(t)
+      setGrades(g)
+      setMinutes(m)
+      setLoaded(true)
+    })
+    return () => {
+      stale = true
+    }
+  }, [version])
+
+  const nbOf = (id: number): Notebook | undefined => app.notebooks.find((n) => n.id === id)
+  const active = nbOf(app.activeNotebookId ?? -1)
+  const inkyColor = isColorKey(active?.color) ? active.color : 'teal'
+  const dueDecks = decks.filter((d) => d.due_count > 0)
+  const openTasks = tasks.filter((t) => t.status !== 'done')
+  const bySubject = app.notebooks
+    .map((nb) => ({ nb, avg: subjectAverage(grades.filter((g) => g.notebook_id === nb.id), app.gradingSystem) }))
+    .filter((x): x is { nb: Notebook; avg: NonNullable<ReturnType<typeof subjectAverage>> } => x.avg !== null)
+  const weakest = bySubject.length >= 2 ? bySubject.reduce((a, b) => (b.avg.value < a.avg.value ? b : a)) : null
+  // gate on loaded so the focus card can't flash before the first fetch lands
+  const suggestFocus = loaded && minutes === 0
+  const planCount = dueDecks.length + openTasks.length + (weakest ? 1 : 0) + (suggestFocus ? 1 : 0)
+  const cleared = loaded && planCount === 0
+
+  const completeTask = (t: Task): void => {
+    setCompleting((prev) => new Set(prev).add(t.id))
+    void api.tasks.update(t.id, { status: 'done' }).then(() => {
+      app.celebrate()
+      bumpData('tasks')
+      if (t.note_id !== null) bumpData('notes')
+    })
+  }
+
+  const dueLabel = (t: Task): { text: string; overdue: boolean } => {
+    if (!t.due_date) return { text: 'today', overdue: false }
+    const due = new Date(t.due_date)
+    if (!isToday(due) && due.getTime() < Date.now()) return { text: `overdue since ${format(due, 'EEE d MMM')}`, overdue: true }
+    const hm = format(due, 'HH:mm')
+    return { text: hm === '00:00' ? 'today' : `due ${hm}`, overdue: false }
+  }
+
+  const startFocus = (): void => {
+    void useTimer.getState().start(25)
+    app.setSelectedDeck(null)
+    app.setTab('study')
+  }
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto w-full max-w-2xl px-6 pb-16 pt-10">
+        <div className="fade-up mb-6 flex items-center gap-4">
+          <Inky pose={cleared ? 'happy' : 'wave'} color={inkyColor} size={76} />
+          <div>
+            <h1 className="text-2xl font-bold">{greeting()}!</h1>
+            <p className="text-sm text-muted">
+              {format(new Date(), 'EEEE, MMMM d')}
+              {app.streak.count > 0 && (
+                <span className="ml-2 inline-flex items-center gap-1 font-semibold" style={{ color: 'var(--accent-text)' }}>
+                  <Flame size={14} className="flame" /> {app.streak.count}-day streak
+                </span>
+              )}
+            </p>
+            <p className="mt-0.5 text-sm text-faint">
+              {cleared
+                ? 'Nothing queued. The day is yours.'
+                : loaded
+                  ? `${planCount} small win${planCount === 1 ? '' : 's'} queued for today.`
+                  : 'Putting your plan together…'}
+            </p>
+          </div>
+        </div>
+
+        {cleared && (
+          <div className="pop-in relative overflow-hidden rounded-xl border border-edge bg-panel p-8 text-center" style={{ boxShadow: 'var(--shadow)' }}>
+            <Confetti />
+            <div className="text-lg font-bold">Plan cleared 🎉</div>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+              No cards due, no tasks pending. Add a page of notes, build a deck, or just enjoy being ahead.
+            </p>
+          </div>
+        )}
+
+        {minutes > 0 && (
+          <p className="fade-up mb-4 flex items-center gap-1.5 text-sm text-muted">
+            <Timer size={16} style={{ color: 'var(--accent-text)' }} /> {minutes} focused minute{minutes === 1 ? '' : 's'} today already.
+          </p>
+        )}
+
+        <div className="stagger space-y-2">
+          {dueDecks.map((d) => {
+            const nb = nbOf(d.notebook_id)
+            return (
+              <PlanCard
+                key={`d${d.id}`}
+                bubble={hasGlyph(nb?.icon) ? <NotebookGlyph icon={nb?.icon} size={18} /> : <Layers size={18} />}
+                tint={softTint(nb?.color, app.theme)}
+                title={`Review ${d.name}`}
+                sub={`${d.due_count} card${d.due_count === 1 ? '' : 's'} due · ${nb?.name ?? 'notebook'}`}
+                actionLabel="Review"
+                onAction={() => app.openDeck(d.notebook_id, d.id)}
+              />
+            )
+          })}
+
+          {openTasks.map((t) => {
+            const nb = nbOf(t.notebook_id)
+            const due = dueLabel(t)
+            return (
+              <div
+                key={`t${t.id}`}
+                className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-panel px-4 py-3"
+                onClick={() => app.openTask(t.notebook_id, t.id)}
+              >
+                <input
+                  type="checkbox"
+                  checked={completing.has(t.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => completeTask(t)}
+                  className="check-pop h-4 w-4 shrink-0 accent-[var(--accent)]"
+                  title="Mark done"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{t.title}</div>
+                  <div className="text-xs" style={due.overdue ? { color: '#e5484d' } : undefined}>
+                    <span className={due.overdue ? 'font-semibold' : 'text-faint'}>{due.text}</span>
+                    {nb ? <span className="text-faint"> · {nb.name}</span> : null}
+                  </div>
+                </div>
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ramp(nb?.color)[500] }} />
+              </div>
+            )
+          })}
+
+          {weakest && (
+            <PlanCard
+              bubble={hasGlyph(weakest.nb.icon) ? <NotebookGlyph icon={weakest.nb.icon} size={18} /> : <TrendingUp size={18} />}
+              tint={softTint(weakest.nb.color, app.theme)}
+              title={`Give ${weakest.nb.name} some love`}
+              sub={`Your lowest average right now (${weakest.avg.display})`}
+              actionLabel="Open"
+              onAction={() => {
+                app.setActiveNotebook(weakest.nb.id)
+                app.setTab('grades')
+              }}
+            />
+          )}
+
+          {suggestFocus && !cleared && (
+            <PlanCard
+              bubble={<Play size={18} />}
+              tint={softTint(active?.color, app.theme)}
+              title="One 25-minute focus block"
+              sub="Start the timer, pick anything above. Momentum does the rest."
+              actionLabel="Start"
+              onAction={startFocus}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PlanCard({
+  bubble,
+  tint,
+  title,
+  sub,
+  actionLabel,
+  onAction
+}: {
+  bubble: React.ReactNode
+  tint: { bg: string; text: string }
+  title: string
+  sub: string
+  actionLabel: string
+  onAction: () => void
+}): React.JSX.Element {
+  return (
+    <div className="plan-card group flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-panel px-4 py-3" onClick={onAction}>
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg"
+        style={{ background: tint.bg, color: tint.text }}
+      >
+        {bubble}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium">{title}</div>
+        <div className="truncate text-xs text-faint">{sub}</div>
+      </div>
+      <span
+        className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100"
+        style={{ background: 'var(--accent)' }}
+      >
+        {actionLabel} <ArrowRight size={12} />
+      </span>
+    </div>
+  )
+}
+
+/** Pure-CSS confetti burst for the cleared state. */
+function Confetti(): React.JSX.Element {
+  const colors = ['#1D9E75', '#D85A30', '#BA7517', '#D4537E', '#3DB58B', '#E48CA8']
+  return (
+    <div className="confetti pointer-events-none absolute inset-0" aria-hidden>
+      {Array.from({ length: 14 }, (_, i) => (
+        <span
+          key={i}
+          style={{
+            left: `${6 + i * 6.5}%`,
+            background: colors[i % colors.length],
+            animationDelay: `${(i % 7) * 0.12}s`,
+            animationDuration: `${1.8 + (i % 5) * 0.3}s`
+          }}
+        />
+      ))}
+    </div>
+  )
+}

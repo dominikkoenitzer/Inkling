@@ -45,7 +45,7 @@ export function TasksView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-edge px-5 py-2.5">
-        <h2 className="text-[15px] font-bold">{heading}</h2>
+        <h2 className="text-base font-bold">{heading}</h2>
         <div className="ml-auto">
           <Segmented
             options={[
@@ -60,7 +60,7 @@ export function TasksView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
 
       <div className="border-b border-edge px-5 py-2">
         <div className="flex items-center gap-2 rounded-lg border border-edge bg-panel px-3 py-1.5">
-          <Plus size={15} className="text-faint" />
+          <Plus size={16} className="text-faint" />
           <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
@@ -76,8 +76,8 @@ export function TasksView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
           <EmptyState
             pose="sleepy"
             color={isColorKey(notebook.color) ? notebook.color : 'teal'}
-            title={smartView ? 'Nothing due — nice!' : 'No tasks here yet'}
-            hint={smartView ? 'Take the win. Or get ahead of next week, your call.' : 'Add one above, or type [] inside any note — it lands here automatically.'}
+            title={smartView ? 'Nothing due. Nice!' : 'No tasks here yet'}
+            hint={smartView ? 'Take the win. Or get ahead of next week, your call.' : 'Add one above, or type [] inside any note. It lands here automatically.'}
           />
         ) : mode === 'list' ? (
           <ListView tasks={tasks} showNotebook={!!smartView} />
@@ -176,20 +176,20 @@ export function TaskRow({ task, showNotebook }: { task: Task; showNotebook: bool
 
       <span className={`min-w-0 flex-1 truncate text-sm ${done ? 'text-faint line-through' : ''}`}>{task.title}</span>
 
-      {task.note_id !== null && <FileText size={12} className="shrink-0 text-faint" aria-label="Linked to a note" />}
+      {task.note_id !== null && <FileText size={14} className="shrink-0 text-faint" aria-label="Linked to a note" />}
       {task.status === 'in_progress' && (
-        <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
+        <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold" style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
           in progress
         </span>
       )}
       {showNotebook && nb && (
-        <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium text-white" style={{ background: ramp(nb.color)[500] }}>
+        <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium text-white" style={{ background: ramp(nb.color)[500] }}>
           {nb.name}
         </span>
       )}
       {task.due_date && (
         <span className={`flex shrink-0 items-center gap-1 text-[11px] ${overdue ? 'font-semibold text-red-400' : 'text-muted'}`}>
-          <CalendarClock size={11} />
+          <CalendarClock size={12} />
           {format(new Date(task.due_date), 'EEE d MMM')}
         </span>
       )}
@@ -202,7 +202,7 @@ export function TaskRow({ task, showNotebook }: { task: Task; showNotebook: bool
         }}
         className="shrink-0 opacity-60 hover:opacity-100"
       >
-        <Flag size={13} fill={task.priority === 'high' ? PRIORITY_COLOR.high : 'none'} style={{ color: PRIORITY_COLOR[task.priority] }} />
+        <Flag size={14} fill={task.priority === 'high' ? PRIORITY_COLOR.high : 'none'} style={{ color: PRIORITY_COLOR[task.priority] }} />
       </button>
       <button
         type="button"
@@ -217,7 +217,7 @@ export function TaskRow({ task, showNotebook }: { task: Task; showNotebook: bool
         }}
         className="hidden shrink-0 text-faint hover:text-red-400 group-hover:block"
       >
-        <Trash2 size={13} />
+        <Trash2 size={14} />
       </button>
     </div>
   )
@@ -269,7 +269,7 @@ function KanbanColumn({ column, tasks }: { column: { id: TaskStatus; label: stri
     >
       <div className="flex items-center gap-2 px-1.5 pb-2 pt-1 text-xs font-bold uppercase tracking-wider text-muted">
         {column.label}
-        <span className="rounded-full bg-raised px-1.5 text-[10px]">{tasks.length}</span>
+        <span className="rounded-full bg-raised px-1.5 text-[11px]">{tasks.length}</span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
         {tasks.map((t) => (
@@ -298,17 +298,17 @@ function KanbanCard({ task }: { task: Task }): React.JSX.Element {
     >
       <div className="flex items-start gap-1.5">
         <span className={task.status === 'done' ? 'text-faint line-through' : ''}>{task.title}</span>
-        <ChevronRight size={13} className="ml-auto mt-0.5 shrink-0 text-faint" />
+        <ChevronRight size={14} className="ml-auto mt-0.5 shrink-0 text-faint" />
       </div>
       <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted">
-        <Flag size={11} style={{ color: PRIORITY_COLOR[task.priority] }} fill={task.priority === 'high' ? PRIORITY_COLOR.high : 'none'} />
+        <Flag size={12} style={{ color: PRIORITY_COLOR[task.priority] }} fill={task.priority === 'high' ? PRIORITY_COLOR.high : 'none'} />
         {task.due_date && (
           <span className="flex items-center gap-1">
-            <CalendarClock size={11} />
+            <CalendarClock size={12} />
             {format(new Date(task.due_date), 'd MMM')}
           </span>
         )}
-        {task.note_id !== null && <FileText size={11} aria-label="Linked note" />}
+        {task.note_id !== null && <FileText size={12} aria-label="Linked note" />}
       </div>
     </div>
   )
