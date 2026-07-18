@@ -89,7 +89,7 @@ export default function App(): React.JSX.Element {
       <div className="titlebar-drag flex h-9 shrink-0 items-center gap-2 pl-3 text-xs text-faint">
         <LogoMark size={16} />
         <span className="font-semibold tracking-wide">Inkling</span>
-        <span className="opacity-60">— {activeNotebook?.name ?? 'notes, tasks, schedule and study'}</span>
+        <span className="opacity-60">· {activeNotebook?.name ?? 'studying, made fun'}</span>
       </div>
 
       <div className="flex min-h-0 flex-1">

@@ -45,11 +45,6 @@ export function registerIpc(hideQuickAdd: () => void): void {
   handle('tasks.update', repos.updateTask, 'tasks')
   handle('tasks.remove', repos.removeTask, 'tasks')
 
-  handle('events.window', repos.eventsWindow)
-  handle('events.create', repos.createEvent, 'events')
-  handle('events.update', repos.updateEvent, 'events')
-  handle('events.remove', repos.removeEvent, 'events')
-
   handle('decks.list', repos.listDecks)
   handle('decks.create', repos.createDeck, 'decks')
   handle('decks.rename', repos.renameDeck, 'decks')
@@ -97,14 +92,6 @@ export function registerIpc(hideQuickAdd: () => void): void {
     if (!nb) return
     if (payload.kind === 'task') {
       repos.createTask({ notebook_id: nb.id, title: payload.text, due_date: payload.due ?? null })
-    } else if (payload.kind === 'event') {
-      const start = payload.start ?? new Date().toISOString()
-      repos.createEvent({
-        notebook_id: nb.id,
-        title: payload.text,
-        start_time: start,
-        end_time: payload.end ?? new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString()
-      })
     } else {
       repos.createNote({
         notebook_id: nb.id,
@@ -113,7 +100,7 @@ export function registerIpc(hideQuickAdd: () => void): void {
         content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: payload.text }] }] })
       })
     }
-    broadcast(event.sender.id, payload.kind === 'task' ? 'tasks' : payload.kind === 'event' ? 'events' : 'notes')
+    broadcast(event.sender.id, payload.kind === 'task' ? 'tasks' : 'notes')
   })
 
   ipcMain.handle('app.hideQuickAdd', () => hideQuickAdd())

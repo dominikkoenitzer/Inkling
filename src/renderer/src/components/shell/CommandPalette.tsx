@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, FileText, CheckSquare, Layers, Zap, CalendarDays, Moon, Sun, Plus, GraduationCap } from 'lucide-react'
+import { Search, FileText, CheckSquare, Layers, Zap, Percent, Moon, Sun, Plus, GraduationCap } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { fuzzyScore } from '@/lib/parse'
 import type { SearchResult } from '@shared/types'
@@ -41,7 +41,7 @@ export function CommandPalette(): React.JSX.Element {
       list.push(
         {
           key: 'new-note',
-          icon: <Plus size={15} />,
+          icon: <Plus size={16} />,
           label: 'New page',
           detail: `in ${nb.name}`,
           run: () => {
@@ -53,7 +53,7 @@ export function CommandPalette(): React.JSX.Element {
         },
         {
           key: 'new-task',
-          icon: <CheckSquare size={15} />,
+          icon: <CheckSquare size={16} />,
           label: 'New task',
           detail: `in ${nb.name}`,
           run: () => {
@@ -64,7 +64,7 @@ export function CommandPalette(): React.JSX.Element {
         },
         {
           key: 'focus',
-          icon: <Zap size={15} />,
+          icon: <Zap size={16} />,
           label: 'Start focus session',
           run: () => {
             app.setTab('study')
@@ -75,13 +75,14 @@ export function CommandPalette(): React.JSX.Element {
       )
     }
     list.push(
-      { key: 'go-notes', icon: <FileText size={15} />, label: 'Jump to Notes', run: () => { app.setTab('notes'); close() } },
-      { key: 'go-tasks', icon: <CheckSquare size={15} />, label: 'Jump to Tasks', run: () => { app.setTab('tasks'); close() } },
-      { key: 'go-cal', icon: <CalendarDays size={15} />, label: 'Jump to Calendar', run: () => { app.setTab('calendar'); close() } },
-      { key: 'go-study', icon: <GraduationCap size={15} />, label: 'Jump to Study', run: () => { app.setTab('study'); close() } },
+      { key: 'go-today', icon: <Sun size={16} />, label: 'Jump to Today', run: () => { app.setTab('today'); close() } },
+      { key: 'go-notes', icon: <FileText size={16} />, label: 'Jump to Notes', run: () => { app.setTab('notes'); close() } },
+      { key: 'go-tasks', icon: <CheckSquare size={16} />, label: 'Jump to Tasks', run: () => { app.setTab('tasks'); close() } },
+      { key: 'go-study', icon: <GraduationCap size={16} />, label: 'Jump to Study', run: () => { app.setTab('study'); close() } },
+      { key: 'go-grades', icon: <Percent size={16} />, label: 'Jump to Grades', run: () => { app.setTab('grades'); close() } },
       {
         key: 'theme',
-        icon: app.theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />,
+        icon: app.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />,
         label: app.theme === 'dark' ? 'Switch to Cozy theme' : 'Switch to Dark theme',
         run: () => {
           app.setTheme(app.theme === 'dark' ? 'cozy' : 'dark')
@@ -95,7 +96,7 @@ export function CommandPalette(): React.JSX.Element {
 
   const searchItems: PaletteItem[] = results.map((r) => ({
     key: `s-${r.source_type}-${r.source_id}`,
-    icon: r.source_type === 'note' ? <FileText size={15} /> : r.source_type === 'task' ? <CheckSquare size={15} /> : <Layers size={15} />,
+    icon: r.source_type === 'note' ? <FileText size={16} /> : r.source_type === 'task' ? <CheckSquare size={16} /> : <Layers size={16} />,
     label: r.title || 'Untitled',
     detail: r.snippet.replace(/[⟪⟫]/g, ''),
     run: () => {
@@ -140,13 +141,13 @@ export function CommandPalette(): React.JSX.Element {
               setSelected(0)
             }}
             onKeyDown={onKey}
-            placeholder="Search notes, tasks, decks — or run a command…"
+            placeholder="Search notes, tasks, decks, or run a command…"
             className="flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
-          <kbd className="rounded border border-edge px-1.5 py-0.5 text-[10px] text-faint">esc</kbd>
+          <kbd className="rounded border border-edge px-1.5 py-0.5 text-[11px] text-faint">esc</kbd>
         </div>
         <div className="max-h-[46vh] overflow-y-auto p-1.5">
-          {items.length === 0 && <p className="px-3 py-6 text-center text-sm text-faint">Nothing found — try different words?</p>}
+          {items.length === 0 && <p className="px-3 py-6 text-center text-sm text-faint">Nothing found. Try different words?</p>}
           {searchItems.length > 0 && <GroupLabel>Results</GroupLabel>}
           {searchItems.map((item, i) => (
             <Row key={item.key} item={item} active={clamped === i} onHover={() => setSelected(i)} />
@@ -162,7 +163,7 @@ export function CommandPalette(): React.JSX.Element {
 }
 
 function GroupLabel({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-faint">{children}</div>
+  return <div className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-faint">{children}</div>
 }
 
 function Row({ item, active, onHover }: { item: PaletteItem; active: boolean; onHover: () => void }): React.JSX.Element {

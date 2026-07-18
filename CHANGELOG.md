@@ -4,6 +4,24 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-07-18
+
+The "make studying fun" release: Inkling sharpens from a four-pillar organizer into a study companion that tells you what to do today.
+
+### Added
+- **Today view** — a new home tab (and the app's new default) that auto-assembles a daily study plan: flashcard decks with due cards, tasks due today (with inline check-off), your lowest-averaging subject, and a suggested 25-minute focus block — each with a one-click start. Clearing the plan earns a confetti celebration.
+- **Grading systems** — choose **Swiss 1–6** (6 best, 4 = pass; grades entered directly and averaged by weight), **US letters + 4.0 GPA**, or plain **percentages**. Switchable from the Grades header or Settings; the sidebar, Today plan, and grade rows all follow.
+- **User bar** — a Discord-style panel pinned to the bottom of the sidebar: Inky + streak status, a **live Pomodoro chip** (visible and pausable from any tab), and settings. The previously dead space at the bottom of the app now works for a living.
+- **Notebook icon covers** — every notebook can pick a monochrome glyph (flask, calculator, globe, brain, …) from the app's own icon family, shown on its gradient squircle in the rail, the sidebar header, and Today plan cards. School starter notebooks come pre-iconed.
+
+### Changed
+- **Design-consistency pass** — icons normalized to a 4-step scale (18 nav / 16 standard / 14 meta / 12 floor; previously 11 ad-hoc sizes from 9–20 px), micro-text unified at 11 px, view headings unified, larger hit targets.
+- **Micro-interactions everywhere** — staggered list entrances, plan cards that lift on hover, press-scale on every button, a flickering streak flame, checkbox pop on completion, all honoring `prefers-reduced-motion`.
+- Notebook rail squircles now use a subtle color gradient; the sidebar's due-this-week and context-panel items are clickable.
+
+### Removed
+- **Calendar module** — Inkling is a study companion, not a scheduling app; students already have calendars. Task due dates (with natural-language quick-add) fully cover in-app scheduling. Existing `events` data stays untouched in the database; only the UI and APIs are gone.
+
 ## [0.2.1] — 2026-07-13
 
 ### Fixed

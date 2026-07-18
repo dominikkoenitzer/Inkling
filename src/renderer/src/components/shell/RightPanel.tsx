@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { PanelRightClose, PanelRightOpen, FileText, Flame, Timer, CalendarClock, Plus } from 'lucide-react'
+import { PanelRightClose, PanelRightOpen, FileText, Flame, Timer, CalendarClock, Layers, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { expandEvents } from '@/lib/recur'
 import { ramp } from '@/lib/colors'
 import { inputCls } from '@/components/ui'
-import type { Task, Priority, CalEvent } from '@shared/types'
+import type { Task, Priority } from '@shared/types'
 
 const api = window.inkling
 
@@ -21,7 +20,7 @@ export function RightPanel(): React.JSX.Element | null {
         onClick={() => setOpen(true)}
         className="flex w-7 shrink-0 items-start justify-center border-l border-edge pt-3 text-faint hover:text-ink"
       >
-        <PanelRightOpen size={15} />
+        <PanelRightOpen size={16} />
       </button>
     )
   }
@@ -31,7 +30,7 @@ export function RightPanel(): React.JSX.Element | null {
       <div className="flex items-center justify-between px-3 py-2">
         <span className="text-[11px] font-bold uppercase tracking-wider text-faint">Context</span>
         <button type="button" title="Collapse panel" onClick={() => setOpen(false)} className="text-faint hover:text-ink">
-          <PanelRightClose size={15} />
+          <PanelRightClose size={16} />
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
@@ -59,9 +58,9 @@ function NoteContext({ noteId }: { noteId: number }): React.JSX.Element {
 
   return (
     <div className="fade-up">
-      <PanelHeading icon={<FileText size={13} />}>Tasks in this note</PanelHeading>
+      <PanelHeading icon={<FileText size={14} />}>Tasks in this note</PanelHeading>
       {tasks.length === 0 ? (
-        <p className="text-xs text-faint">Type “[] ” in the note to create a linked task — it’ll show up here and in the Tasks tab.</p>
+        <p className="text-xs text-faint">Type “[] ” in the note to create a linked task. It’ll show up here and in the Tasks tab.</p>
       ) : (
         tasks.map((t) => (
           <label key={t.id} className="flex cursor-pointer items-start gap-2 rounded-lg px-1.5 py-1.5 text-sm hover:bg-hover">
@@ -182,7 +181,7 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
           style={{ color: 'var(--accent-text)' }}
           onClick={() => useApp.getState().openNote(task.notebook_id, task.note_id!)}
         >
-          <FileText size={12} /> Open linked note
+          <FileText size={14} /> Open linked note
         </button>
       )}
 
@@ -201,7 +200,7 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
           </label>
         ))}
         <div className="flex items-center gap-1.5">
-          <Plus size={13} className="text-faint" />
+          <Plus size={14} className="text-faint" />
           <input
             className="flex-1 bg-transparent py-1 text-sm placeholder:text-faint"
             placeholder="Add subtask…"
@@ -219,7 +218,7 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
         </div>
       </PanelField>
 
-      <p className="text-[10.5px] text-faint">
+      <p className="text-xs text-faint">
         In {notebooks.find((n) => n.id === task.notebook_id)?.name ?? 'notebook'} · created {format(new Date(task.created_at), 'd MMM yyyy')}
       </p>
     </div>
@@ -229,58 +228,63 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
 /* --------------------------- Upcoming (default) --------------------------- */
 
 function UpcomingContext(): React.JSX.Element {
-  const { notebooks, streak } = useApp()
-  const version = useVersion('events') + useVersion('tasks') + useVersion('focus')
-  const [agenda, setAgenda] = useState<Array<{ key: string; title: string; when: string; color: string }>>([])
+  const { notebooks, streak, openTask, setTab } = useApp()
+  const version = useVersion('tasks') + useVersion('focus') + useVersion('decks')
+  const [due, setDue] = useState<Task[]>([])
   const [minutes, setMinutes] = useState(0)
+  const [dueCards, setDueCards] = useState(0)
 
   useEffect(() => {
-    const from = new Date()
-    const to = new Date(from.getTime() + 7 * 24 * 3600 * 1000)
-    void Promise.all([api.events.window(from.toISOString(), to.toISOString()), api.tasks.smart('week'), api.focus.todayMinutes()]).then(
-      ([events, tasks, mins]: [CalEvent[], Task[], number]) => {
-        setMinutes(mins)
-        const occ = expandEvents(events, from, to).slice(0, 6).map((o) => ({
-          key: `e${o.key}`,
-          title: o.event.title,
-          when: format(o.start, 'EEE d MMM · HH:mm'),
-          color: ramp(notebooks.find((n) => n.id === o.event.notebook_id)?.color)[500]
-        }))
-        const due = tasks.slice(0, 6).map((t) => ({
-          key: `t${t.id}`,
-          title: t.title,
-          when: t.due_date ? `due ${format(new Date(t.due_date), 'EEE d MMM')}` : '',
-          color: ramp(notebooks.find((n) => n.id === t.notebook_id)?.color)[500]
-        }))
-        setAgenda([...occ, ...due].slice(0, 9))
-      }
-    )
-  }, [version, notebooks])
+    void Promise.all([api.tasks.smart('week'), api.focus.todayMinutes(), api.decks.list()]).then(([tasks, mins, decks]) => {
+      setMinutes(mins)
+      setDueCards(decks.reduce((a, d) => a + d.due_count, 0))
+      setDue(tasks.slice(0, 8))
+    })
+    // colors come from the store at render time; notebook identity changes don't need a refetch
+  }, [version])
 
   return (
     <div className="fade-up space-y-4">
       <div>
-        <PanelHeading icon={<CalendarClock size={13} />}>Coming up</PanelHeading>
-        {agenda.length === 0 ? (
-          <p className="text-xs text-faint">Nothing scheduled this week — enjoy the calm.</p>
+        <PanelHeading icon={<CalendarClock size={14} />}>Due soon</PanelHeading>
+        {due.length === 0 ? (
+          <p className="text-xs text-faint">Nothing due this week. Enjoy the calm.</p>
         ) : (
-          agenda.map((a) => (
-            <div key={a.key} className="mb-1.5 flex items-start gap-2">
-              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: a.color }} />
-              <div className="min-w-0">
-                <div className="truncate text-sm">{a.title}</div>
-                <div className="text-[10.5px] text-faint">{a.when}</div>
-              </div>
-            </div>
+          due.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => openTask(t.notebook_id, t.id)}
+              className="mb-1 flex w-full items-start gap-2 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-hover"
+            >
+              <span
+                className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                style={{ background: ramp(notebooks.find((n) => n.id === t.notebook_id)?.color)[500] }}
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-sm">{t.title}</span>
+                <span className="block text-xs text-faint">{t.due_date ? `due ${format(new Date(t.due_date), 'EEE d MMM')}` : ''}</span>
+              </span>
+            </button>
           ))
         )}
       </div>
       <div>
-        <PanelHeading icon={<Timer size={13} />}>Focus today</PanelHeading>
-        <p className="text-sm">{minutes > 0 ? `${minutes} focused minutes — keep it up.` : 'No focus sessions yet today.'}</p>
+        <PanelHeading icon={<Layers size={14} />}>Cards to review</PanelHeading>
+        {dueCards > 0 ? (
+          <button type="button" className="text-sm font-medium" style={{ color: 'var(--accent-text)' }} onClick={() => setTab('today')}>
+            {dueCards} card{dueCards === 1 ? '' : 's'} ready. See your plan →
+          </button>
+        ) : (
+          <p className="text-sm">All caught up. 🃏</p>
+        )}
       </div>
       <div>
-        <PanelHeading icon={<Flame size={13} />}>Streak</PanelHeading>
+        <PanelHeading icon={<Timer size={14} />}>Focus today</PanelHeading>
+        <p className="text-sm">{minutes > 0 ? `${minutes} focused minutes. Keep it up.` : 'No focus sessions yet today.'}</p>
+      </div>
+      <div>
+        <PanelHeading icon={<Flame size={14} />}>Streak</PanelHeading>
         <p className="text-sm">
           {streak.count > 0 ? `${streak.count} day${streak.count === 1 ? '' : 's'} of showing up. Quietly impressive.` : 'Review cards or finish a focus session to start one.'}
         </p>
@@ -301,7 +305,7 @@ function PanelHeading({ icon, children }: { icon: React.ReactNode; children: Rea
 function PanelField({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
   return (
     <div>
-      <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wider text-faint">{label}</div>
+      <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-faint">{label}</div>
       {children}
     </div>
   )

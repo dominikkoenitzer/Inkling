@@ -85,7 +85,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-edge px-5 py-2.5">
-        <h2 className="text-[15px] font-bold">Reviewing · {deck.name}</h2>
+        <h2 className="text-base font-bold">Reviewing · {deck.name}</h2>
         <span className="text-xs text-muted">
           {Math.min(index, queue.length)}/{queue.length}
         </span>
@@ -107,11 +107,11 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         {done ? (
           <div className="flex flex-col items-center gap-3 text-center fade-up">
             <Inky pose="happy" size={110} />
-            <div className="text-xl font-bold">{reviewed > 0 ? 'All caught up — nice work!' : 'Nothing due in this deck'}</div>
+            <div className="text-xl font-bold">{reviewed > 0 ? 'All caught up. Nice work!' : 'Nothing due in this deck'}</div>
             <div className="max-w-sm text-muted">
               {reviewed > 0
                 ? `You reviewed ${reviewed} card${reviewed === 1 ? '' : 's'}. Cards you struggled with will come back sooner.`
-                : 'Come back when cards are due — spaced repetition works best that way.'}
+                : 'Come back when cards are due. Spaced repetition works best that way.'}
             </div>
             <Button variant="primary" onClick={finish}>
               Done
@@ -145,7 +145,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                     style={{ color: g.tone }}
                   >
                     {g.label}
-                    <div className="text-[10px] font-normal text-faint">{i + 1}</div>
+                    <div className="text-[11px] font-normal text-faint">{i + 1}</div>
                   </button>
                 ))}
               </div>

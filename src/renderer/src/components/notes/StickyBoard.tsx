@@ -53,7 +53,7 @@ export function StickyBoard({ notebook }: { notebook: Notebook }): React.JSX.Ele
                 pose="neutral"
                 color={isColorKey(notebook.color) ? notebook.color : 'teal'}
                 title="A blank board, full of possibility"
-                hint="Stickies are quick, freeform thoughts — drag them anywhere, resize them, recolor them."
+                hint="Stickies are quick, freeform thoughts. Drag them anywhere, resize them, recolor them."
                 action={
                   <Button variant="primary" onClick={() => void addSticky()}>
                     <Plus size={14} /> Add a sticky
@@ -179,7 +179,7 @@ function Sticky({ note }: { note: Note }): React.JSX.Element {
           className="hidden h-5 w-5 items-center justify-center rounded opacity-70 hover:opacity-100 group-hover:flex"
           style={{ color: colors.text }}
         >
-          <Palette size={12} />
+          <Palette size={14} />
         </button>
         <button
           type="button"
@@ -189,7 +189,7 @@ function Sticky({ note }: { note: Note }): React.JSX.Element {
           className="hidden h-5 w-5 items-center justify-center rounded opacity-70 hover:opacity-100 group-hover:flex"
           style={{ color: colors.text }}
         >
-          <Trash2 size={12} />
+          <Trash2 size={14} />
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 text-sm" style={{ color: colors.text }}>

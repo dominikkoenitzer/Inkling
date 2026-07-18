@@ -360,11 +360,86 @@ textarea:focus {
   animation: pop-in 0.16s ease-out both;
 }
 
+/* Staggered entrance for lists of cards/rows — first 10 children cascade in. */
+.stagger > * {
+  animation: fade-up 0.24s ease-out both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 30ms; }
+.stagger > *:nth-child(3) { animation-delay: 60ms; }
+.stagger > *:nth-child(4) { animation-delay: 90ms; }
+.stagger > *:nth-child(5) { animation-delay: 120ms; }
+.stagger > *:nth-child(6) { animation-delay: 150ms; }
+.stagger > *:nth-child(7) { animation-delay: 180ms; }
+.stagger > *:nth-child(8) { animation-delay: 210ms; }
+.stagger > *:nth-child(9) { animation-delay: 240ms; }
+.stagger > *:nth-child(10) { animation-delay: 270ms; }
+
+/* Plan cards (Today view): lift on hover, settle on press. */
+.plan-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.plan-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.plan-card:active {
+  transform: translateY(0) scale(0.995);
+}
+
+/* Streak flame flicker. */
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1) rotate(-2deg); }
+  30% { transform: scale(1.12) rotate(2deg); }
+  60% { transform: scale(0.95) rotate(-1deg); }
+}
+.flame {
+  display: inline-block;
+  animation: flame-flicker 1.6s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+/* Checkbox pop when ticked. */
+@keyframes check-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.check-pop:checked {
+  animation: check-pop 0.25s ease-out;
+}
+
+/* Pure-CSS confetti burst (Today view cleared state). */
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(-10px) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(120px) rotate(340deg);
+  }
+}
+.confetti > span {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confetti-fall 2s ease-in infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .inky,
   .inky-eyes,
   .inky-wave-arm,
-  .inky-body {
+  .inky-body,
+  .stagger > *,
+  .plan-card,
+  .flame,
+  .check-pop:checked,
+  .confetti > span {
     animation: none !important;
+    transition: none !important;
   }
 }

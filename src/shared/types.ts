@@ -3,7 +3,7 @@ export type NotebookKind = 'general' | 'school_subject'
 export type NoteType = 'page' | 'sticky'
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type Priority = 'low' | 'medium' | 'high'
-export type ModuleTab = 'notes' | 'tasks' | 'calendar' | 'study' | 'grades'
+export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study' | 'grades'
 
 export interface Notebook {
   id: number
@@ -43,17 +43,6 @@ export interface Task {
   parent_task_id: number | null
   created_at: string
   completed_at: string | null
-}
-
-export interface CalEvent {
-  id: number
-  notebook_id: number
-  title: string
-  start_time: string // ISO UTC
-  end_time: string | null
-  recurrence_rule: string | null // e.g. "WEEKLY;BYDAY=MO,WE,FR"
-  linked_task_id: number | null
-  color: string | null
 }
 
 export interface Deck {
@@ -123,9 +112,7 @@ export interface OnboardingPayload {
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy'
 
 export interface QuickAddPayload {
-  kind: 'note' | 'task' | 'event'
+  kind: 'note' | 'task'
   text: string
   due?: string | null // ISO, for task
-  start?: string | null // ISO, for event
-  end?: string | null
 }

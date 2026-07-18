@@ -94,6 +94,13 @@ export function accentVars(key: ColorKey, theme: 'dark' | 'cozy'): CSSProperties
   } as CSSProperties
 }
 
+/** Theme-aware soft tint for icon bubbles and chips: subtle fill, readable glyph. */
+export function softTint(key: string | null | undefined, theme: 'dark' | 'cozy'): { bg: string; text: string } {
+  const r = ramp(key)
+  if (theme === 'dark') return { bg: `color-mix(in srgb, ${r[500]} 18%, transparent)`, text: r[300] }
+  return { bg: r[100], text: r[700] }
+}
+
 /** Sticky-note fill/text per theme. */
 export function stickyColors(key: string | null | undefined, theme: 'dark' | 'cozy'): { bg: string; text: string; edge: string } {
   const r = ramp(key)

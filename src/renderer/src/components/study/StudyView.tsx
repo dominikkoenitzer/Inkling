@@ -35,7 +35,7 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
     <div className="h-full overflow-y-auto p-6">
       <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-[1fr_320px]">
         <section>
-          <h2 className="mb-3 text-[15px] font-bold">Flashcard decks</h2>
+          <h2 className="mb-3 text-base font-bold">Flashcard decks</h2>
           {decks.length === 0 ? (
             <div className="rounded-xl border border-edge bg-panel">
               <EmptyState
@@ -50,7 +50,7 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
               {decks.map((d) => (
                 <div key={d.id} className="rounded-xl border border-edge bg-panel p-4 transition-colors hover:bg-raised">
                   <button type="button" className="mb-1 flex w-full items-center gap-2 text-left" onClick={() => useApp.getState().setSelectedDeck(d.id)}>
-                    <Layers size={15} style={{ color: ramp(notebook.color)[500] }} />
+                    <Layers size={16} style={{ color: ramp(notebook.color)[500] }} />
                     <span className="truncate font-semibold">{d.name}</span>
                   </button>
                   <div className="mb-3 text-xs text-muted">
@@ -59,10 +59,10 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
                   </div>
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={() => setReviewingDeck(d)} disabled={d.due_count === 0}>
-                      <Play size={13} /> Review {d.due_count > 0 ? `(${d.due_count})` : ''}
+                      <Play size={14} /> Review {d.due_count > 0 ? `(${d.due_count})` : ''}
                     </Button>
                     <Button variant="ghost" onClick={() => useApp.getState().setSelectedDeck(d.id)}>
-                      <Pencil size={13} /> Edit
+                      <Pencil size={14} /> Edit
                     </Button>
                   </div>
                 </div>
@@ -72,7 +72,7 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
         </section>
 
         <section>
-          <h2 className="mb-3 text-[15px] font-bold">Focus timer</h2>
+          <h2 className="mb-3 text-base font-bold">Focus timer</h2>
           <FocusTimer notebook={notebook} decks={decks} />
         </section>
       </div>
@@ -129,7 +129,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
           <span className="text-sm text-muted">· {cards.length} cards</span>
           <div className="ml-auto flex gap-2">
             <Button variant="primary" onClick={onReview} disabled={deck.due_count === 0}>
-              <Play size={13} /> Review {deck.due_count > 0 ? `(${deck.due_count})` : ''}
+              <Play size={14} /> Review {deck.due_count > 0 ? `(${deck.due_count})` : ''}
             </Button>
             <Button
               variant="danger"
@@ -140,16 +140,16 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
                 })
               }}
             >
-              <Trash2 size={13} />
+              <Trash2 size={14} />
             </Button>
           </div>
         </div>
 
         <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-xl border border-edge bg-panel p-3">
-          <input className={inputCls} placeholder="Front — the question or term" value={front} onChange={(e) => setFront(e.target.value)} />
+          <input className={inputCls} placeholder="Front: the question or term" value={front} onChange={(e) => setFront(e.target.value)} />
           <input
             className={inputCls}
-            placeholder="Back — the answer"
+            placeholder="Back: the answer"
             value={back}
             onChange={(e) => setBack(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void add()}
@@ -159,7 +159,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
           </Button>
         </div>
 
-        {cards.length === 0 && <p className="py-6 text-center text-sm text-muted">No cards yet — add your first one above.</p>}
+        {cards.length === 0 && <p className="py-6 text-center text-sm text-muted">No cards yet. Add your first one above.</p>}
         <div className="space-y-1.5">
           {cards.map((c) => (
             <CardRow key={c.id} card={c} />
@@ -187,7 +187,7 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
       <input className="bg-transparent text-sm" value={front} onChange={(e) => setFront(e.target.value)} onBlur={save} />
       <input className="border-l border-edge bg-transparent pl-3 text-sm text-muted" value={back} onChange={(e) => setBack(e.target.value)} onBlur={save} />
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-faint" title={`ease ${card.ease_factor.toFixed(2)} · interval ${card.interval_days}d`}>
+        <span className="text-[11px] text-faint" title={`ease ${card.ease_factor.toFixed(2)} · interval ${card.interval_days}d`}>
           {due ? 'due' : `in ${card.interval_days}d`}
         </span>
         <button
@@ -196,7 +196,7 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
           className="hidden text-faint hover:text-red-400 group-hover:block"
           onClick={() => void api.decks.removeCard(card.id).then(() => bumpData('decks'))}
         >
-          <Trash2 size={13} />
+          <Trash2 size={14} />
         </button>
       </div>
     </div>
