@@ -145,7 +145,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
           </div>
         </div>
 
-        <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-lg border border-edge bg-raised p-3">
+        <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-lg border border-edge bg-sunken p-3">
           <input className={inputCls} placeholder="Front: the question or term" value={front} onChange={(e) => setFront(e.target.value)} />
           <input
             className={inputCls}

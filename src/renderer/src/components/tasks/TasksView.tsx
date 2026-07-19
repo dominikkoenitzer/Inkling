@@ -115,8 +115,9 @@ function ListView({ tasks, showNotebook }: { tasks: Task[]; showNotebook: boolea
   }
 
   // Only done tasks left: show an explicit empty "To do" group so the list doesn't
-  // read as broken with a lone crossed-out section.
-  const onlyDone = groups.slice(0, 4).every((g) => g.items.length === 0) && groups[4].items.length > 0
+  // read as broken with a lone crossed-out section. Check EVERY task (subtasks included),
+  // not just roots, so a done parent with an unchecked child never reads as "all clear".
+  const onlyDone = tasks.length > 0 && tasks.every((t) => t.status === 'done')
 
   return (
     <div className="mx-auto max-w-2xl">

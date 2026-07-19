@@ -4,6 +4,21 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.4] — 2026-07-19
+
+Fixes from an adversarial review of the v0.3.0–v0.3.3 changes (all six verified), plus refreshed docs.
+
+### Fixed
+- **Grades keep their meaning when you switch systems.** Each assessment now records the grading system it was entered under, so changing the header toggle no longer silently reinterprets old grades. Previously a points entry that happened to be out of 6 could be misread as a failing Swiss grade, and a Swiss pass could land near the bottom of the US letter scale. (DB migration v3, additive; existing grades are backfilled from your current system.)
+- **Switching the grading system mid-entry can't submit a wrong grade.** Changing the toggle while adding an assessment now clears the half-typed draft instead of reinterpreting a Swiss grade as a raw percentage.
+- **The Today focus card won't discard a running session.** When a focus block is already in progress the card offers **Resume** instead of a second **Start**, and starting a new session banks any minutes already elapsed rather than orphaning them.
+- **Segmented toggles stay visible in high-contrast mode.** The grading, theme, font-size and List/Board controls now carry a border, so they no longer vanish when high-contrast collapses the surface tones to a single colour.
+- **The Tasks "All clear" banner tells the truth.** It now accounts for unchecked subtasks nested under a completed parent, so it won't claim you're done while an open task is on screen.
+- **Deck "add card" fields read as fields.** The Front/Back inputs now sit on a distinct surface from their container instead of blending into one block.
+
+### Changed
+- README screenshots and hero banner regenerated for the current design (vertical navigation, four-tone surface ladder); tests badge now reflects 53 passing.
+
 ## [0.3.3] — 2026-07-18
 
 Round two of the design review: tone separation, empty states, and width discipline.

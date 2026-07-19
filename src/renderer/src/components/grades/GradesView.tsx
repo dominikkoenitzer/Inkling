@@ -4,7 +4,7 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { isColorKey } from '@/lib/colors'
 import { EmptyState } from '@/components/Inky'
 import { Button, IconBtn, Segmented } from '@/components/ui'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, letterGrade, gpaPoints, swissRound, swissPass, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, letterGrade, gpaPoints, swissRound, swissPass, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
 import type { Notebook, Grade } from '@shared/types'
 
 const api = window.inkling
@@ -28,6 +28,14 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
     void api.grades.list(notebook.id).then(setGrades)
   }, [notebook.id, version])
 
+  // Switching the grading system re-labels the score inputs (single Grade box vs Score/Max),
+  // so a half-typed Swiss grade must not survive to be submitted as a raw percent score.
+  useEffect(() => {
+    setAdding(false)
+    setScore('')
+    setMax('100')
+  }, [gradingSystem])
+
   const pct = weightedPercentage(grades)
   // round once so the shown %, letter, and GPA can't disagree at a grade cutoff
   const shownPct = pct === null ? null : Math.round(pct * 10) / 10
@@ -42,13 +50,14 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
       // Swiss entries ARE grades. Out-of-band input is a typo, not a grade: refuse it
       // rather than silently clamping a mistyped 45 into a perfect 6.
       if (s < 1 || s > 6) return
-      // max is fixed at 6 so swissItemGrade can tell these rows apart from points entries
+      // max is fixed at 6; the row also records system:'swiss' so it's read as a grade
       await api.grades.create({
         notebook_id: notebook.id,
         title: title.trim(),
         score: s,
         max: 6,
-        weight: Number.isFinite(w) && w > 0 ? w : 1
+        weight: Number.isFinite(w) && w > 0 ? w : 1,
+        system: 'swiss'
       })
     } else {
       const m = parseFloat(max)
@@ -57,7 +66,8 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
         title: title.trim(),
         score: s,
         max: Number.isFinite(m) && m > 0 ? m : 100,
-        weight: Number.isFinite(w) && w > 0 ? w : 1
+        weight: Number.isFinite(w) && w > 0 ? w : 1,
+        system: gradingSystem
       })
     }
     setTitle('')
@@ -155,14 +165,14 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
         ) : (
           <div className="stagger mx-auto max-w-2xl">
             {grades.map((g) => {
-              const p = g.max > 0 ? (g.score / g.max) * 100 : 0
+              const p = itemPercent(g) ?? 0
               const sg = swissItemGrade(g)
               return (
                 <div key={g.id} className="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-hover">
                   <span className="min-w-0 flex-1 truncate text-sm">{g.title}</span>
                   {swiss ? (
                     <>
-                      {g.max !== 6 && (
+                      {g.system !== 'swiss' && (
                         <span className="tabular-nums text-sm text-muted">
                           {fmt(g.score)} / {fmt(g.max)}
                         </span>
