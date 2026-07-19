@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, letterGrade, gpaPoints, swissRound, swissPass, subjectAverage } from '../src/shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, letterGrade, gpaPoints, swissRound, swissPass, subjectAverage } from '../src/shared/grades'
 
 describe('weightedPercentage', () => {
   it('averages equally-weighted items', () => {
@@ -49,6 +49,29 @@ describe('swissItemGrade', () => {
   })
   it('returns null for rows with no usable max', () => {
     expect(swissItemGrade({ score: 5, max: 0, weight: 1 })).toBeNull()
+  })
+})
+
+describe('per-row grading system (no reinterpretation on switch)', () => {
+  it('a points row that happens to be out of 6 is NOT read as a native Swiss grade', () => {
+    // Repro A: a 6-point quiz scored 3.8 (63.3%, a pass) entered under Percent must convert,
+    // not be misread as a failing native grade of 3.8, once the viewer switches to Swiss.
+    const quiz = { score: 3.8, max: 6, weight: 1, system: 'percent' as const }
+    expect(swissItemGrade(quiz)).toBeCloseTo(4.17, 1)
+    expect(swissPass(swissItemGrade(quiz)!)).toBe(true)
+  })
+  it('a native Swiss pass maps to the 60% / D- boundary under other systems, not grade/6', () => {
+    // Repro B: a Swiss 4.0 (the pass threshold) must land at the US pass boundary.
+    const lab = { score: 4, max: 6, weight: 1, system: 'swiss' as const }
+    expect(itemPercent(lab)).toBeCloseTo(60)
+    expect(letterGrade(itemPercent(lab)!)).toBe('D-')
+  })
+  it('a native Swiss grade reads back as itself', () => {
+    expect(swissItemGrade({ score: 5, max: 6, weight: 1, system: 'swiss' })).toBeCloseTo(5)
+    expect(itemPercent({ score: 6, max: 6, weight: 1, system: 'swiss' })).toBeCloseTo(100)
+  })
+  it('falls back to the max===6 heuristic only when no system is recorded (legacy rows)', () => {
+    expect(swissItemGrade({ score: 5.5, max: 6, weight: 1 })).toBeCloseTo(5.5)
   })
 })
 

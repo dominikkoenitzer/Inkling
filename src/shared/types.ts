@@ -1,3 +1,5 @@
+import type { GradingSystem } from './grades'
+
 export type ColorKey = 'teal' | 'coral' | 'amber' | 'pink' | 'gray'
 export type NotebookKind = 'general' | 'school_subject'
 export type NoteType = 'page' | 'sticky'
@@ -72,6 +74,8 @@ export interface Grade {
   score: number
   max: number
   weight: number
+  /** The grading system the row was entered under, so a later system switch can't reinterpret it. */
+  system: GradingSystem
   created_at: string
 }
 

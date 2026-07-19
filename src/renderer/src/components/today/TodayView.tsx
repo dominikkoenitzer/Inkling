@@ -26,6 +26,9 @@ function greeting(): string {
  */
 export function TodayView(): React.JSX.Element {
   const app = useApp()
+  // A focus session is live if it's running or paused part-way through — used so the plan
+  // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
+  const timerActive = useTimer((s) => s.mode === 'focus' && (s.running || s.secondsLeft < s.totalSeconds))
   const version = useVersion('decks') + useVersion('tasks') + useVersion('grades') + useVersion('focus')
   const [decks, setDecks] = useState<Deck[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -69,9 +72,11 @@ export function TodayView(): React.JSX.Element {
     .map((nb) => ({ nb, avg: subjectAverage(grades.filter((g) => g.notebook_id === nb.id), app.gradingSystem) }))
     .filter((x): x is { nb: Notebook; avg: NonNullable<ReturnType<typeof subjectAverage>> } => x.avg !== null)
   const weakest = bySubject.length >= 2 ? bySubject.reduce((a, b) => (b.avg.value < a.avg.value ? b : a)) : null
-  // gate on loaded so the focus card can't flash before the first fetch lands
+  // gate on loaded so the focus card can't flash before the first fetch lands.
+  // A running session shows "resume"; otherwise suggest a fresh block only if none is done yet.
   const suggestFocus = loaded && minutes === 0
-  const planCount = dueDecks.length + openTasks.length + (weakest ? 1 : 0) + (suggestFocus ? 1 : 0)
+  const focusItem: 'resume' | 'start' | null = timerActive ? 'resume' : suggestFocus ? 'start' : null
+  const planCount = dueDecks.length + openTasks.length + (weakest ? 1 : 0) + (focusItem ? 1 : 0)
   const cleared = loaded && planCount === 0
 
   const completeTask = (t: Task): void => {
@@ -92,7 +97,8 @@ export function TodayView(): React.JSX.Element {
   }
 
   const startFocus = (): void => {
-    void useTimer.getState().start(25)
+    // Never clobber a live session — if one is already running, just jump to it.
+    if (!timerActive) void useTimer.getState().start(25)
     app.setSelectedDeck(null)
     app.setTab('study')
   }
@@ -210,13 +216,17 @@ export function TodayView(): React.JSX.Element {
             />
           )}
 
-          {suggestFocus && !cleared && (
+          {focusItem && !cleared && (
             <PlanCard
               bubble={<Play size={18} />}
               tint={softTint(active?.color, app.theme)}
-              title="One 25-minute focus block"
-              sub="Start the timer, pick anything above. Momentum does the rest."
-              actionLabel="Start"
+              title={focusItem === 'resume' ? 'Focus session in progress' : 'One 25-minute focus block'}
+              sub={
+                focusItem === 'resume'
+                  ? 'Pick up where you left off. Your timer is still running.'
+                  : 'Start the timer, pick anything above. Momentum does the rest.'
+              }
+              actionLabel={focusItem === 'resume' ? 'Resume' : 'Start'}
               onAction={startFocus}
             />
           )}

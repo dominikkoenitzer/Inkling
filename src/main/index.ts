@@ -119,7 +119,7 @@ function seedDemo(): void {
   repos.createTask({ notebook_id: nb.id, title: 'Finish reading Ch. 4', priority: 'high', due_date: today.toISOString() })
   repos.createTask({ notebook_id: nb.id, title: 'Lab report draft', due_date: tomorrow.toISOString() })
   repos.createTask({ notebook_id: nb.id, title: 'Email study group', priority: 'low' })
-  repos.createGrade({ notebook_id: nb.id, title: 'Quiz 1', score: 5, max: 6, weight: 1 })
+  repos.createGrade({ notebook_id: nb.id, title: 'Quiz 1', score: 5, max: 6, weight: 1, system: 'swiss' })
   repos.createDeckFromPairs(nb.id, 'Cell biology', [
     ['Photosynthesis', 'The process plants use to convert light into energy'],
     ['Mitochondria', 'The powerhouse of the cell'],

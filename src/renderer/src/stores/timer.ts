@@ -74,6 +74,14 @@ export const useTimer = create<TimerState>((set, get) => {
     justFinished: false,
 
     start: async (minutes, link) => {
+      // Defense against any caller starting over a live focus session: bank the minutes
+      // already elapsed on it (so progress still counts) instead of orphaning its row.
+      const prev = get()
+      if (prev.sessionId !== null && prev.mode === 'focus') {
+        stopTicking()
+        const elapsed = Math.round((prev.totalSeconds - prev.secondsLeft) / 60)
+        if (elapsed > 0) void api.focus.complete(prev.sessionId, elapsed).then(() => bumpData('focus'))
+      }
       const sessionId = await api.focus.start({ task_id: link?.taskId ?? null, deck_id: link?.deckId ?? null })
       set({
         running: true,

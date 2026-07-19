@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS grades (
   score REAL NOT NULL,
   max REAL NOT NULL DEFAULT 100,
   weight REAL NOT NULL DEFAULT 1,
+  system TEXT NOT NULL DEFAULT 'percent',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_grades_notebook ON grades(notebook_id);
@@ -143,6 +144,23 @@ function migrate(d: Database.Database): void {
     // Grade tracker (added in v0.2.0) — additive, keeps existing data intact.
     d.exec(GRADES_SCHEMA)
     d.pragma('user_version = 2')
+  }
+  if (version < 3) {
+    // Per-row grading system (v0.3.4): score/max alone can't tell a native Swiss grade
+    // apart from a points entry that happens to be out of 6, so a system switch used to
+    // silently reinterpret old grades. Record the entry system per row. Fresh DBs already
+    // have the column from GRADES_SCHEMA; only add it where missing, then backfill legacy
+    // rows from the user's chosen system (their best-known origin).
+    const cols = d.prepare(`PRAGMA table_info(grades)`).all() as Array<{ name: string }>
+    if (!cols.some((c) => c.name === 'system')) {
+      d.exec(`ALTER TABLE grades ADD COLUMN system TEXT NOT NULL DEFAULT 'percent'`)
+    }
+    const setting = d.prepare(`SELECT value FROM settings WHERE key = 'grading_system'`).get() as
+      | { value: string }
+      | undefined
+    const system = setting?.value === 'us' || setting?.value === 'swiss' ? setting.value : 'percent'
+    d.prepare(`UPDATE grades SET system = ?`).run(system)
+    d.pragma('user_version = 3')
   }
 }
 
