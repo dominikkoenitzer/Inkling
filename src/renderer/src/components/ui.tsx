@@ -161,15 +161,15 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void
 }): React.JSX.Element {
   return (
-    <div className="inline-flex rounded-lg bg-app p-0.5">
+    <div className="inline-flex rounded-lg border border-edge bg-app p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           title={o.title}
           onClick={() => onChange(o.value)}
-          className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-            value === o.value ? 'bg-raised text-ink shadow-sm' : 'text-muted hover:text-ink'
+          className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+            value === o.value ? 'border-edge bg-raised text-ink shadow-sm' : 'border-transparent text-muted hover:text-ink'
           }`}
         >
           {o.label}

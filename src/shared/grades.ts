@@ -13,22 +13,51 @@ export interface GradeItem {
   score: number
   max: number
   weight: number
+  /**
+   * The grading system this row was entered under. score/max is ambiguous on its own
+   * (is "4/6" four-out-of-six points, or a native Swiss grade of 4?), so every row now
+   * records how it was entered and is interpreted that way regardless of the system the
+   * viewer has selected. Legacy rows may omit it; see the fallbacks below.
+   */
+  system?: GradingSystem
+}
+
+/** True when this row is a native Swiss 1–6 grade (score IS the grade), not a points entry. */
+function isNativeSwiss(g: GradeItem): boolean {
+  return g.system ? g.system === 'swiss' : g.max === 6
 }
 
 /**
- * Weighted percentage (0–100) across grade items. Items with a non-positive max or
- * weight are ignored. Returns null when there is nothing valid to average.
+ * A single row as a percentage (0–100), read under the system it was entered in.
+ * A native Swiss grade maps linearly (6→100%, 4 = pass → 60%, 1→0%); everything else
+ * is score/max. Returns null when there is nothing usable to divide by.
+ */
+export function itemPercent(g: GradeItem): number | null {
+  if (g.system === 'swiss') {
+    const grade = Math.min(6, Math.max(1, g.score))
+    return ((grade - 1) / 5) * 100
+  }
+  if (!(g.max > 0)) return null
+  return (g.score / g.max) * 100
+}
+
+/**
+ * Weighted percentage (0–100) across grade items, each read under its own entry system.
+ * Items with nothing usable to average, or non-positive weight, are ignored. Returns null
+ * when there is nothing valid to average.
  */
 export function weightedPercentage(items: GradeItem[]): number | null {
   let num = 0
   let den = 0
   for (const g of items) {
-    if (!(g.max > 0) || !(g.weight > 0)) continue
-    num += g.weight * (g.score / g.max)
+    if (!(g.weight > 0)) continue
+    const p = itemPercent(g)
+    if (p === null) continue
+    num += g.weight * p
     den += g.weight
   }
   if (den === 0) return null
-  return (num / den) * 100
+  return num / den
 }
 
 const LETTERS: Array<[number, string]> = [
@@ -52,13 +81,13 @@ export function letterGrade(pct: number): string {
 }
 
 /**
- * A single row's value on the Swiss 1–6 scale (6 best, 4 = pass). Rows entered in
- * Swiss mode store max = 6 and score = the grade itself; any other max is a
- * points-based entry and converts via the official mapping grade = 1 + 5·(score/max),
- * so data entered under another system still reads sanely after a switch.
+ * A single row's value on the Swiss 1–6 scale (6 best, 4 = pass). A row entered in Swiss
+ * mode IS its grade; any other entry is points-based and converts via the official mapping
+ * grade = 1 + 5·(score/max). Keying on the entry system (not on max === 6, which also matches
+ * an ordinary 6-point quiz) is what keeps a system switch from silently reinterpreting rows.
  */
 export function swissItemGrade(g: GradeItem): number | null {
-  if (g.max === 6) return Math.min(6, Math.max(1, g.score))
+  if (isNativeSwiss(g)) return Math.min(6, Math.max(1, g.score))
   if (!(g.max > 0)) return null
   return Math.min(6, Math.max(1, 1 + 5 * (g.score / g.max)))
 }
