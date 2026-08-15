@@ -53,6 +53,12 @@ deletion.
 
 ### Fixed
 - Deleting a note was an immediate, unconfirmed, unrecoverable `DELETE`.
+- **The universal macOS build packages again.** better-sqlite3 v12+ is N-API based: it
+  ships one prebuilt binary per platform/arch under `prebuilds/` and loads the one matching
+  `process.arch` at runtime, so every slice of a universal build legitimately contains all
+  of them. `@electron/universal` refuses to merge a `.node` file that is byte-identical in
+  the x64 and arm64 slices unless it's listed in `mac.x64ArchFiles`, which it now is. Both
+  binaries belong in the merged app — that's what lets one download run on either chip.
 
 ### Notes
 - Database migrations v4–v7 run automatically on first launch and are all additive; a
