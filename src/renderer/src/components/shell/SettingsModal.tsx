@@ -1,4 +1,4 @@
-import { Moon, Flame, Type, Contrast, Database, Keyboard, Percent } from 'lucide-react'
+import { Moon, Flame, Type, Contrast, Database, Keyboard, Percent, Brain } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { GRADING_SYSTEM_OPTIONS } from '@shared/grades'
 import { Modal, Segmented } from '@/components/ui'
@@ -48,6 +48,25 @@ export function SettingsModal(): React.JSX.Element {
           <Segmented options={GRADING_SYSTEM_OPTIONS} value={app.gradingSystem} onChange={app.setGradingSystem} />
         </Row>
 
+        <Row
+          icon={<Brain size={16} />}
+          label="Recall target"
+          hint="How much you want to remember when a card comes back. Higher means shorter intervals and more reviews."
+        >
+          <Segmented
+            options={[
+              { value: '0.85', label: '85%', title: 'Fewer reviews, more forgetting' },
+              { value: '0.9', label: '90%', title: 'The recommended balance' },
+              { value: '0.95', label: '95%', title: 'Little forgetting, many more reviews' }
+            ]}
+            value={String(app.desiredRetention)}
+            onChange={(v) => app.setDesiredRetention(Number(v))}
+          />
+          <p className="mt-1.5 text-[11px] text-faint">
+            Inkling schedules with FSRS, which solves each interval for this number. It applies from your next review on.
+          </p>
+        </Row>
+
         <Row icon={<Keyboard size={16} />} label="Shortcuts" hint="">
           <div className="space-y-1 text-xs text-muted">
             <div><Kbd>Ctrl K</Kbd> command palette & search</div>
@@ -70,7 +89,7 @@ export function SettingsModal(): React.JSX.Element {
 
         <div className="flex items-center gap-2 border-t border-edge pt-4 text-xs text-faint">
           <LogoMark size={18} />
-          Inkling 0.3.3 · notes, tasks, study and grades. Studying, made fun.
+          Inkling {__APP_VERSION__} · notes, tasks, study and grades. Studying, made fun.
         </div>
       </div>
     </Modal>
@@ -93,5 +112,5 @@ function Row({ icon, label, hint, children }: { icon: React.ReactNode; label: st
 }
 
 function Kbd({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <kbd className="rounded border border-edge bg-sunken px-1 py-0.5 text-[11px]">{children}</kbd>
+  return <kbd className="rounded-sm border border-edge bg-sunken px-1 py-0.5 text-[11px]">{children}</kbd>
 }

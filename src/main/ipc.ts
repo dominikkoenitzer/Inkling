@@ -3,6 +3,8 @@ import fs from 'fs'
 import { join } from 'path'
 import * as repos from './repos'
 import { printableDocument } from '@shared/tiptapHtml'
+import { markdownToNote } from '@shared/markdownImport'
+import { parseDeckFile, nameFromPath } from '@shared/deckImport'
 import type { QuickAddPayload } from '@shared/types'
 
 /** Broadcast a data change to every window except the one that caused it. */
@@ -35,7 +37,17 @@ export function registerIpc(hideQuickAdd: () => void): void {
   handle('notes.create', repos.createNote, 'notes')
   handle('notes.update', repos.updateNote, 'notes')
   handle('notes.remove', repos.removeNote, 'notes')
+  handle('notes.restore', repos.restoreNote, 'notes')
+  handle('notes.listDeleted', repos.listDeletedNotes)
+  handle('notes.purge', repos.purgeNote, 'notes')
+  handle('notes.emptyTrash', repos.emptyTrash, 'notes')
   handle('notes.syncTasks', repos.syncNoteTasks, 'tasks')
+  handle('notes.syncLinks', repos.syncNoteLinks, 'notes')
+  handle('notes.backlinks', repos.noteBacklinks)
+
+  handle('tags.list', repos.listTags)
+  handle('tags.forNote', repos.tagsForNote)
+  handle('tags.notes', repos.notesWithTag)
 
   handle('tasks.list', repos.listTasks)
   handle('tasks.smart', repos.smartTasks)
@@ -68,6 +80,12 @@ export function registerIpc(hideQuickAdd: () => void): void {
   handle('settings.set', repos.setSetting, 'settings')
 
   handle('search.query', repos.searchQuery)
+
+  handle('stats.overview', repos.statsOverview)
+  handle('stats.activity', repos.activity)
+  handle('stats.forecast', repos.forecast)
+  handle('stats.ratings', repos.ratingBreakdown)
+  handle('stats.subjects', repos.subjectStats)
 
   handle('grades.list', repos.listGrades)
   handle('grades.all', repos.listAllGrades)
@@ -104,6 +122,70 @@ export function registerIpc(hideQuickAdd: () => void): void {
   })
 
   ipcMain.handle('app.hideQuickAdd', () => hideQuickAdd())
+
+  // Import Markdown files as pages. Multi-select, because nobody migrates one note at a time.
+  ipcMain.handle('app.importMarkdown', async (event, notebookId: number) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Import Markdown',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled || result.filePaths.length === 0) return { imported: 0, failed: 0, firstNoteId: null }
+
+    let imported = 0
+    let failed = 0
+    let firstNoteId: number | null = null
+    for (const file of result.filePaths) {
+      try {
+        const text = fs.readFileSync(file, 'utf8')
+        const { title, doc } = markdownToNote(text, nameFromPath(file))
+        const note = repos.createNote({
+          notebook_id: notebookId,
+          type: 'page',
+          title: title ?? nameFromPath(file),
+          content: JSON.stringify(doc)
+        })
+        firstNoteId ??= note.id
+        imported++
+      } catch (err) {
+        console.error('markdown import failed', file, err)
+        failed++
+      }
+    }
+    broadcast(event.sender.id, 'notes')
+    return { imported, failed, firstNoteId }
+  })
+
+  // Import a CSV/TSV (Quizlet, Anki, a spreadsheet) as a flashcard deck.
+  ipcMain.handle('app.importDeck', async (event, notebookId: number) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Import flashcards',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Cards', extensions: ['csv', 'tsv', 'txt'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled || result.filePaths.length === 0) return { imported: 0, skipped: 0, deckId: null, deckName: null }
+
+    const file = result.filePaths[0]
+    try {
+      const parsed = parseDeckFile(fs.readFileSync(file, 'utf8'))
+      if (parsed.pairs.length === 0) return { imported: 0, skipped: parsed.skipped, deckId: null, deckName: null }
+      const name = nameFromPath(file)
+      const deck = repos.createDeckFromPairs(notebookId, name, parsed.pairs)
+      broadcast(event.sender.id, 'decks')
+      return { imported: parsed.pairs.length, skipped: parsed.skipped, deckId: deck.id, deckName: name }
+    } catch (err) {
+      console.error('deck import failed', file, err)
+      return { imported: 0, skipped: 0, deckId: null, deckName: null, error: String(err) }
+    }
+  })
 
   // Native "save as" for exporting text (e.g. a note as Markdown).
   ipcMain.handle('app.saveFile', async (event, defaultName: string, contents: string) => {

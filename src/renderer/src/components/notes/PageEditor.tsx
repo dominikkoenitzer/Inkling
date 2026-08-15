@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import Highlight from '@tiptap/extension-highlight'
-import Link from '@tiptap/extension-link'
-import Placeholder from '@tiptap/extension-placeholder'
-import TaskList from '@tiptap/extension-task-list'
-import TaskItem from '@tiptap/extension-task-item'
+import { Placeholder } from '@tiptap/extensions'
+import { TaskList, TaskItem } from '@tiptap/extension-list'
 import {
   Bold,
   Italic,
@@ -29,7 +26,8 @@ import {
   FileDown
 } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { extractNoteTaskItems, extractFlashcardPairs } from '@/lib/parse'
+import { extractNoteTaskItems, extractFlashcardPairs, extractNoteLinks, noteLinksEqual, type NoteLinkItem } from '@/lib/parse'
+import { NoteLink } from '@/lib/noteLink'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { tiptapDocToHtml } from '@shared/tiptapHtml'
 import { IconBtn } from '@/components/ui'
@@ -68,18 +66,19 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
   const syncingRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastItemsRef = useRef<NoteTaskItem[]>([])
+  const lastLinksRef = useRef<NoteLinkItem[]>([])
   const loadedUpdatedAtRef = useRef<string>('')
   const titleRef = useRef('')
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Underline,
+      // StarterKit v3 bundles Underline and Link; configure them here rather than registering twice.
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: true } }),
       Highlight,
-      Link.configure({ openOnClick: true }),
-      Placeholder.configure({ placeholder: 'Write anything… try “# ” for a heading or “[] ” for a task' }),
+      Placeholder.configure({ placeholder: 'Write anything… try “# ” for a heading, “[] ” for a task, “[[” to link a page' }),
       TaskList,
-      LinkedTaskItem.configure({ nested: true })
+      LinkedTaskItem.configure({ nested: true }),
+      NoteLink
     ],
     onUpdate: () => {
       if (syncingRef.current) return
@@ -103,7 +102,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     if (!itemsEqual(items, lastItemsRef.current)) {
       const prevChecked = new Map(lastItemsRef.current.filter((i) => i.taskId !== null).map((i) => [i.taskId, i.checked]))
       const ids = await api.notes.syncTasks(noteId, notebook.id, items)
-      assignTaskIds(editor, ids, syncingRef)
+      assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
       const after = extractNoteTaskItems(editor.getJSON() as Record<string, unknown>)
       if (after.some((i) => i.checked && i.taskId !== null && prevChecked.get(i.taskId) === false)) {
         useApp.getState().celebrate()
@@ -111,6 +110,21 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       lastItemsRef.current = after
       bumpData('tasks')
     }
+
+    // Resolve any [[wiki-links]] the same way: the main process maps each label to a page
+    // (creating it when the title is new) and hands back ids to stamp into the document.
+    const links = extractNoteLinks(editor.getJSON() as Record<string, unknown>)
+    if (!noteLinksEqual(links, lastLinksRef.current)) {
+      const targetIds = await api.notes.syncLinks(
+        noteId,
+        notebook.id,
+        links.map((l) => l.label)
+      )
+      assignNodeIds(editor, 'noteLink', 'noteId', targetIds, syncingRef)
+      lastLinksRef.current = extractNoteLinks(editor.getJSON() as Record<string, unknown>)
+      bumpData('notes')
+    }
+
     const saved = await api.notes.update(noteId, {
       title: titleRef.current || null,
       content: JSON.stringify(editor.getJSON())
@@ -134,6 +148,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       titleRef.current = note.title ?? ''
       loadedUpdatedAtRef.current = note.updated_at
       lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
+      lastLinksRef.current = extractNoteLinks(safeParse(note.content) as Record<string, unknown>)
     })
     return () => {
       alive = false
@@ -153,6 +168,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
         titleRef.current = note.title ?? ''
         loadedUpdatedAtRef.current = note.updated_at
         lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
+      lastLinksRef.current = extractNoteLinks(safeParse(note.content) as Record<string, unknown>)
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,23 +255,47 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
             placeholder="Untitled"
             className="mb-2 w-full bg-transparent text-3xl font-bold text-ink placeholder:text-faint"
           />
-          <EditorContent editor={editor} className="[&>div]:min-h-[50vh]" />
+          {/* One delegated listener beats a React node view per link: clicking a resolved
+              [[wiki-link]] opens that page. */}
+          <EditorContent
+            editor={editor}
+            className="[&>div]:min-h-[50vh]"
+            onClick={(e) => {
+              const el = (e.target as HTMLElement).closest('[data-note-link]')
+              const id = el?.getAttribute('data-note-id')
+              if (!id) return
+              e.preventDefault()
+              void doSave().then(() => useApp.getState().openNote(notebook.id, Number(id)))
+            }}
+          />
         </div>
       </div>
     </div>
   )
 }
 
-function assignTaskIds(editor: Editor, ids: number[], syncingRef: { current: boolean }): void {
+/**
+ * Stamp database ids back onto nodes of one type, in document order — the ids come back
+ * from the main process in the same order the nodes were extracted. Used for both the
+ * note↔task checkboxes and [[wiki-links]]. The transaction is kept out of the undo history
+ * so pressing Ctrl+Z doesn't just un-assign an id.
+ */
+function assignNodeIds(
+  editor: Editor,
+  nodeType: string,
+  attr: string,
+  ids: number[],
+  syncingRef: { current: boolean }
+): void {
   const { state, view } = editor
   const tr = state.tr
   let i = 0
   let changed = false
   state.doc.descendants((node, pos) => {
-    if (node.type.name === 'taskItem') {
+    if (node.type.name === nodeType) {
       const want = ids[i++]
-      if (want !== undefined && node.attrs.taskId !== want) {
-        tr.setNodeMarkup(pos, undefined, { ...node.attrs, taskId: want })
+      if (want !== undefined && want > 0 && node.attrs[attr] !== want) {
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: want })
         changed = true
       }
     }

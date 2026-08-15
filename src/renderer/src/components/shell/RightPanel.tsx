@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { PanelRightClose, PanelRightOpen, FileText, Flame, Timer, CalendarClock, Layers, Plus } from 'lucide-react'
+import { PanelRightClose, PanelRightOpen, FileText, Flame, Timer, CalendarClock, Layers, Plus, Link2, Hash } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { ramp } from '@/lib/colors'
 import { inputCls } from '@/components/ui'
-import type { Task, Priority } from '@shared/types'
+import type { Task, Priority, Note } from '@shared/types'
 
 const api = window.inkling
 
@@ -83,6 +83,73 @@ function NoteContext({ noteId }: { noteId: number }): React.JSX.Element {
           </label>
         ))
       )}
+
+      <NoteTags noteId={noteId} />
+      <Backlinks noteId={noteId} />
+    </div>
+  )
+}
+
+/** Tags picked up from `#hashtags` in the note. Clicking one filters the page list. */
+function NoteTags({ noteId }: { noteId: number }): React.JSX.Element | null {
+  const version = useVersion('notes')
+  const [tags, setTags] = useState<string[]>([])
+
+  useEffect(() => {
+    void api.tags.forNote(noteId).then(setTags)
+  }, [noteId, version])
+
+  if (tags.length === 0) return null
+  return (
+    <div className="mt-4">
+      <PanelHeading icon={<Hash size={14} />}>Tags</PanelHeading>
+      <div className="flex flex-wrap gap-1">
+        {tags.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => {
+              const app = useApp.getState()
+              app.setTab('notes')
+              app.setNoteTagFilter(t)
+            }}
+            className="rounded-md bg-raised px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-hover hover:text-ink"
+          >
+            #{t}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The other end of a [[wiki-link]]. Hidden entirely when nothing points here — an empty
+ * "no backlinks" box would just be noise on most pages.
+ */
+function Backlinks({ noteId }: { noteId: number }): React.JSX.Element | null {
+  const version = useVersion('notes')
+  const [sources, setSources] = useState<Note[]>([])
+
+  useEffect(() => {
+    void api.notes.backlinks(noteId).then(setSources)
+  }, [noteId, version])
+
+  if (sources.length === 0) return null
+  return (
+    <div className="mt-4">
+      <PanelHeading icon={<Link2 size={14} />}>Linked from</PanelHeading>
+      {sources.map((n) => (
+        <button
+          key={n.id}
+          type="button"
+          onClick={() => useApp.getState().openNote(n.notebook_id, n.id)}
+          className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
+        >
+          <FileText size={13} className="shrink-0" />
+          <span className="truncate">{n.title || 'Untitled'}</span>
+        </button>
+      ))}
     </div>
   )
 }

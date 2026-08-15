@@ -3,18 +3,20 @@ import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn } from '@/components/ui'
+import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
 
 const api = window.inkling
 
-const GRADES: Array<{ grade: ReviewGrade; label: string; hint: string; tone: string }> = [
-  { grade: 'again', label: 'Again', hint: 'soon', tone: '#d85a30' },
-  { grade: 'hard', label: 'Hard', hint: '', tone: '#c98b32' },
-  { grade: 'good', label: 'Good', hint: '', tone: '#1d9e75' },
-  { grade: 'easy', label: 'Easy', hint: '', tone: '#3db58b' }
+const GRADES: Array<{ grade: ReviewGrade; label: string; rating: Rating; tone: string }> = [
+  { grade: 'again', label: 'Again', rating: 1, tone: '#d85a30' },
+  { grade: 'hard', label: 'Hard', rating: 2, tone: '#c98b32' },
+  { grade: 'good', label: 'Good', rating: 3, tone: '#1d9e75' },
+  { grade: 'easy', label: 'Easy', rating: 4, tone: '#3db58b' }
 ]
 
 export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void }): React.JSX.Element {
+  const desiredRetention = useApp((s) => s.desiredRetention)
   const [queue, setQueue] = useState<Card[]>([])
   const [index, setIndex] = useState(0)
   const [showBack, setShowBack] = useState(false)
@@ -44,12 +46,14 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
     if (!card) return // nothing to grade (e.g. keypress on the completion screen)
     gradingRef.current = true
     try {
-      await api.decks.review(card.id, g)
+      const updated = await api.decks.review(card.id, g)
       setReviewed((r) => r + 1)
       setShowBack(false)
       if (g === 'again') {
-        // struggled — bring it back at the end of this session (§3: SM-2)
-        setQueue((q) => [...q, card])
+        // Struggled: FSRS puts it back inside the session, so requeue it at the end —
+        // with the memory state it just got, or its second showing would preview stale
+        // intervals.
+        setQueue((q) => [...q, updated ?? card])
       }
       setIndex((i) => i + 1)
     } finally {
@@ -81,6 +85,17 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
 
   const card = queue[index]
   const done = loaded && (queue.length === 0 || index >= queue.length)
+
+  // FSRS runs the same maths in the main process when the answer lands; running it here
+  // too lets each button show the interval it would buy, without a round-trip per card.
+  const intervals =
+    card && showBack
+      ? previewIntervals(
+          { state: card.state, stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review },
+          new Date(),
+          desiredRetention
+        )
+      : null
 
   return (
     <div className="flex h-full flex-col">
@@ -145,7 +160,12 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                     style={{ color: g.tone }}
                   >
                     {g.label}
-                    <div className="text-[11px] font-normal text-faint">{i + 1}</div>
+                    {/* What each answer would actually schedule — the choice is only
+                        meaningful if you can see what it costs. */}
+                    <div className="text-[11px] font-normal text-faint">
+                      {intervals ? (intervals[g.rating] === 0 ? `${RELEARN_MINUTES}m` : formatInterval(intervals[g.rating])) : ''}
+                      <span className="ml-1 opacity-60">{i + 1}</span>
+                    </div>
                   </button>
                 ))}
               </div>

@@ -14,7 +14,10 @@ import {
   Layers,
   BookOpen,
   Percent,
-  FileDown
+  FileDown,
+  BarChart3,
+  Undo2,
+  FileUp
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
@@ -24,7 +27,7 @@ import { tiptapDocToHtml, escapeHtml } from '@shared/tiptapHtml'
 import { Modal, Field, inputCls, Button, IconBtn, IconPicker } from '@/components/ui'
 import { NotebookGlyph } from '@/lib/icons'
 import { UserBar } from '@/components/shell/UserBar'
-import type { Note, Deck, Grade, Task, ModuleTab, ColorKey } from '@shared/types'
+import type { Note, Deck, Grade, Task, ModuleTab, ColorKey, StatsOverview } from '@shared/types'
 
 const api = window.inkling
 
@@ -33,7 +36,8 @@ const TABS: Array<{ id: ModuleTab; icon: React.JSX.Element; label: string }> = [
   { id: 'notes', icon: <FileText size={16} />, label: 'Notes' },
   { id: 'tasks', icon: <CheckSquare size={16} />, label: 'Tasks' },
   { id: 'study', icon: <GraduationCap size={16} />, label: 'Study' },
-  { id: 'grades', icon: <Percent size={16} />, label: 'Grades' }
+  { id: 'grades', icon: <Percent size={16} />, label: 'Grades' },
+  { id: 'stats', icon: <BarChart3 size={16} />, label: 'Progress' }
 ]
 
 export function Sidebar(): React.JSX.Element {
@@ -78,7 +82,7 @@ export function Sidebar(): React.JSX.Element {
       >
         <Search size={16} />
         Search everything…
-        <span className="ml-auto rounded border border-edge px-1 text-[11px]">Ctrl K</span>
+        <span className="ml-auto rounded-sm border border-edge px-1 text-[11px]">Ctrl K</span>
       </button>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
@@ -89,6 +93,7 @@ export function Sidebar(): React.JSX.Element {
             {app.tab === 'tasks' && <TasksSidebar />}
             {app.tab === 'study' && <StudySidebar notebookId={notebook.id} />}
             {app.tab === 'grades' && <GradesSidebar />}
+            {app.tab === 'stats' && <StatsSidebar />}
           </>
         ) : (
           <p className="px-2 py-4 text-sm text-muted">Create a notebook to get going. The + button on the left is waiting.</p>
@@ -105,14 +110,15 @@ export function Sidebar(): React.JSX.Element {
 /* ------------------------------- Notes list ------------------------------- */
 
 function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
-  const { notesView, setNotesView, selectedNoteId, setSelectedNote, notebooks } = useApp()
+  const { notesView, setNotesView, selectedNoteId, setSelectedNote, notebooks, noteTagFilter, setNoteTagFilter } = useApp()
   const version = useVersion('notes')
   const [pages, setPages] = useState<Note[]>([])
   const journal = notebooks.find((n) => n.is_journal === 1)
 
   useEffect(() => {
-    void api.notes.list(notebookId, 'page').then(setPages)
-  }, [notebookId, version])
+    const load = noteTagFilter ? api.tags.notes(noteTagFilter, notebookId) : api.notes.list(notebookId, 'page')
+    void load.then(setPages)
+  }, [notebookId, version, noteTagFilter])
 
   const newPage = async (): Promise<void> => {
     const note = await api.notes.create({ notebook_id: notebookId, type: 'page' })
@@ -164,6 +170,14 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
         </button>
       </div>
 
+      <button
+        type="button"
+        onClick={() => void importMarkdown(notebookId)}
+        className="mb-2 flex w-full items-center justify-center gap-1 rounded-lg px-2 py-1 text-[11px] text-faint transition-colors hover:bg-hover hover:text-muted"
+      >
+        <FileUp size={12} /> Import Markdown…
+      </button>
+
       {journal && (
         <>
           <SectionLabel>Journal</SectionLabel>
@@ -177,8 +191,23 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
         </>
       )}
 
-      <SectionLabel>Pages</SectionLabel>
-      {pages.length === 0 && <p className="px-2 py-2 text-xs text-faint">No pages yet. Hit “+ Page” above.</p>}
+      <TagFilter notebookId={notebookId} />
+
+      <SectionLabel>{noteTagFilter ? `Tagged #${noteTagFilter}` : 'Pages'}</SectionLabel>
+      {pages.length === 0 && (
+        <p className="px-2 py-2 text-xs text-faint">
+          {noteTagFilter ? (
+            <>
+              Nothing carries #{noteTagFilter} any more.{' '}
+              <button type="button" className="underline" onClick={() => setNoteTagFilter(null)}>
+                Show all pages
+              </button>
+            </>
+          ) : (
+            'No pages yet. Hit “+ Page” above.'
+          )}
+        </p>
+      )}
       {pages.map((n) => (
         <div
           key={n.id}
@@ -203,11 +232,23 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
               <Pin size={14} />
             </IconBtn>
             <IconBtn
-              title="Delete page"
+              title="Move page to trash"
               onClick={(e) => {
                 e.stopPropagation()
                 if (selectedNoteId === n.id) setSelectedNote(null)
-                void api.notes.remove(n.id).then(() => bumpData('notes'))
+                void api.notes.remove(n.id).then(() => {
+                  bumpData('notes')
+                  useApp.getState().showToast({
+                    message: `Moved “${n.title?.trim() || 'Untitled'}” to the trash`,
+                    actionLabel: 'Undo',
+                    onAction: () => {
+                      void api.notes.restore(n.id).then(() => {
+                        bumpData('notes')
+                        useApp.getState().setSelectedNote(n.id)
+                      })
+                    }
+                  })
+                })
               }}
             >
               <Trash2 size={14} />
@@ -215,6 +256,73 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
           </span>
         </div>
       ))}
+
+      <TrashSection notebookId={notebookId} />
+    </div>
+  )
+}
+
+/**
+ * The trash, collapsed until there is something in it. Notes sit here for
+ * TRASH_RETENTION_DAYS before the next launch clears them.
+ */
+function TrashSection({ notebookId }: { notebookId: number }): React.JSX.Element | null {
+  const version = useVersion('notes')
+  const [open, setOpen] = useState(false)
+  const [deleted, setDeleted] = useState<Note[]>([])
+
+  useEffect(() => {
+    void api.notes.listDeleted(notebookId).then(setDeleted)
+  }, [notebookId, version])
+
+  if (deleted.length === 0) return null
+
+  return (
+    <div className="mt-2 border-t border-edge pt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-faint transition-colors hover:text-muted"
+      >
+        <Trash2 size={12} />
+        Trash
+        <span className="ml-auto tabular-nums">{deleted.length}</span>
+      </button>
+      {open && (
+        <div className="fade-up">
+          {deleted.map((n) => (
+            <div key={n.id} className="group flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-faint hover:bg-hover">
+              <span className="truncate line-through">{n.title || (n.type === 'sticky' ? 'Sticky' : 'Untitled')}</span>
+              <span className="ml-auto hidden shrink-0 gap-0.5 group-hover:flex">
+                <IconBtn
+                  title="Restore"
+                  onClick={() => void api.notes.restore(n.id).then(() => bumpData('notes'))}
+                >
+                  <Undo2 size={14} />
+                </IconBtn>
+                <IconBtn
+                  title="Delete permanently"
+                  onClick={() => void api.notes.purge(n.id).then(() => bumpData('notes'))}
+                >
+                  <Trash2 size={14} />
+                </IconBtn>
+              </span>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              void api.notes.emptyTrash().then((n) => {
+                bumpData('notes')
+                useApp.getState().showToast({ message: `Deleted ${n} note${n === 1 ? '' : 's'} permanently` })
+              })
+            }
+            className="mt-1 w-full rounded-lg px-2 py-1 text-left text-[11px] text-faint transition-colors hover:bg-hover hover:text-red-400"
+          >
+            Empty trash
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -372,6 +480,128 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
           <Plus size={16} /> New deck
         </button>
       )}
+
+      <button
+        type="button"
+        onClick={() => void importDeck(notebookId)}
+        className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1 text-[11px] text-faint transition-colors hover:bg-hover hover:text-muted"
+      >
+        <FileUp size={12} /> Import CSV / TSV…
+      </button>
+    </div>
+  )
+}
+
+/** Import a CSV/TSV of cards (Quizlet, Anki, a spreadsheet) as a new deck. */
+async function importDeck(notebookId: number): Promise<void> {
+  const res = await api.app.importDeck(notebookId)
+  if (res.deckId === null && res.imported === 0 && res.skipped === 0) return // cancelled
+  bumpData('decks')
+  const app = useApp.getState()
+  if (res.deckId !== null) app.openDeck(notebookId, res.deckId)
+  app.showToast({
+    message:
+      res.imported > 0
+        ? `Imported ${res.imported} card${res.imported === 1 ? '' : 's'}` +
+          (res.skipped > 0 ? ` · skipped ${res.skipped} unusable row${res.skipped === 1 ? '' : 's'}` : '')
+        : 'No front/back pairs found in that file'
+  })
+}
+
+/**
+ * The `#hashtags` in this notebook, as filter chips. Hidden when nothing is tagged, so the
+ * feature stays invisible until someone actually uses it.
+ */
+function TagFilter({ notebookId }: { notebookId: number }): React.JSX.Element | null {
+  const version = useVersion('notes')
+  const { noteTagFilter, setNoteTagFilter } = useApp()
+  const [tags, setTags] = useState<Array<{ tag: string; count: number }>>([])
+
+  useEffect(() => {
+    void api.tags.list(notebookId).then(setTags)
+  }, [notebookId, version])
+
+  if (tags.length === 0) return null
+
+  return (
+    <div className="mb-1">
+      <SectionLabel>Tags</SectionLabel>
+      <div className="flex flex-wrap gap-1 px-1 pb-1">
+        {tags.slice(0, 24).map((t) => {
+          const active = noteTagFilter === t.tag
+          return (
+            <button
+              key={t.tag}
+              type="button"
+              title={`${t.count} page${t.count === 1 ? '' : 's'}`}
+              onClick={() => setNoteTagFilter(active ? null : t.tag)}
+              className={`rounded-md px-1.5 py-0.5 text-[11px] transition-colors ${
+                active ? 'bg-active text-ink' : 'bg-raised text-muted hover:bg-hover hover:text-ink'
+              }`}
+              style={active ? { color: 'var(--accent-text)' } : undefined}
+            >
+              #{t.tag}
+              <span className="ml-1 opacity-50 tabular-nums">{t.count}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Import Markdown files as pages, reporting the outcome through the undo/toast strip. */
+async function importMarkdown(notebookId: number): Promise<void> {
+  const res = await api.app.importMarkdown(notebookId)
+  if (res.imported === 0 && res.failed === 0) return // the user cancelled the picker
+  bumpData('notes')
+  const app = useApp.getState()
+  if (res.firstNoteId !== null) app.openNote(notebookId, res.firstNoteId)
+  app.showToast({
+    message:
+      `Imported ${res.imported} page${res.imported === 1 ? '' : 's'}` +
+      (res.failed > 0 ? ` · ${res.failed} could not be read` : '')
+  })
+}
+
+/* ------------------------------ Stats sidebar ------------------------------ */
+
+/** The three numbers worth acting on, next to the full Progress page. */
+function StatsSidebar(): React.JSX.Element {
+  const version = useVersion('decks') + useVersion('focus')
+  const [o, setO] = useState<StatsOverview | null>(null)
+
+  useEffect(() => {
+    void api.stats.overview(7).then(setO)
+  }, [version])
+
+  if (!o) return <></>
+  return (
+    <div className="px-2 pt-1">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">This week</p>
+      <SidebarStat label="Reviews" value={o.reviews.toLocaleString()} />
+      <SidebarStat label="Retention" value={o.retention === null ? '—' : `${Math.round(o.retention * 100)}%`} />
+      <SidebarStat label="Focused" value={`${o.focus_minutes}m`} />
+      <SidebarStat label="Streak" value={`${o.current_streak}d`} />
+      {o.due_now > 0 && (
+        <button
+          type="button"
+          onClick={() => useApp.getState().setTab('study')}
+          className="mt-2 w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-hover"
+          style={{ color: 'var(--accent-text)' }}
+        >
+          {o.due_now} card{o.due_now === 1 ? '' : 's'} due now →
+        </button>
+      )}
+    </div>
+  )
+}
+
+function SidebarStat({ label, value }: { label: string; value: string }): React.JSX.Element {
+  return (
+    <div className="flex items-baseline justify-between px-2 py-1 text-xs">
+      <span className="text-muted">{label}</span>
+      <span className="font-semibold tabular-nums">{value}</span>
     </div>
   )
 }
@@ -399,7 +629,7 @@ function GradesSidebar(): React.JSX.Element {
       overallLabel = 'Ø Grade'
       overallValue = (bySubject.reduce((a, x) => a + x.avg.value, 0) / bySubject.length).toFixed(2)
     } else if (gradingSystem === 'us') {
-      // avg.value for the us system IS the rounded percentage; no second pass needed
+      // avg.value for the us system IS the rounded-sm percentage; no second pass needed
       overallLabel = 'GPA'
       overallValue = (bySubject.reduce((a, x) => a + gpaPoints(x.avg.value), 0) / bySubject.length).toFixed(2)
     } else {

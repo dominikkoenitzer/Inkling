@@ -4,6 +4,62 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-08-16
+
+**Progress.** Through v0.3.x Inkling could tell you what to do today but never what you'd
+achieved: a flashcard stored only where SM-2 had left it, and every answer overwrote the
+last. This release gives the app a memory — a permanent review log — then builds on it: a
+modern scheduler, a Progress page, and a streak that's derived from what you actually did.
+It also brings the desktop shell up to date, adds wiki-links, tags, import, and an undo for
+deletion.
+
+### Added
+- **Progress view** — a new tab: an activity heatmap over the last six months, **true
+  retention**, reviews and focused hours, current and longest streak, a 14-day forecast of
+  what's coming due, an Again/Hard/Good/Easy breakdown, your memory-state mix, and a
+  per-subject table. Built on a new `review_log` table that records one immutable row per
+  answered card.
+- **FSRS-4.5 scheduling**, replacing SM-2. Instead of one "ease factor" per card, FSRS
+  models **stability** (how long until recall drops to 90%) and **difficulty**, so it can
+  schedule for an explicit *recall target* rather than an arbitrary multiplier. Each review
+  button now shows the interval it would buy (`10m · 1d · 3d · 15d`). Existing cards are
+  converted from their SM-2 state, not reset.
+- **Recall target** setting — 85% / 90% / 95%. Higher means shorter intervals and more
+  reviews; FSRS solves each interval for the number you pick.
+- **`[[Wiki-links]]`** — type `[[Chapter 4]]` in any note to link another page. Unknown
+  titles create the page, so you can link as you write. The context panel gains a **Linked
+  from** section showing every note pointing at the current one.
+- **`#hashtags`** — tags are read out of your note text (like `[]` becomes a task and
+  `Term :: Definition` becomes a flashcard). The Notes sidebar lists every tag in the
+  notebook with counts; clicking one filters the page list.
+- **Import** — bring in **Markdown** files as pages (headings, lists, task lists, quotes,
+  code, inline marks, and `[[links]]`), or a **CSV/TSV** of cards as a deck. The delimiter
+  is detected rather than asked for, so Quizlet and Anki exports work as-is.
+- **Trash and undo** — deleting a page or sticky now moves it to a trash it can be restored
+  from, with an **Undo** offered immediately. Trashed notes are cleared 30 days later.
+
+### Changed
+- **Streaks are derived from your history**, not from two counters in `settings`. The user
+  bar, the Today greeting, and Progress can no longer disagree, and a session that ended
+  without the app noticing still counts. An existing streak carries over on upgrade.
+- **Electron 33 → 43.** Electron only patches its three newest majors, so every previous
+  installer shipped an end-of-life Chromium. Also updated: better-sqlite3 11 → 13, React
+  18 → 19, TipTap 2 → 3, Tailwind CSS 3 → 4, Vite 6 → 8, electron-vite 3 → 5,
+  electron-builder 25 → 26, lucide 0.474 → 1.x.
+- The version in Settings is now injected from `package.json` at build time — it had
+  already drifted a release behind.
+- A fresh database no longer creates the `events` table left over from the calendar module
+  removed in v0.3.0. Existing databases keep their rows, as promised at the time.
+
+### Fixed
+- Deleting a note was an immediate, unconfirmed, unrecoverable `DELETE`.
+
+### Notes
+- Database migrations v4–v7 run automatically on first launch and are all additive; a
+  backup is taken before any of them, as on every launch.
+- 146 tests (was 53), including a full unit suite for the FSRS implementation and a
+  Markdown export → import → export round-trip.
+
 ## [0.3.4] — 2026-07-19
 
 Fixes from an adversarial review of the v0.3.0–v0.3.3 changes (all six verified), plus refreshed docs.

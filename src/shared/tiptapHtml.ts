@@ -25,6 +25,9 @@ function renderInline(nodes?: PMNode[]): string {
   return nodes
     .map((n) => {
       if (n.type === 'hardBreak') return '<br />'
+      // A [[wiki-link]] is an atom: its label lives in an attribute, not in child content,
+      // so without this it would export as nothing at all.
+      if (n.type === 'noteLink') return `<span class="note-link">[[${escapeHtml(String(n.attrs?.label ?? ''))}]]</span>`
       if (n.type !== 'text') return renderInline(n.content)
       let t = escapeHtml(n.text ?? '')
       for (const m of n.marks ?? []) {
