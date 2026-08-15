@@ -79,7 +79,8 @@
     "mac": {
       "target": ["dmg", "zip"],
       "icon": "resources/icon.png",
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "x64ArchFiles": "**/node_modules/better-sqlite3/prebuilds/*.node"
     },
     "linux": {
       "target": ["AppImage"],
