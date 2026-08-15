@@ -40,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
@@ -52,7 +52,7 @@ jobs:
       # node-gyp (used to rebuild better-sqlite3) needs Python's distutils, which was
       # removed in 3.12+. The macOS runner defaults to 3.14, so pin a version that has it.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 

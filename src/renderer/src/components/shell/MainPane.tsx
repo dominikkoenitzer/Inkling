@@ -7,6 +7,7 @@ import { TasksView } from '@/components/tasks/TasksView'
 import { TodayView } from '@/components/today/TodayView'
 import { StudyView } from '@/components/study/StudyView'
 import { GradesView } from '@/components/grades/GradesView'
+import { StatsView } from '@/components/stats/StatsView'
 
 export function MainPane(): React.JSX.Element {
   const { tab, notesView, activeNotebookId, selectedNoteId, notebooks } = useApp()
@@ -32,5 +33,6 @@ export function MainPane(): React.JSX.Element {
   if (tab === 'today') return <TodayView />
   if (tab === 'tasks') return <TasksView notebook={notebook} />
   if (tab === 'study') return <StudyView notebook={notebook} />
+  if (tab === 'stats') return <StatsView notebooks={notebooks} />
   return <GradesView notebook={notebook} />
 }

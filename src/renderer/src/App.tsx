@@ -9,6 +9,7 @@ import { CommandPalette } from '@/components/shell/CommandPalette'
 import { Onboarding } from '@/components/shell/Onboarding'
 import { SettingsModal } from '@/components/shell/SettingsModal'
 import { LogoMark } from '@/components/Inky'
+import { Toaster } from '@/components/ui'
 
 const api = window.inkling
 
@@ -102,6 +103,7 @@ export default function App(): React.JSX.Element {
 
       {app.paletteOpen && <CommandPalette />}
       {app.settingsOpen && <SettingsModal />}
+      <Toaster />
     </div>
   )
 }

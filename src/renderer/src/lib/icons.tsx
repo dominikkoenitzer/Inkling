@@ -81,6 +81,19 @@ export function hasGlyph(icon: string | null | undefined): boolean {
 }
 
 /** Render a notebook's cover glyph, or null when it has none (caller shows initials). */
+/** Discord-style word initials for notebooks without a glyph: "My Notebook" → "MN". */
+export function initials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '?'
+  )
+}
+
 export function NotebookGlyph({
   icon,
   size = 16,

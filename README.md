@@ -5,9 +5,9 @@
 <br />
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-53%20passing-1D9E75)](test)
-[![Electron](https://img.shields.io/badge/Electron-33-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
-[![React](https://img.shields.io/badge/React-18-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
+[![tests](https://img.shields.io/badge/tests-146%20passing-1D9E75)](test)
+[![Electron](https://img.shields.io/badge/Electron-43-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![better-sqlite3](https://img.shields.io/badge/better--sqlite3-FTS5-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-1D9E75.svg)](LICENSE)
@@ -16,7 +16,7 @@
 
 **A warm, local-first desktop app that makes studying fun: open it and it tells you exactly what to do today — review these cards, finish that task, give your weakest subject some love.**
 
-[Download](https://github.com/dominikkoenitzer/Inkling/releases/latest) · [Features](#the-five-modules) · [Getting started](#getting-started) · [Architecture](#project-layout)
+[Download](https://github.com/dominikkoenitzer/Inkling/releases/latest) · [Features](#the-six-modules) · [Getting started](#getting-started) · [Architecture](#project-layout)
 
 </div>
 
@@ -33,13 +33,14 @@ The hardest part of studying isn't the studying — it's knowing *what to do rig
 > A page of *Chapter 4 notes* can hold a checkbox (`[] Finish reading by Friday`) that becomes a **real task** in your **Today plan**, while its `Term :: Definition` lines turn into **flashcards** — all from the same text, no duplicate entry.
 
 - ☀️ **A plan, not a blank page** — open the app and know exactly what to study today
+- 📈 **Proof you're getting better** — every review is logged, so Inkling can show your retention, your activity, and what's coming
 - 🪶 **Zero friction to capture** — new note is one keystroke, no forced title, no save button
 - 🔒 **Local-first** — everything works fully offline; your data is a single SQLite file on your machine
 - ☕ **Friendly, not corporate** — warm *Cozy* theme, an original mascot (Inky), streaks and confetti, zero dark patterns
 
 ---
 
-## The five modules
+## The six modules
 
 ### ☀️ Today
 <img src="docs/today.png" width="880" alt="Inkling — Today view with an auto-generated daily study plan" />
@@ -49,6 +50,8 @@ An **auto-generated daily study plan**: due flashcard decks, tasks due today, yo
 ### 📝 Notes
 TipTap rich-text **pages** (toolbar *and* live markdown shortcuts: `#`, `-`, `1.`, `>`, `**bold**`, `[]`) plus a freeform **sticky board** you can drag, resize, and recolor. Auto-saves as you type (debounced, flushed on blur).
 
+Notes cross-link: type `[[Chapter 4]]` to link another page — if it doesn't exist yet, it's created, so you can link as you write — and the context panel shows everything **linked from** elsewhere. `#hashtags` anywhere in your text become filters in the sidebar. Deleting a page moves it to a **trash** you can undo from.
+
 ### ✅ Tasks
 <img src="docs/tasks.png" width="880" alt="Inkling — tasks view with smart views and priority flags" />
 
@@ -57,12 +60,18 @@ List **and** kanban board, due dates, priorities, subtasks, and **Today / This W
 ### 📚 Study
 <img src="docs/study.png" width="880" alt="Inkling — study view with a flashcard deck and Pomodoro timer" />
 
-**SM-2 spaced-repetition flashcards** (Again / Hard / Good / Easy, keys 1–4), one-click deck creation from `Term :: Definition` lines in a note, a **Pomodoro focus timer** linked to a task or deck, and a gentle, non-punishing **study streak**. The timer stays visible in the Discord-style **user bar** at the bottom of the sidebar, wherever you are in the app.
+**FSRS-4.5 spaced-repetition flashcards** (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card — **stability** (how long until your recall chance falls to 90%) and **difficulty** — instead of SM-2's single "ease factor", so it schedules for a **recall target you choose** (85 / 90 / 95%) rather than an arbitrary multiplier.
+
+Also here: one-click deck creation from `Term :: Definition` lines in a note, **CSV/TSV import** for Quizlet and Anki exports, a **Pomodoro focus timer** linked to a task or deck, and a gentle, non-punishing **study streak**. The timer stays visible in the Discord-style **user bar** at the bottom of the sidebar, wherever you are in the app.
 
 ### 📊 Grades
 <img src="docs/grades.png" width="880" alt="Inkling grade tracker — Swiss 1–6 scale with weighted average and pass status" />
 
 Log assessments per subject and pick **your** grading system: **Swiss 1–6** (6 is best, 4 is a pass), **US letters + 4.0 GPA**, or plain **percentages**. Weighted averages per subject, an overall figure across subjects, and a "give this subject some love" nudge in your Today plan.
+
+### 📈 Progress
+
+Every card you answer is written to a permanent review log, which makes the whole picture available: a six-month **activity heatmap**, your **true retention** (how often a card that was genuinely due came back to you), reviews and focused hours, current and longest streak, a **14-day forecast** of what's coming due, an Again/Hard/Good/Easy split, and a per-subject table. Nothing here is a guess — it's all read back out of what you actually did.
 
 ---
 
@@ -72,6 +81,10 @@ Log assessments per subject and pick **your** grading system: **Swiss 1–6** (6
 |---|---|
 | 🔍 **Command palette** | `Ctrl+K` fuzzy search across notes, tasks, and decks (SQLite **FTS5**) + quick actions |
 | ⚡ **Global quick-add** | `Ctrl+Alt+N` popup with natural-date detection — *“essay draft friday at 5pm”* |
+| 🔗 **Wiki-links** | `[[Page name]]` links notes together and creates the page if it's new; backlinks in the context panel |
+| 🏷️ **Tags** | `#hashtags` in your text become sidebar filters — no separate tagging UI to keep in sync |
+| 🗑️ **Trash + undo** | Deleting a note is recoverable for 30 days, with an immediate **Undo** |
+| 📥 **Import** | Markdown files → pages; CSV/TSV (Quizlet, Anki, a spreadsheet) → a deck, delimiter auto-detected |
 | 🎨 **Themes** | Sleek **Dark** + warm **Cozy**, high-contrast mode, adjustable font size |
 | 👋 **Onboarding** | 3-step first-launch flow with Inky; sensible starter notebooks for school/work/personal |
 | 🐙 **Inky the mascot** | Original SVG character — idle bob, blink, cursor-tracking eyes, celebratory bounces |
@@ -90,6 +103,7 @@ Log assessments per subject and pick **your** grading system: **Swiss 1–6** (6
 | `Ctrl` + `Alt` + `N` | Global quick-add popup |
 | `Ctrl` + `,` | Settings |
 | `#`, `-`, `1.`, `>`, `[]` | Markdown block shortcuts (in the editor) |
+| `[[` … `]]` | Link another page (creates it if the title is new) |
 | `Ctrl` + `B` / `I` / `U` | Bold / italic / underline |
 | `Space` then `1`–`4` | Reveal card, then grade (Again / Hard / Good / Easy) |
 
@@ -109,17 +123,17 @@ Pick the sleek **Dark** theme or the warm **Cozy** one — with a high-contrast 
 
 | Layer | Choice |
 |---|---|
-| Shell | **Electron** (electron-vite) |
-| UI | **React 18 + TypeScript** |
-| Styling | **Tailwind CSS** + CSS variables |
-| Editor | **TipTap** (ProseMirror) |
+| Shell | **Electron 43** (electron-vite) |
+| UI | **React 19 + TypeScript** |
+| Styling | **Tailwind CSS 4** (CSS-first `@theme`) + CSS variables |
+| Editor | **TipTap 3** (ProseMirror) + a custom `[[wiki-link]]` node |
 | State | **Zustand** (per-module stores) |
 | Database | **better-sqlite3** + typed repositories, **FTS5** search |
 | Drag & drop | **dnd-kit** (kanban) + hand-rolled pointer drags (sticky board) |
 | Dates | **date-fns** |
-| Spaced repetition | Custom **SM-2** implementation |
+| Spaced repetition | Custom **FSRS-4.5** implementation (`src/shared/fsrs.ts`) |
 | Icons | **lucide-react** |
-| Tests | **Vitest** (grade math, parsing, exporters, color-system logic) |
+| Tests | **Vitest** — 146 tests (FSRS, grade math, parsing, import/export round-trips, tags, colors) |
 | CI / Packaging | **GitHub Actions** · **electron-builder** (NSIS) |
 
 ---
@@ -151,14 +165,20 @@ Prefer a prebuilt binary? Grab the latest installer for **Windows (`.exe`)**, **
 ## Project layout
 
 ```
-src/main       Electron main — db.ts (schema/backups), repos.ts (all queries, SM-2, FTS), ipc.ts, index.ts
+src/main       Electron main — db.ts (schema/migrations/backups), repos.ts (all queries, FTS, stats), ipc.ts, index.ts
 src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
-src/renderer   React app — stores/ (zustand), components/{shell,today,notes,tasks,study,grades}, lib/
-src/shared     types + API contract shared across processes
-test           Vitest suites for the pure logic (grades, parse, colors, exporters)
+src/renderer   React app — stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
+src/shared     types + API contract + the pure logic both processes use:
+               fsrs.ts (scheduler), grades.ts, tags.ts, markdown.ts / markdownImport.ts,
+               deckImport.ts, tiptapHtml.ts
+test           Vitest suites for everything in src/shared
 ```
 
 Data lives in a single WAL-mode SQLite file in `%APPDATA%/Inkling`, with a `backups/` folder beside it. Fully offline — nothing leaves your machine.
+
+The schema is versioned via `PRAGMA user_version` and migrated on open (currently **v7**); every migration is additive, and a backup is written before each launch's migration runs.
+
+**Anything that isn't I/O lives in `src/shared` and is unit-tested.** The FSRS scheduler takes `now` as an argument and returns a plain object; the Markdown importer and exporter are pure functions that round-trip against each other. That's what keeps the interesting logic testable without an Electron window.
 
 ### Dev / test hooks
 
@@ -182,6 +202,9 @@ The main process reads a few env vars for isolated, reproducible runs:
 - [x] Grade tracker (weighted averages, letter grades, GPA)
 - [x] Auto-update (electron-updater) + universal macOS build (Intel + Apple Silicon)
 - [x] Today view (auto-generated daily study plan), grading systems (Swiss 1–6 / US / %), notebook icon covers, user bar
+- [x] Review history + Progress view (heatmap, true retention, forecast) and **FSRS-4.5** scheduling
+- [x] Wiki-links with backlinks, `#tags`, Markdown & CSV import, trash with undo
+- [ ] Fit FSRS parameters to your own review log instead of the published defaults
 - [ ] Optional end-to-end-encrypted cloud sync
 - [ ] Mobile companion
 

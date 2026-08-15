@@ -62,6 +62,34 @@ export function extractNoteTaskItems(doc: Record<string, unknown>): NoteTaskItem
   return items
 }
 
+/* ---- `[[wiki-links]]` inside a note's TipTap JSON ---- */
+
+export interface NoteLinkItem {
+  noteId: number | null
+  label: string
+}
+
+/** Every noteLink node in the document, in document order — the order ids come back in. */
+export function extractNoteLinks(doc: Record<string, unknown>): NoteLinkItem[] {
+  const links: NoteLinkItem[] = []
+  const walk = (n: { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }): void => {
+    if (n.type === 'noteLink') {
+      links.push({
+        noteId: typeof n.attrs?.noteId === 'number' ? (n.attrs.noteId as number) : null,
+        label: typeof n.attrs?.label === 'string' ? (n.attrs.label as string) : ''
+      })
+    }
+    if (Array.isArray(n.content)) n.content.forEach((c) => walk(c as never))
+  }
+  walk(doc as never)
+  return links
+}
+
+export function noteLinksEqual(a: NoteLinkItem[], b: NoteLinkItem[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((x, i) => x.noteId === b[i].noteId && x.label === b[i].label)
+}
+
 /* ---- Quick-add natural-ish date detection ---- */
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 

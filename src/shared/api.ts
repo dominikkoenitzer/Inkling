@@ -13,7 +13,12 @@ import type {
   NoteType,
   ReviewGrade,
   QuickAddPayload,
-  Grade
+  Grade,
+  StatsOverview,
+  ActivityDay,
+  ForecastDay,
+  RatingBreakdown,
+  SubjectStat
 } from './types'
 import type { GradingSystem } from './grades'
 
@@ -42,8 +47,16 @@ export interface InklingApi {
       id: number,
       patch: Partial<Pick<Note, 'title' | 'content' | 'color' | 'pos_x' | 'pos_y' | 'width' | 'height' | 'pinned' | 'notebook_id'>>
     ): Promise<Note | null>
+    /** Soft delete — recoverable via `restore` until the retention window expires. */
     remove(id: number): Promise<void>
+    restore(id: number): Promise<Note | null>
+    listDeleted(notebookId?: number): Promise<Note[]>
+    purge(id: number): Promise<void>
+    emptyTrash(): Promise<number>
     syncTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): Promise<Array<number>>
+    /** Resolve `[[labels]]` to page ids (creating missing pages) and rebuild the note's links. */
+    syncLinks(noteId: number, notebookId: number, labels: string[]): Promise<Array<number>>
+    backlinks(noteId: number): Promise<Note[]>
   }
   tasks: {
     list(notebookId: number): Promise<Task[]>
@@ -91,6 +104,19 @@ export interface InklingApi {
   search: {
     query(q: string): Promise<SearchResult[]>
   }
+  tags: {
+    /** Every `#hashtag` in use, most-used first. Derived from note text on save. */
+    list(notebookId?: number): Promise<Array<{ tag: string; count: number }>>
+    forNote(noteId: number): Promise<string[]>
+    notes(tag: string, notebookId?: number): Promise<Note[]>
+  }
+  stats: {
+    overview(windowDays?: number): Promise<StatsOverview>
+    activity(days?: number): Promise<ActivityDay[]>
+    forecast(days?: number): Promise<ForecastDay[]>
+    ratings(windowDays?: number): Promise<RatingBreakdown>
+    subjects(windowDays?: number): Promise<SubjectStat[]>
+  }
   grades: {
     list(notebookId: number): Promise<Grade[]>
     all(): Promise<Grade[]>
@@ -103,6 +129,12 @@ export interface InklingApi {
     setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>
     quickAdd(payload: QuickAddPayload): Promise<void>
     hideQuickAdd(): Promise<void>
+    /** Open a file picker and import the chosen Markdown files as pages. */
+    importMarkdown(notebookId: number): Promise<{ imported: number; failed: number; firstNoteId: number | null }>
+    /** Open a file picker and import a CSV/TSV of cards as a new deck. */
+    importDeck(
+      notebookId: number
+    ): Promise<{ imported: number; skipped: number; deckId: number | null; deckName: string | null; error?: string }>
     saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null; error?: string }>
     savePdf(bodyHtml: string, title: string, defaultName: string): Promise<{ saved: boolean; path: string | null; error?: string }>
     onDataChanged(cb: (domain: string) => void): () => void
