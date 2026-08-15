@@ -1,6 +1,50 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/* Tailwind v4 detects sources from the CSS file's project root; be explicit so the
+   two renderer entry HTML files and every component are always scanned. */
+@source '../../index.html';
+@source '../../quickadd.html';
+@source '../**/*.{ts,tsx}';
+
+/* The design system, as Tailwind v4 theme tokens. Each maps to a runtime CSS variable
+   the theme blocks below swap, so `bg-panel`, `text-muted`, `border-edge`, … keep
+   working exactly as they did under the v3 JS config. */
+@theme {
+  --color-app: var(--bg-app);
+  --color-panel: var(--bg-panel);
+  --color-sunken: var(--bg-sunken);
+  --color-raised: var(--bg-raised);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-ink: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-edge: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+
+  --text-base: var(--font-base);
+  --text-base--line-height: 1.55;
+
+  --radius-card: 10px;
+}
+
+/* v4's preflight drops the pointer cursor on buttons and defaults `border` to
+   currentColor; restore both so the existing markup reads the way it was designed. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+}
 
 :root {
   --font-base: 14.5px;
@@ -201,6 +245,33 @@ textarea:focus {
   text-decoration: underline;
   cursor: pointer;
 }
+/* [[wiki-link]] chips. A link whose target hasn't been resolved yet (the page is created
+   on the next save) reads as pending rather than broken. */
+.note-link {
+  color: var(--accent-text, #1d9e75);
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: 0.05em 0.3em;
+  cursor: pointer;
+  box-decoration-break: clone;
+}
+.note-link::before {
+  content: '[[';
+  opacity: 0.4;
+}
+.note-link::after {
+  content: ']]';
+  opacity: 0.4;
+}
+.note-link:hover {
+  background: var(--bg-active);
+  text-decoration: underline;
+}
+.note-link[data-pending] {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;

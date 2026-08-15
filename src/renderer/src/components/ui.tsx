@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
+import { useApp } from '@/stores/app'
 import { NOTEBOOK_ICONS, NOTEBOOK_ICON_KEYS } from '@/lib/icons'
 
 export function Button({
@@ -105,6 +106,43 @@ export function Modal({
   )
 }
 
+/**
+ * The single transient message strip, bottom-centre. Deliberately one at a time: the only
+ * thing it is used for is "that's undoable", and a stack of those would be noise.
+ */
+export function Toaster(): React.JSX.Element | null {
+  const toast = useApp((s) => s.toast)
+  const dismiss = useApp((s) => s.dismissToast)
+  if (!toast) return null
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4">
+      <div
+        role="status"
+        className="pop-in pointer-events-auto flex items-center gap-3 rounded-lg border border-edge bg-raised py-2 pl-3.5 pr-2 text-sm"
+        style={{ boxShadow: 'var(--shadow)' }}
+      >
+        <span className="text-ink">{toast.message}</span>
+        {toast.actionLabel && toast.onAction && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.onAction?.()
+              dismiss()
+            }}
+            className="rounded-md px-2 py-0.5 text-sm font-semibold transition-colors hover:bg-hover"
+            style={{ color: 'var(--accent-text)' }}
+          >
+            {toast.actionLabel}
+          </button>
+        )}
+        <IconBtn title="Dismiss" onClick={dismiss} className="h-6 w-6">
+          <X size={14} />
+        </IconBtn>
+      </div>
+    </div>
+  )
+}
+
 export function Field({ label, children }: { label: string; children: ReactNode }): React.JSX.Element {
   return (
     <label className="mb-3 block">
@@ -169,7 +207,7 @@ export function Segmented<T extends string>({
           title={o.title}
           onClick={() => onChange(o.value)}
           className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-            value === o.value ? 'border-edge bg-raised text-ink shadow-sm' : 'border-transparent text-muted hover:text-ink'
+            value === o.value ? 'border-edge bg-raised text-ink shadow-xs' : 'border-transparent text-muted hover:text-ink'
           }`}
         >
           {o.label}

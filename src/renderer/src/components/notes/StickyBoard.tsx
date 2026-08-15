@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
+import { Placeholder } from '@tiptap/extensions'
 import { Plus, Trash2, Palette } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { stickyColors, COLOR_KEYS, isColorKey } from '@/lib/colors'
@@ -176,17 +176,26 @@ function Sticky({ note }: { note: Note }): React.JSX.Element {
           title="Change color"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={cycleColor}
-          className="hidden h-5 w-5 items-center justify-center rounded opacity-70 hover:opacity-100 group-hover:flex"
+          className="hidden h-5 w-5 items-center justify-center rounded-sm opacity-70 hover:opacity-100 group-hover:flex"
           style={{ color: colors.text }}
         >
           <Palette size={14} />
         </button>
         <button
           type="button"
-          title="Delete sticky"
+          title="Move sticky to trash"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => void api.notes.remove(note.id).then(() => bumpData('notes'))}
-          className="hidden h-5 w-5 items-center justify-center rounded opacity-70 hover:opacity-100 group-hover:flex"
+          onClick={() =>
+            void api.notes.remove(note.id).then(() => {
+              bumpData('notes')
+              useApp.getState().showToast({
+                message: 'Sticky moved to the trash',
+                actionLabel: 'Undo',
+                onAction: () => void api.notes.restore(note.id).then(() => bumpData('notes'))
+              })
+            })
+          }
+          className="hidden h-5 w-5 items-center justify-center rounded-sm opacity-70 hover:opacity-100 group-hover:flex"
           style={{ color: colors.text }}
         >
           <Trash2 size={14} />

@@ -2,7 +2,7 @@ import { app, BrowserWindow, globalShortcut, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
-import { openDb } from './db'
+import { openDb, getDb } from './db'
 import { registerIpc } from './ipc'
 import * as repos from './repos'
 
@@ -120,15 +120,82 @@ function seedDemo(): void {
   repos.createTask({ notebook_id: nb.id, title: 'Lab report draft', due_date: tomorrow.toISOString() })
   repos.createTask({ notebook_id: nb.id, title: 'Email study group', priority: 'low' })
   repos.createGrade({ notebook_id: nb.id, title: 'Quiz 1', score: 5, max: 6, weight: 1, system: 'swiss' })
-  repos.createDeckFromPairs(nb.id, 'Cell biology', [
+  const deck = repos.createDeckFromPairs(nb.id, 'Cell biology', [
     ['Photosynthesis', 'The process plants use to convert light into energy'],
     ['Mitochondria', 'The powerhouse of the cell'],
     ['Osmosis', 'Diffusion of water across a semipermeable membrane']
   ])
+  seedHistory(deck.id)
+}
+
+/**
+ * Demo-only study history, so the Progress view has something to draw in screenshots and
+ * manual testing. Deterministic (no Math.random) so successive captures are identical.
+ * Only ever runs behind INKLING_SEED on a fresh profile.
+ */
+function seedHistory(deckId: number): void {
+  const db = getDb()
+  const cardIds = (db.prepare(`SELECT id FROM flashcards WHERE deck_id = ?`).all(deckId) as Array<{ id: number }>).map((c) => c.id)
+  if (cardIds.length === 0) return
+
+  const logReview = db.prepare(
+    `INSERT INTO review_log (card_id, deck_id, rating, state, stability, difficulty, elapsed_days, scheduled_days, reviewed_at)
+     VALUES (?, ?, ?, 'review', ?, ?, ?, ?, ?)`
+  )
+  const logFocus = db.prepare(
+    `INSERT INTO focus_sessions (task_id, deck_id, duration_minutes, started_at, completed) VALUES (NULL, ?, ?, ?, 1)`
+  )
+
+  const tx = db.transaction(() => {
+    for (let daysAgo = 120; daysAgo >= 0; daysAgo--) {
+      // A believable pattern: mostly-studied weekdays with occasional gaps.
+      const day = new Date()
+      day.setHours(19, 30, 0, 0)
+      day.setDate(day.getDate() - daysAgo)
+      const weekday = day.getDay()
+      if (weekday === 0 && daysAgo % 3 !== 0) continue
+      if ((daysAgo * 7) % 11 === 0) continue
+
+      const count = 4 + ((daysAgo * 13) % 17)
+      for (let i = 0; i < count; i++) {
+        const at = new Date(day.getTime() + i * 45_000)
+        const roll = (daysAgo * 31 + i * 7) % 100
+        const rating = roll < 11 ? 1 : roll < 26 ? 2 : roll < 86 ? 3 : 4
+        const stability = 2 + ((120 - daysAgo) / 120) * 40
+        logReview.run(
+          cardIds[i % cardIds.length],
+          deckId,
+          rating,
+          stability,
+          5.5,
+          Math.max(0, stability * 0.9),
+          stability,
+          at.toISOString()
+        )
+      }
+      if (daysAgo % 2 === 0) logFocus.run(deckId, 25, new Date(day.getTime() - 3_600_000).toISOString())
+    }
+  })
+  tx()
 }
 
 app.whenReady().then(() => {
   openDb()
+  // Clear anything that has sat in the trash past the retention window.
+  try {
+    repos.purgeExpiredNotes()
+  } catch (err) {
+    console.error('trash purge failed', err)
+  }
+  // First launch after the v0.4.0 tag index was added: derive tags from existing notes.
+  try {
+    if (repos.getSetting('tags_backfilled') !== '1') {
+      repos.backfillTags()
+      repos.setSetting('tags_backfilled', '1')
+    }
+  } catch (err) {
+    console.error('tag backfill failed', err)
+  }
   if (process.env['INKLING_SEED']) seedDemo()
   registerIpc(() => quickAddWindow?.hide())
   createMainWindow()

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, FileText, CheckSquare, Layers, Zap, Percent, Moon, Sun, Plus, GraduationCap } from 'lucide-react'
+import { Search, FileText, CheckSquare, Layers, Zap, Percent, Moon, Sun, Plus, GraduationCap, BarChart3 } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { fuzzyScore } from '@/lib/parse'
 import type { SearchResult } from '@shared/types'
@@ -80,6 +80,7 @@ export function CommandPalette(): React.JSX.Element {
       { key: 'go-tasks', icon: <CheckSquare size={16} />, label: 'Jump to Tasks', run: () => { app.setTab('tasks'); close() } },
       { key: 'go-study', icon: <GraduationCap size={16} />, label: 'Jump to Study', run: () => { app.setTab('study'); close() } },
       { key: 'go-grades', icon: <Percent size={16} />, label: 'Jump to Grades', run: () => { app.setTab('grades'); close() } },
+      { key: 'go-stats', icon: <BarChart3 size={16} />, label: 'Jump to Progress', run: () => { app.setTab('stats'); close() } },
       {
         key: 'theme',
         icon: app.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />,
@@ -144,7 +145,7 @@ export function CommandPalette(): React.JSX.Element {
             placeholder="Search notes, tasks, decks, or run a command…"
             className="flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
-          <kbd className="rounded border border-edge px-1.5 py-0.5 text-[11px] text-faint">esc</kbd>
+          <kbd className="rounded-sm border border-edge px-1.5 py-0.5 text-[11px] text-faint">esc</kbd>
         </div>
         <div className="max-h-[46vh] overflow-y-auto p-1.5">
           {items.length === 0 && <p className="px-3 py-6 text-center text-sm text-faint">Nothing found. Try different words?</p>}

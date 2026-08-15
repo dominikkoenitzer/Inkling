@@ -189,7 +189,7 @@ export function TaskRow({ task, showNotebook }: { task: Task; showNotebook: bool
 
       {task.note_id !== null && <FileText size={14} className="shrink-0 text-faint" aria-label="Linked to a note" />}
       {task.status === 'in_progress' && (
-        <span className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold" style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
+        <span className="shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold" style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)' }}>
           in progress
         </span>
       )}
@@ -303,7 +303,7 @@ function KanbanCard({ task }: { task: Task }): React.JSX.Element {
       {...listeners}
       {...attributes}
       onClick={() => setSelectedTask(task.id)}
-      className={`cursor-grab rounded-lg border border-edge bg-raised p-2.5 text-sm shadow-sm active:cursor-grabbing ${
+      className={`cursor-grab rounded-lg border border-edge bg-raised p-2.5 text-sm shadow-xs active:cursor-grabbing ${
         selectedTaskId === task.id ? 'ring-1' : ''
       }`}
     >

@@ -2,24 +2,11 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { RAMPS, COLOR_KEYS, isColorKey } from '@/lib/colors'
-import { NotebookGlyph, JournalIcon, hasGlyph } from '@/lib/icons'
+import { NotebookGlyph, JournalIcon, hasGlyph, initials } from '@/lib/icons'
 import { Modal, Field, inputCls, Button, IconPicker } from '@/components/ui'
 import type { ColorKey } from '@shared/types'
 
 const api = window.inkling
-
-/** Discord-style word initials for notebooks without a glyph: "My Notebook" → "MN". */
-function initials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => w[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || '?'
-  )
-}
 
 export function IconRail(): React.JSX.Element {
   const { notebooks, activeNotebookId, setActiveNotebook, refreshNotebooks } = useApp()
