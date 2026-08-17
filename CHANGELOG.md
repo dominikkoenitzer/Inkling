@@ -4,6 +4,28 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-08-17
+
+**A face.** The logo was Inky with his face deleted — the same droplet path as the mascot,
+minus the eyes, cheeks and smile, frozen in one green that never changed. This release makes
+the mark the mascot, and makes it follow your accent the way it always claimed to.
+
+### Changed
+- **New app icon and logo.** Cream Inky on an ink-blue ground, with the face kept. A second
+  simplified variant is used at 16 and 24px, where the mouth and cheeks render as mush. All
+  nine rasters and the seven-size `.ico` are regenerated from the SVG.
+- **`<LogoMark />` is genuinely accent-tinted.** It fills from `--accent` / `--accent-ink`
+  instead of three hardcoded hex values, so the logo now changes with the theme colour
+  alongside the rest of the UI. A new `--accent-ink` token carries the dark shade it draws
+  the face with.
+- **All five colour ramps reworked** — cleaner hues at higher chroma, same 50–900 structure
+  so nothing downstream changes. Amber (`#BA7517` → `#E0921B`) was the worst of them; it was
+  functionally brown.
+
+### Added
+- **`bun run icons`** regenerates every raster from `resources/logo.svg`, so the PNG/ICO set
+  can no longer drift from the vector.
+
 ## [0.4.0] — 2026-08-16
 
 **Progress.** Through v0.3.x Inkling could tell you what to do today but never what you'd

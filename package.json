@@ -1,12 +1,16 @@
 {
   "name": "inkling",
   "productName": "Inkling",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Notes, tasks, schedule and study — together",
   "main": "out/main/index.js",
   "author": "Dominik Könitzer <dominik.koenitzer@gmail.com>",
   "license": "MIT",
-  "trustedDependencies": ["electron", "better-sqlite3", "esbuild"],
+  "trustedDependencies": [
+    "electron",
+    "better-sqlite3",
+    "esbuild"
+  ],
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -58,18 +62,25 @@
   "build": {
     "appId": "app.inkling.desktop",
     "productName": "Inkling",
-    "files": ["out/**", "resources/**"],
-    "publish": [{
-      "provider": "github",
-      "owner": "dominikkoenitzer",
-      "repo": "Inkling"
-    }],
+    "files": [
+      "out/**",
+      "resources/**"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dominikkoenitzer",
+        "repo": "Inkling"
+      }
+    ],
     "directories": {
       "output": "release",
       "buildResources": "resources"
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "resources/icon.ico"
     },
     "nsis": {
@@ -80,13 +91,18 @@
       "shortcutName": "Inkling"
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "resources/icon.png",
       "category": "public.app-category.productivity",
       "x64ArchFiles": "**/node_modules/better-sqlite3/prebuilds/*.node"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "icon": "resources/icon.png",
       "category": "Office",
       "maintainer": "Dominik Könitzer"
