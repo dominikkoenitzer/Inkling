@@ -223,3 +223,9 @@ See [`CHANGELOG.md`](CHANGELOG.md) for release history.
 ## License
 
 [MIT](LICENSE) © 2026 dominikkoenitzer
+
+## Author
+
+**dominikkoenitzer** — software engineer in Zürich, Switzerland.
+
+[dk.punds.ch](https://dk.punds.ch) · [@dominikkoenitzer](https://github.com/dominikkoenitzer) · [dominikkoenitzer@users.noreply.github.com](mailto:dominikkoenitzer@users.noreply.github.com)
