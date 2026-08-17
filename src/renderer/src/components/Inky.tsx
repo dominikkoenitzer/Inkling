@@ -121,16 +121,53 @@ export function Inky({ pose = 'neutral', color = 'teal', size = 96, className = 
   )
 }
 
-/** The app logo droplet (from the brand mark), tinted by the current accent. */
-export function LogoMark({ size = 26 }: { size?: number }): React.JSX.Element {
+/**
+ * The app logo mark — Inky's head, sharing the exact `BODY` path as the mascot
+ * so the brand and the character are the same thing.
+ *
+ * Genuinely tinted by the live accent: it fills from `--accent` / `--accent-ink`
+ * (set by `accentVars`), so it follows teal/coral/amber/pink/gray like the rest
+ * of the UI instead of being hardcoded. Pass `color` to pin it to one ramp.
+ *
+ * Below 24px the mouth and cheeks are dropped — at 16px they turn to mud and the
+ * silhouette plus two eyes is what actually reads.
+ */
+export function LogoMark({
+  size = 26,
+  color
+}: {
+  size?: number
+  color?: ColorKey
+}): React.JSX.Element {
+  const body = color ? RAMPS[color][500] : 'var(--accent, #10A37F)'
+  const ink = color ? RAMPS[color][900] : 'var(--accent-ink, #043227)'
+  const detailed = size >= 24
+
   return (
-    <svg viewBox="0 0 200 200" width={size} height={size} role="img" aria-label="Inkling">
-      <rect x="20" y="20" width="160" height="160" rx="38" fill="#0F6E56" />
-      <path
-        d="M100 42 C 138 82, 152 108, 152 128 C 152 154, 130 174, 100 174 C 70 174, 48 154, 48 128 C 48 108, 62 82, 100 42 Z"
-        fill="#E1F5EE"
-      />
-      <circle cx="118" cy="120" r="8" fill="#0F6E56" />
+    <svg viewBox="-10 5 140 140" width={size} height={size} role="img" aria-label="Inkling">
+      <path d={BODY} fill={body} />
+
+      {detailed && (
+        <>
+          <ellipse cx="30" cy="108" rx="7" ry="4" fill="#ffffff" opacity="0.28" />
+          <ellipse cx="90" cy="108" rx="7" ry="4" fill="#ffffff" opacity="0.28" />
+        </>
+      )}
+
+      <circle cx="42" cy="95" r="10" fill="#ffffff" />
+      <circle cx="78" cy="95" r="10" fill="#ffffff" />
+      <circle cx="44" cy="94" r="3.6" fill={ink} />
+      <circle cx="80" cy="94" r="3.6" fill={ink} />
+
+      {detailed && (
+        <path
+          d="M50 116 Q60 123, 70 116"
+          stroke={ink}
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+        />
+      )}
     </svg>
   )
 }

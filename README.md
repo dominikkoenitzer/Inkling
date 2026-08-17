@@ -5,14 +5,14 @@
 <br />
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-146%20passing-1D9E75)](test)
+[![tests](https://img.shields.io/badge/tests-146%20passing-10A37F)](test)
 [![Electron](https://img.shields.io/badge/Electron-43-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![better-sqlite3](https://img.shields.io/badge/better--sqlite3-FTS5-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
-[![License: MIT](https://img.shields.io/badge/License-MIT-1D9E75.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/dominikkoenitzer/Inkling?color=1D9E75)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-1D9E75)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-10A37F.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/dominikkoenitzer/Inkling?color=10A37F)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-10A37F)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
 
 **A warm, local-first desktop app that makes studying fun: open it and it tells you exactly what to do today — review these cards, finish that task, give your weakest subject some love.**
 

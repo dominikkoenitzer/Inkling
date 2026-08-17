@@ -6,64 +6,64 @@ type Ramp = Record<50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900, str
 /** 7+ stop ramps per brand color (§11) — 50/100 for backgrounds, 600+ for text/borders. */
 export const RAMPS: Record<ColorKey, Ramp> = {
   teal: {
-    50: '#E7F7F0',
-    100: '#CFEFE2',
-    200: '#A3E0C8',
-    300: '#6FCCA9',
-    400: '#3DB58B',
-    500: '#1D9E75',
-    600: '#15805F',
-    700: '#0F6E56',
-    800: '#0A4A3A',
-    900: '#06332A'
+    50: '#E6F7F2',
+    100: '#C6EDE2',
+    200: '#92DEC8',
+    300: '#59CBAB',
+    400: '#26B593',
+    500: '#10A37F',
+    600: '#0C8568',
+    700: '#096A53',
+    800: '#064A3A',
+    900: '#043227'
   },
   coral: {
-    50: '#FCEEE8',
-    100: '#F9DCD1',
-    200: '#F2B9A4',
-    300: '#E99172',
-    400: '#E07348',
-    500: '#D85A30',
-    600: '#B44724',
-    700: '#8F381D',
-    800: '#6A2A16',
-    900: '#4A1B0C'
+    50: '#FDEFEA',
+    100: '#FBDCD2',
+    200: '#F7B9A5',
+    300: '#F39478',
+    400: '#F17C5B',
+    500: '#EE6A45',
+    600: '#C85234',
+    700: '#A03F27',
+    800: '#742C1B',
+    900: '#4E1C11'
   },
   amber: {
-    50: '#F9F1E4',
-    100: '#F3E2C7',
-    200: '#E6C48F',
-    300: '#D8A559',
-    400: '#C98B32',
-    500: '#BA7517',
-    600: '#985F11',
-    700: '#784B0E',
-    800: '#58370A',
-    900: '#412402'
+    50: '#FDF3E3',
+    100: '#FAE5C4',
+    200: '#F5CB8B',
+    300: '#EFB055',
+    400: '#E99E31',
+    500: '#E0921B',
+    600: '#BB7714',
+    700: '#955D10',
+    800: '#6C430B',
+    900: '#492C06'
   },
   pink: {
-    50: '#FBEDF2',
-    100: '#F7D9E3',
-    200: '#EFB3C7',
-    300: '#E48CA8',
-    400: '#DC6D91',
-    500: '#D4537E',
-    600: '#B23D66',
-    700: '#8E2F50',
-    800: '#67223A',
-    900: '#471627'
+    50: '#FDEDF3',
+    100: '#FBD9E5',
+    200: '#F6B4CA',
+    300: '#F18DAE',
+    400: '#EC7399',
+    500: '#E8608C',
+    600: '#C44A72',
+    700: '#9D395A',
+    800: '#732941',
+    900: '#4E1A2B'
   },
   gray: {
-    50: '#F4F4F2',
-    100: '#E7E7E3',
-    200: '#D0CFC9',
-    300: '#B5B4AC',
-    400: '#9E9D95',
-    500: '#888780',
-    600: '#6E6D66',
-    700: '#57564F',
-    800: '#403F3A',
-    900: '#2B2A26'
+    50: '#F5F5F3',
+    100: '#E9E9E5',
+    200: '#D4D3CD',
+    300: '#BAB9B2',
+    400: '#A09F98',
+    500: '#85847E',
+    600: '#6B6A65',
+    700: '#55544F',
+    800: '#3E3D39',
+    900: '#292824'
   }
 }
 
@@ -84,13 +84,17 @@ export function accentVars(key: ColorKey, theme: 'dark' | 'cozy'): CSSProperties
     return {
       '--accent': r[500],
       '--accent-soft': `color-mix(in srgb, ${r[500]} 22%, transparent)`,
-      '--accent-text': r[300]
+      '--accent-text': r[300],
+      // Dark shade of the accent, used to draw Inky's face on an accent-filled
+      // body so the logo mark reads at any accent (see <LogoMark />).
+      '--accent-ink': r[900]
     } as CSSProperties
   }
   return {
     '--accent': r[500],
     '--accent-soft': r[100],
-    '--accent-text': r[700]
+    '--accent-text': r[700],
+    '--accent-ink': r[900]
   } as CSSProperties
 }
 
