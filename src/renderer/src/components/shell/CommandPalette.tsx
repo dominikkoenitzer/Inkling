@@ -26,10 +26,7 @@ export function CommandPalette(): React.JSX.Element {
 
   useEffect(() => {
     const q = query.trim()
-    if (!q) {
-      setResults([])
-      return
-    }
+    if (!q) return
     const t = setTimeout(() => void api.search.query(q).then(setResults), 120)
     return () => clearTimeout(t)
   }, [query])
@@ -95,7 +92,9 @@ export function CommandPalette(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, app.notebooks, app.activeNotebookId, app.theme])
 
-  const searchItems: PaletteItem[] = results.map((r) => ({
+  // An empty box shows no matches; the last query's hits stay cached for the
+  // 120ms debounce so retyping doesn't blank the list mid-keystroke.
+  const searchItems: PaletteItem[] = (query.trim() ? results : []).map((r) => ({
     key: `s-${r.source_type}-${r.source_id}`,
     icon: r.source_type === 'note' ? <FileText size={16} /> : r.source_type === 'task' ? <CheckSquare size={16} /> : <Layers size={16} />,
     label: r.title || 'Untitled',
