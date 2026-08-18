@@ -5,7 +5,7 @@
 <br />
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-146%20passing-10A37F)](test)
+[![tests](https://img.shields.io/badge/tests-166%20passing-10A37F)](test)
 [![Electron](https://img.shields.io/badge/Electron-43-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -133,7 +133,7 @@ Pick the sleek **Dark** theme or the warm **Cozy** one — with a high-contrast 
 | Dates | **date-fns** |
 | Spaced repetition | Custom **FSRS-4.5** implementation (`src/shared/fsrs.ts`) |
 | Icons | **lucide-react** |
-| Tests | **Vitest** — 146 tests (FSRS, grade math, parsing, import/export round-trips, tags, colors) |
+| Tests | **Vitest** — 166 tests (FSRS, grade math, streaks, parsing, import/export round-trips, tags, colors) |
 | CI / Packaging | **GitHub Actions** · **electron-builder** (NSIS) |
 
 ---
@@ -165,12 +165,15 @@ Prefer a prebuilt binary? Grab the latest installer for **Windows (`.exe`)**, **
 ## Project layout
 
 ```
-src/main       Electron main — db.ts (schema/migrations/backups), repos.ts (all queries, FTS, stats), ipc.ts, index.ts
+src/main       Electron main — db.ts (schema/migrations/backups), ipc.ts, index.ts
+src/main/repos the data layer, one module per domain — notebooks, notes, tags, links,
+               tasks, flashcards, focus, streak, grades, stats, search, onboarding;
+               index.ts re-exports them, so callers still just `import * as repos`
 src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
 src/renderer   React app — stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
 src/shared     types + API contract + the pure logic both processes use:
-               fsrs.ts (scheduler), grades.ts, tags.ts, markdown.ts / markdownImport.ts,
-               deckImport.ts, tiptapHtml.ts
+               fsrs.ts (scheduler), grades.ts, streaks.ts, tags.ts, markdown.ts /
+               markdownImport.ts, deckImport.ts, tiptapHtml.ts
 test           Vitest suites for everything in src/shared
 ```
 
