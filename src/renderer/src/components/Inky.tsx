@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ColorKey } from '@shared/types'
 import { RAMPS } from '@/lib/colors'
 
@@ -25,7 +25,7 @@ export function Inky({ pose = 'neutral', color = 'teal', size = 96, className = 
   const svgRef = useRef<SVGSVGElement>(null)
   const [pupil, setPupil] = useState({ x: 0, y: 0 })
   const [clicked, setClicked] = useState(false)
-  const blinkDur = useMemo(() => `${(4 + Math.random() * 3).toFixed(2)}s`, [])
+  const [blinkDur] = useState(() => `${(4 + Math.random() * 3).toFixed(2)}s`)
 
   const onMove = (e: React.MouseEvent): void => {
     const rect = svgRef.current?.getBoundingClientRect()
@@ -42,7 +42,6 @@ export function Inky({ pose = 'neutral', color = 'teal', size = 96, className = 
     setTimeout(() => setClicked(false), 320)
   }
 
-  const showPupils = pose === 'neutral'
   const wrapClass = `inky ${clicked ? 'inky-clicked' : ''} ${pose === 'happy' ? 'inky-happy' : ''} ${className}`
 
   return (
