@@ -30,11 +30,15 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
 
   // Switching the grading system re-labels the score inputs (single Grade box vs Score/Max),
   // so a half-typed Swiss grade must not survive to be submitted as a raw percent score.
-  useEffect(() => {
+  // Adjusted during render rather than in an effect so the cleared fields paint in the
+  // same pass as the new labels: https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const [lastSystem, setLastSystem] = useState(gradingSystem)
+  if (lastSystem !== gradingSystem) {
+    setLastSystem(gradingSystem)
     setAdding(false)
     setScore('')
     setMax('100')
-  }, [gradingSystem])
+  }
 
   const pct = weightedPercentage(grades)
   // round once so the shown %, letter, and GPA can't disagree at a grade cutoff

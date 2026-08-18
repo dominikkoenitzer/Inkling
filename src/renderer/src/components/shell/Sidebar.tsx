@@ -359,31 +359,25 @@ function TodaySidebar(): React.JSX.Element {
 
 /* ------------------------------ Tasks sidebar ------------------------------ */
 
-function TasksSidebar(): React.JSX.Element {
-  const { smartView, setSmartView } = useApp()
-  const version = useVersion('tasks')
-  const [counts, setCounts] = useState({ today: 0, week: 0 })
-
-  useEffect(() => {
-    void Promise.all([api.tasks.smart('today'), api.tasks.smart('week')]).then(([t, w]) => setCounts({ today: t.length, week: w.length }))
-  }, [version])
-
-  const Item = ({
-    id,
-    icon,
-    label,
-    count
-  }: {
-    id: 'today' | 'week' | null
-    icon: React.JSX.Element
-    label: string
-    count?: number
-  }): React.JSX.Element => (
+function SmartViewItem({
+  icon,
+  label,
+  count,
+  active,
+  onSelect
+}: {
+  icon: React.JSX.Element
+  label: string
+  count?: number
+  active: boolean
+  onSelect: () => void
+}): React.JSX.Element {
+  return (
     <button
       type="button"
-      onClick={() => setSmartView(id)}
+      onClick={onSelect}
       className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-        smartView === id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
+        active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
       }`}
     >
       {icon}
@@ -395,14 +389,41 @@ function TasksSidebar(): React.JSX.Element {
       )}
     </button>
   )
+}
+
+function TasksSidebar(): React.JSX.Element {
+  const { smartView, setSmartView } = useApp()
+  const version = useVersion('tasks')
+  const [counts, setCounts] = useState({ today: 0, week: 0 })
+
+  useEffect(() => {
+    void Promise.all([api.tasks.smart('today'), api.tasks.smart('week')]).then(([t, w]) => setCounts({ today: t.length, week: w.length }))
+  }, [version])
 
   return (
     <div className="fade-up">
       <SectionLabel>Smart views</SectionLabel>
-      <Item id="today" icon={<Sun size={16} />} label="Today" count={counts.today} />
-      <Item id="week" icon={<CalendarRange size={16} />} label="This Week" count={counts.week} />
+      <SmartViewItem
+        icon={<Sun size={16} />}
+        label="Today"
+        count={counts.today}
+        active={smartView === 'today'}
+        onSelect={() => setSmartView('today')}
+      />
+      <SmartViewItem
+        icon={<CalendarRange size={16} />}
+        label="This Week"
+        count={counts.week}
+        active={smartView === 'week'}
+        onSelect={() => setSmartView('week')}
+      />
       <SectionLabel className="mt-3">This notebook</SectionLabel>
-      <Item id={null} icon={<Layers size={16} />} label="All tasks" />
+      <SmartViewItem
+        icon={<Layers size={16} />}
+        label="All tasks"
+        active={smartView === null}
+        onSelect={() => setSmartView(null)}
+      />
     </div>
   )
 }
