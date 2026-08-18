@@ -59,7 +59,8 @@ export function UserBar(): React.JSX.Element {
             className="!h-5 !w-5 !text-white hover:!bg-white/20"
             onClick={(e) => {
               e.stopPropagation()
-              timer.running ? timer.pause() : timer.resume()
+              if (timer.running) timer.pause()
+              else timer.resume()
             }}
           >
             {timer.running ? <Pause size={12} /> : <Play size={12} />}

@@ -20,12 +20,27 @@ function greeting(): string {
 }
 
 /**
+ * The wall clock, re-read once a minute. Due labels compare against this instead of
+ * calling Date.now() while rendering, so a row flips to "overdue" as the deadline
+ * passes rather than waiting for the next data change to repaint it.
+ */
+function useNow(intervalMs = 60_000): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    return () => clearInterval(id)
+  }, [intervalMs])
+  return now
+}
+
+/**
  * The daily study plan — assembles "what should I do right now" from due flashcards,
  * open tasks, the weakest graded subject and today's focus time, each with a one-click
  * start. Solves the blank-page problem that keeps people from starting at all.
  */
 export function TodayView(): React.JSX.Element {
   const app = useApp()
+  const now = useNow()
   // A focus session is live if it's running or paused part-way through — used so the plan
   // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
   const timerActive = useTimer((s) => s.mode === 'focus' && (s.running || s.secondsLeft < s.totalSeconds))
@@ -91,7 +106,7 @@ export function TodayView(): React.JSX.Element {
   const dueLabel = (t: Task): { text: string; overdue: boolean } => {
     if (!t.due_date) return { text: 'today', overdue: false }
     const due = new Date(t.due_date)
-    if (!isToday(due) && due.getTime() < Date.now()) return { text: `overdue since ${format(due, 'EEE d MMM')}`, overdue: true }
+    if (!isToday(due) && due.getTime() < now) return { text: `overdue since ${format(due, 'EEE d MMM')}`, overdue: true }
     const hm = format(due, 'HH:mm')
     return { text: hm === '00:00' ? 'today' : `due ${hm}`, overdue: false }
   }

@@ -168,10 +168,9 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
         titleRef.current = note.title ?? ''
         loadedUpdatedAtRef.current = note.updated_at
         lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
-      lastLinksRef.current = extractNoteLinks(safeParse(note.content) as Record<string, unknown>)
+        lastLinksRef.current = extractNoteLinks(safeParse(note.content) as Record<string, unknown>)
       }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notesVersion, editor, noteId])
 
   // flush pending save on unmount / window blur (§7: flushed on blur/close)
@@ -319,6 +318,24 @@ function safeParse(content: string): object {
 
 /* --------------------------------- Toolbar -------------------------------- */
 
+function ToolbarButton({
+  icon,
+  title,
+  action,
+  active
+}: {
+  icon: React.JSX.Element
+  title: string
+  action: () => void
+  active?: boolean
+}): React.JSX.Element {
+  return (
+    <IconBtn title={title} active={active} onClick={action}>
+      {icon}
+    </IconBtn>
+  )
+}
+
 function Toolbar({
   editor,
   onFlashcards,
@@ -345,76 +362,60 @@ function Toolbar({
     }
   }, [editor])
 
-  const B = ({
-    icon,
-    title,
-    action,
-    active
-  }: {
-    icon: React.JSX.Element
-    title: string
-    action: () => void
-    active?: boolean
-  }): React.JSX.Element => (
-    <IconBtn title={title} active={active} onClick={action}>
-      {icon}
-    </IconBtn>
-  )
-
   const c = editor.chain().focus()
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-edge bg-sunken px-3 py-1.5">
-      <B icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
-      <B icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
-      <B
+      <ToolbarButton icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
+      <ToolbarButton icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
+      <ToolbarButton
         icon={<UnderlineIcon size={16} />}
         title="Underline (Ctrl+U)"
         active={editor.isActive('underline')}
         action={() => c.toggleUnderline().run()}
       />
-      <B icon={<Strikethrough size={16} />} title="Strikethrough" active={editor.isActive('strike')} action={() => c.toggleStrike().run()} />
-      <B icon={<Highlighter size={16} />} title="Highlight" active={editor.isActive('highlight')} action={() => c.toggleHighlight().run()} />
-      <B icon={<Code size={16} />} title="Inline code" active={editor.isActive('code')} action={() => c.toggleCode().run()} />
+      <ToolbarButton icon={<Strikethrough size={16} />} title="Strikethrough" active={editor.isActive('strike')} action={() => c.toggleStrike().run()} />
+      <ToolbarButton icon={<Highlighter size={16} />} title="Highlight" active={editor.isActive('highlight')} action={() => c.toggleHighlight().run()} />
+      <ToolbarButton icon={<Code size={16} />} title="Inline code" active={editor.isActive('code')} action={() => c.toggleCode().run()} />
       <Divider />
-      <B
+      <ToolbarButton
         icon={<Heading1 size={16} />}
         title="Heading 1 (or type #)"
         active={editor.isActive('heading', { level: 1 })}
         action={() => c.toggleHeading({ level: 1 }).run()}
       />
-      <B
+      <ToolbarButton
         icon={<Heading2 size={16} />}
         title="Heading 2"
         active={editor.isActive('heading', { level: 2 })}
         action={() => c.toggleHeading({ level: 2 }).run()}
       />
-      <B
+      <ToolbarButton
         icon={<Heading3 size={16} />}
         title="Heading 3"
         active={editor.isActive('heading', { level: 3 })}
         action={() => c.toggleHeading({ level: 3 }).run()}
       />
       <Divider />
-      <B icon={<List size={16} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={() => c.toggleBulletList().run()} />
-      <B
+      <ToolbarButton icon={<List size={16} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={() => c.toggleBulletList().run()} />
+      <ToolbarButton
         icon={<ListOrdered size={16} />}
         title="Numbered list (or type 1.)"
         active={editor.isActive('orderedList')}
         action={() => c.toggleOrderedList().run()}
       />
-      <B
+      <ToolbarButton
         icon={<ListChecks size={16} />}
         title="Task list (or type []). Items become real tasks"
         active={editor.isActive('taskList')}
         action={() => c.toggleTaskList().run()}
       />
-      <B icon={<Quote size={16} />} title="Quote (or type >)" active={editor.isActive('blockquote')} action={() => c.toggleBlockquote().run()} />
-      <B icon={<Code2 size={16} />} title="Code block" active={editor.isActive('codeBlock')} action={() => c.toggleCodeBlock().run()} />
-      <B icon={<Minus size={16} />} title="Divider" action={() => c.setHorizontalRule().run()} />
+      <ToolbarButton icon={<Quote size={16} />} title="Quote (or type >)" active={editor.isActive('blockquote')} action={() => c.toggleBlockquote().run()} />
+      <ToolbarButton icon={<Code2 size={16} />} title="Code block" active={editor.isActive('codeBlock')} action={() => c.toggleCodeBlock().run()} />
+      <ToolbarButton icon={<Minus size={16} />} title="Divider" action={() => c.setHorizontalRule().run()} />
       <Divider />
-      <B icon={<Undo2 size={16} />} title="Undo (Ctrl+Z)" action={() => c.undo().run()} />
-      <B icon={<Redo2 size={16} />} title="Redo (Ctrl+Y)" action={() => c.redo().run()} />
+      <ToolbarButton icon={<Undo2 size={16} />} title="Undo (Ctrl+Z)" action={() => c.undo().run()} />
+      <ToolbarButton icon={<Redo2 size={16} />} title="Redo (Ctrl+Y)" action={() => c.redo().run()} />
       <Divider />
       <IconBtn title="Make flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1 px-2 text-xs font-medium">
         <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
