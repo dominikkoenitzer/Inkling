@@ -52,7 +52,7 @@ jobs:
       # node-gyp (used to rebuild better-sqlite3) needs Python's distutils, which was
       # removed in 3.12+. The macOS runner defaults to 3.14, so pin a version that has it.
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -68,7 +68,7 @@ jobs:
         run: bunx electron-builder ${{ matrix.args }} --publish never
 
       - name: Attach installers to the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}
           fail_on_unmatched_files: false
