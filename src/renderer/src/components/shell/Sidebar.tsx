@@ -25,7 +25,7 @@ import { RAMPS, COLOR_KEYS, isColorKey, ramp } from '@/lib/colors'
 import { subjectAverage, gpaPoints } from '@shared/grades'
 import { tiptapDocToHtml, escapeHtml } from '@shared/tiptapHtml'
 import { Modal, Field, inputCls, Button, IconBtn, IconPicker } from '@/components/ui'
-import { NotebookGlyph } from '@/lib/icons'
+import { NotebookGlyph } from '@/components/NotebookGlyph'
 import { UserBar } from '@/components/shell/UserBar'
 import type { Note, Deck, Grade, Task, ModuleTab, ColorKey, StatsOverview } from '@shared/types'
 
