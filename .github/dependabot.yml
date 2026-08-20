@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # JavaScript/TypeScript dependencies (managed with bun — bun.lock).
+  # Dependabot's "bun" ecosystem reads package.json and regenerates the
+  # text-based bun.lock, so `bun install --frozen-lockfile` in CI stays green
+  # on every update PR.
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    # Batch minor/patch bumps so the PR list stays small; majors still arrive
+    # as individual PRs that warrant a manual look. Electron in particular is
+    # a native runtime bump, never a routine one.
+    groups:
+      production-minor-patch:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      dev-minor-patch:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+
+  # Keep the CI workflow's actions current and patched.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
