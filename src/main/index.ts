@@ -16,6 +16,23 @@ let quickAddWindow: BrowserWindow | null = null
 
 const isDev = !!process.env['ELECTRON_RENDERER_URL']
 
+/**
+ * Nothing in the app navigates its own window — links leave through
+ * setWindowOpenHandler. A full navigation therefore means a stray target="_self"
+ * or a renderer that has been talked into one, so send it to the browser
+ * instead of letting it replace the app.
+ */
+function blockOffAppNavigation(contents: Electron.WebContents): void {
+  contents.on('will-navigate', (event, url) => {
+    const stays = isDev
+      ? url.startsWith(process.env['ELECTRON_RENDERER_URL'] as string)
+      : url.startsWith('file://')
+    if (stays) return
+    event.preventDefault()
+    void shell.openExternal(url)
+  })
+}
+
 function createMainWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1360,
@@ -39,6 +56,7 @@ function createMainWindow(): void {
     shell.openExternal(url)
     return { action: 'deny' }
   })
+  blockOffAppNavigation(mainWindow.webContents)
 
   if (isDev) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] as string)
@@ -92,6 +110,11 @@ function createQuickAddWindow(): BrowserWindow {
   } else {
     win.loadFile(join(__dirname, '../renderer/quickadd.html'))
   }
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  blockOffAppNavigation(win.webContents)
   win.on('blur', () => win.hide())
   return win
 }
