@@ -18,7 +18,7 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react()],
-    // Single source of truth for the version shown in Settings — it used to be typed by
+    // Single source of truth for the version shown in Settings. It used to be typed by
     // hand there and had already drifted a release behind package.json.
     define: { __APP_VERSION__: JSON.stringify(version) },
     resolve: {

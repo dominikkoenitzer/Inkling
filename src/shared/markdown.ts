@@ -32,7 +32,7 @@ function renderInline(nodes: PMNode[] | undefined): string {
   return nodes
     .map((n) => {
       if (n.type === 'hardBreak') return '  \n'
-      // A [[wiki-link]] is an atom with no child content — export the syntax verbatim so
+      // A [[wiki-link]] is an atom with no child content; export the syntax verbatim so
       // the exported Markdown round-trips into other wiki-style tools.
       if (n.type === 'noteLink') return `[[${String(n.attrs?.label ?? '')}]]`
       if (n.type !== 'text') return renderInline(n.content)
@@ -59,7 +59,7 @@ function renderList(node: PMNode, indent: string, marker: (index: number, item: 
   items.forEach((item, i) => {
     const kids = item.content ?? []
     // the leading paragraph sits on the marker line; every OTHER block child (a second
-    // paragraph, code block, blockquote, nested list, …) is emitted indented so nothing is lost
+    // paragraph, code block, blockquote, nested list) is emitted indented so nothing is lost
     const firstParaIdx = kids.findIndex((k) => k.type === 'paragraph')
     const firstText = firstParaIdx >= 0 ? renderInline(kids[firstParaIdx].content) : renderInline(item.content)
     out += `${indent}${marker(i, item)}${firstText}\n`

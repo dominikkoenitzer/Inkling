@@ -1,6 +1,6 @@
 /**
  * `#hashtag` extraction. Pure and dependency-free so it can be unit-tested and run in
- * either process — the main process derives a note's tags from its text on every save.
+ * either process: the main process derives a note's tags from its text on every save.
  */
 
 /**

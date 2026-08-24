@@ -14,7 +14,7 @@ interface InkyProps {
 const BODY = 'M60 10 C 90 45, 105 70, 105 95 C 105 120, 85 140, 60 140 C 35 140, 15 120, 15 95 C 15 70, 30 45, 60 10 Z'
 
 /**
- * Inky — the app's mascot (§11). Pure SVG + CSS: idle bob, randomized blink,
+ * Inky: the app's mascot (§11). Pure SVG + CSS: idle bob, randomized blink,
  * pupils track the cursor on hover, squash-and-stretch on click, hop when happy.
  * Reads state only; never blocks anything.
  */
@@ -121,14 +121,14 @@ export function Inky({ pose = 'neutral', color = 'teal', size = 96, className = 
 }
 
 /**
- * The app logo mark — Inky's head, sharing the exact `BODY` path as the mascot
+ * The app logo mark: Inky's head, sharing the exact `BODY` path as the mascot
  * so the brand and the character are the same thing.
  *
  * Genuinely tinted by the live accent: it fills from `--accent` / `--accent-ink`
  * (set by `accentVars`), so it follows teal/coral/amber/pink/gray like the rest
  * of the UI instead of being hardcoded. Pass `color` to pin it to one ramp.
  *
- * Below 24px the mouth and cheeks are dropped — at 16px they turn to mud and the
+ * Below 24px the mouth and cheeks are dropped; at 16px they turn to mud and the
  * silhouette plus two eyes is what actually reads.
  */
 export function LogoMark({

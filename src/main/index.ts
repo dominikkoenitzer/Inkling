@@ -17,7 +17,7 @@ let quickAddWindow: BrowserWindow | null = null
 const isDev = !!process.env['ELECTRON_RENDERER_URL']
 
 /**
- * Nothing in the app navigates its own window — links leave through
+ * Nothing in the app navigates its own window; links leave through
  * setWindowOpenHandler. A full navigation therefore means a stray target="_self"
  * or a renderer that has been talked into one, so send it to the browser
  * instead of letting it replace the app.
@@ -225,7 +225,7 @@ app.whenReady().then(() => {
 
   globalShortcut.register('Control+Alt+N', toggleQuickAdd)
 
-  // Auto-update against GitHub Releases — only for packaged builds, never during
+  // Auto-update against GitHub Releases, only for packaged builds, never during
   // dev or headless screenshot capture.
   if (app.isPackaged && !process.env['INKLING_SCREENSHOT']) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))

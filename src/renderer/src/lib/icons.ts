@@ -35,7 +35,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-/** Cover glyphs a notebook can pick — clean monochrome icons in the app's own icon family. */
+/** Cover glyphs a notebook can pick: clean monochrome icons in the app's own icon family. */
 export const NOTEBOOK_ICONS: Record<string, LucideIcon> = {
   'book-open': BookOpen,
   'graduation-cap': GraduationCap,

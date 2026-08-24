@@ -159,6 +159,6 @@ function updateNoteCheckbox(noteId: number, taskId: number, checked: boolean): v
       getDb().prepare(`UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`).run(JSON.stringify(doc), now(), noteId)
     }
   } catch {
-    /* malformed content — skip */
+    /* malformed content, skip */
   }
 }

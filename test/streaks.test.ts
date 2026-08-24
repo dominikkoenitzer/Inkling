@@ -108,7 +108,7 @@ describe('streaksFrom — calendar edges', () => {
   })
 
   it('does not invent a leap day in a common year', () => {
-    // Feb 28 and Mar 1 are consecutive in 2026 — nothing sits between them.
+    // Feb 28 and Mar 1 are consecutive in 2026; nothing sits between them.
     const today = at('2026-03-01')
     expect(streaksFrom(['2026-02-28', '2026-03-01'], today).current).toBe(2)
   })

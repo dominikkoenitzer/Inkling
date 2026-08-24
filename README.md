@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/banner.png" alt="Inkling — notes, tasks, flashcards and grades. Studying, made fun." width="820" />
+<img src="docs/banner.png" alt="Inkling: notes, tasks, flashcards and grades. Studying, made fun." width="820" />
 
 <br />
 
@@ -14,86 +14,86 @@
 [![Release](https://img.shields.io/github/v/release/dominikkoenitzer/Inkling?color=10A37F)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-10A37F)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
 
-**A warm, local-first desktop app that makes studying fun: open it and it tells you exactly what to do today — review these cards, finish that task, give your weakest subject some love.**
+**A warm, local-first desktop app that makes studying fun: open it and it tells you exactly what to do today. Review these cards, finish that task, give your weakest subject some love.**
 
 [Download](https://github.com/dominikkoenitzer/Inkling/releases/latest) · [Features](#the-six-modules) · [Getting started](#getting-started) · [Architecture](#project-layout)
 
 </div>
 
 <p align="center">
-  <img src="docs/notes.png" width="880" alt="Inkling — notes view with the Inky mascot and context panel" />
+  <img src="docs/notes.png" width="880" alt="Inkling: notes view with the Inky mascot and context panel" />
 </p>
 
 ---
 
 ## Why Inkling
 
-The hardest part of studying isn't the studying — it's knowing *what to do right now*. Inkling assembles a **daily plan** from things you already track (due flashcards, open tasks, your weakest subject) and cross-links everything, so one piece of content flows everywhere:
+The hardest part of studying isn't the studying, it's knowing what to do right now. Inkling assembles a **daily plan** from things you already track (due flashcards, open tasks, your weakest subject) and cross-links everything, so one piece of content flows everywhere:
 
-> A page of *Chapter 4 notes* can hold a checkbox (`[] Finish reading by Friday`) that becomes a **real task** in your **Today plan**, while its `Term :: Definition` lines turn into **flashcards** — all from the same text, no duplicate entry.
+> A page of *Chapter 4 notes* can hold a checkbox (`[] Finish reading by Friday`) that becomes a **real task** in your **Today plan**, while its `Term :: Definition` lines turn into **flashcards**, all from the same text, no duplicate entry.
 
-- ☀️ **A plan, not a blank page** — open the app and know exactly what to study today
-- 📈 **Proof you're getting better** — every review is logged, so Inkling can show your retention, your activity, and what's coming
-- 🪶 **Zero friction to capture** — new note is one keystroke, no forced title, no save button
-- 🔒 **Local-first** — everything works fully offline; your data is a single SQLite file on your machine
-- ☕ **Friendly, not corporate** — warm *Cozy* theme, an original mascot (Inky), streaks and confetti, zero dark patterns
+- **A plan, not a blank page**. Open the app and know exactly what to study today
+- **Proof you're getting better**. Every review is logged, so Inkling can show your retention, your activity, and what's coming
+- **Zero friction to capture**. New note is one keystroke, no forced title, no save button
+- **Local-first**. Everything works fully offline; your data is a single SQLite file on your machine
+- **Friendly, not corporate**. Warm *Cozy* theme, an original mascot (Inky), streaks and confetti, zero dark patterns
 
 ---
 
 ## The six modules
 
 ### ☀️ Today
-<img src="docs/today.png" width="880" alt="Inkling — Today view with an auto-generated daily study plan" />
+<img src="docs/today.png" width="880" alt="Inkling: Today view with an auto-generated daily study plan" />
 
-An **auto-generated daily study plan**: due flashcard decks, tasks due today, your lowest-averaging subject, and a suggested focus block — each with a one-click start. Clear the plan, get confetti. That's the whole loop.
+An **auto-generated daily study plan**: due flashcard decks, tasks due today, your lowest-averaging subject, and a suggested focus block, each with a one-click start. Clear the plan, get confetti. That's the whole loop.
 
 ### 📝 Notes
 TipTap rich-text **pages** (toolbar *and* live markdown shortcuts: `#`, `-`, `1.`, `>`, `**bold**`, `[]`) plus a freeform **sticky board** you can drag, resize, and recolor. Auto-saves as you type (debounced, flushed on blur).
 
-Notes cross-link: type `[[Chapter 4]]` to link another page — if it doesn't exist yet, it's created, so you can link as you write — and the context panel shows everything **linked from** elsewhere. `#hashtags` anywhere in your text become filters in the sidebar. Deleting a page moves it to a **trash** you can undo from.
+Notes cross-link: type `[[Chapter 4]]` to link another page. If it doesn't exist yet, it's created, so you can link as you write, and the context panel shows everything **linked from** elsewhere. `#hashtags` anywhere in your text become filters in the sidebar. Deleting a page moves it to a **trash** you can undo from.
 
 ### ✅ Tasks
-<img src="docs/tasks.png" width="880" alt="Inkling — tasks view with smart views and priority flags" />
+<img src="docs/tasks.png" width="880" alt="Inkling: tasks view with smart views and priority flags" />
 
 List **and** kanban board, due dates, priorities, subtasks, and **Today / This Week** smart views that aggregate across every notebook. Typing `[]` in a note creates a real, bidirectionally-linked task.
 
 ### 📚 Study
-<img src="docs/study.png" width="880" alt="Inkling — study view with a flashcard deck and Pomodoro timer" />
+<img src="docs/study.png" width="880" alt="Inkling: study view with a flashcard deck and Pomodoro timer" />
 
-**FSRS-4.5 spaced-repetition flashcards** (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card — **stability** (how long until your recall chance falls to 90%) and **difficulty** — instead of SM-2's single "ease factor", so it schedules for a **recall target you choose** (85 / 90 / 95%) rather than an arbitrary multiplier.
+**FSRS-4.5 spaced-repetition flashcards** (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card, **stability** (how long until your recall chance falls to 90%) and **difficulty**, instead of SM-2's single "ease factor", so it schedules for a **recall target you choose** (85 / 90 / 95%) rather than an arbitrary multiplier.
 
 Also here: one-click deck creation from `Term :: Definition` lines in a note, **CSV/TSV import** for Quizlet and Anki exports, a **Pomodoro focus timer** linked to a task or deck, and a gentle, non-punishing **study streak**. The timer stays visible in the Discord-style **user bar** at the bottom of the sidebar, wherever you are in the app.
 
 ### 📊 Grades
-<img src="docs/grades.png" width="880" alt="Inkling grade tracker — Swiss 1–6 scale with weighted average and pass status" />
+<img src="docs/grades.png" width="880" alt="Inkling grade tracker: Swiss 1–6 scale with weighted average and pass status" />
 
 Log assessments per subject and pick **your** grading system: **Swiss 1–6** (6 is best, 4 is a pass), **US letters + 4.0 GPA**, or plain **percentages**. Weighted averages per subject, an overall figure across subjects, and a "give this subject some love" nudge in your Today plan.
 
 ### 📈 Progress
 
-Every card you answer is written to a permanent review log, which makes the whole picture available: a six-month **activity heatmap**, your **true retention** (how often a card that was genuinely due came back to you), reviews and focused hours, current and longest streak, a **14-day forecast** of what's coming due, an Again/Hard/Good/Easy split, and a per-subject table. Nothing here is a guess — it's all read back out of what you actually did.
+Every card you answer is written to a permanent review log, which makes the whole picture available: a six-month **activity heatmap**, your **true retention** (how often a card that was genuinely due came back to you), reviews and focused hours, current and longest streak, a **14-day forecast** of what's coming due, an Again/Hard/Good/Easy split, and a per-subject table. Nothing here is a guess, it's all read back out of what you actually did.
 
 ---
 
 ## Everything else
 
-| | |
+| Feature | What it does |
 |---|---|
-| 🔍 **Command palette** | `Ctrl+K` fuzzy search across notes, tasks, and decks (SQLite **FTS5**) + quick actions |
-| ⚡ **Global quick-add** | `Ctrl+Alt+N` popup with natural-date detection — *“essay draft friday at 5pm”* |
-| 🔗 **Wiki-links** | `[[Page name]]` links notes together and creates the page if it's new; backlinks in the context panel |
-| 🏷️ **Tags** | `#hashtags` in your text become sidebar filters — no separate tagging UI to keep in sync |
-| 🗑️ **Trash + undo** | Deleting a note is recoverable for 30 days, with an immediate **Undo** |
-| 📥 **Import** | Markdown files → pages; CSV/TSV (Quizlet, Anki, a spreadsheet) → a deck, delimiter auto-detected |
-| 🎨 **Themes** | Sleek **Dark** + warm **Cozy**, high-contrast mode, adjustable font size |
-| 👋 **Onboarding** | 3-step first-launch flow with Inky; sensible starter notebooks for school/work/personal |
-| 🐙 **Inky the mascot** | Original SVG character — idle bob, blink, cursor-tracking eyes, celebratory bounces |
-| 🎛️ **User bar** | Discord-style panel at the bottom of the sidebar: Inky, your streak, a **live Pomodoro chip** (pause/resume anywhere), settings |
-| 🏷️ **Notebook covers** | Every notebook gets a color **and** a monochrome icon glyph (flask, calculator, globe, …) shown on its Discord-style squircle |
-| 💾 **Data safety** | WAL-mode SQLite with rolling local backups (last 5), crash-safe writes |
-| 📤 **Export** | Turn any note — or a whole notebook — into portable **Markdown** (`.md`) or a print-styled **PDF** |
-| 🔄 **Auto-update** | Packaged builds check GitHub Releases and update themselves (electron-updater) |
-| 🛡️ **Secure by default** | `contextIsolation: true`, `nodeIntegration: false`, DB access only via the preload IPC bridge |
+| **Command palette** | `Ctrl+K` fuzzy search across notes, tasks, and decks (SQLite **FTS5**) + quick actions |
+| **Global quick-add** | `Ctrl+Alt+N` popup with natural-date detection, *“essay draft friday at 5pm”* |
+| **Wiki-links** | `[[Page name]]` links notes together and creates the page if it's new; backlinks in the context panel |
+| **Tags** | `#hashtags` in your text become sidebar filters, with no separate tagging UI to keep in sync |
+| **Trash + undo** | Deleting a note is recoverable for 30 days, with an immediate **Undo** |
+| **Import** | Markdown files → pages; CSV/TSV (Quizlet, Anki, a spreadsheet) → a deck, delimiter auto-detected |
+| **Themes** | Sleek **Dark** + warm **Cozy**, high-contrast mode, adjustable font size |
+| **Onboarding** | 3-step first-launch flow with Inky; sensible starter notebooks for school/work/personal |
+| **Inky the mascot** | Original SVG character: idle bob, blink, cursor-tracking eyes, celebratory bounces |
+| **User bar** | Discord-style panel at the bottom of the sidebar: Inky, your streak, a **live Pomodoro chip** (pause/resume anywhere), settings |
+| **Notebook covers** | Every notebook gets a color **and** a monochrome icon glyph (flask, calculator, globe and so on) shown on its Discord-style squircle |
+| **Data safety** | WAL-mode SQLite with rolling local backups (last 5), crash-safe writes |
+| **Export** | Turn any note, or a whole notebook, into portable **Markdown** (`.md`) or a print-styled **PDF** |
+| **Auto-update** | Packaged builds check GitHub Releases and update themselves (electron-updater) |
+| **Secure by default** | `contextIsolation: true`, `nodeIntegration: false`, DB access only via the preload IPC bridge |
 
 ### Keyboard shortcuts
 
@@ -111,7 +111,7 @@ Every card you answer is written to a permanent review log, which makes the whol
 
 ## Themes
 
-Pick the sleek **Dark** theme or the warm **Cozy** one — with a high-contrast mode and adjustable font size on top.
+Pick the sleek **Dark** theme or the warm **Cozy** one, with a high-contrast mode and adjustable font size on top.
 
 | Dark | Cozy |
 |:---:|:---:|
@@ -133,14 +133,14 @@ Pick the sleek **Dark** theme or the warm **Cozy** one — with a high-contrast 
 | Dates | **date-fns** |
 | Spaced repetition | Custom **FSRS-4.5** implementation (`src/shared/fsrs.ts`) |
 | Icons | **lucide-react** |
-| Tests | **Vitest** — 166 tests (FSRS, grade math, streaks, parsing, import/export round-trips, tags, colors) |
+| Tests | **Vitest**, 166 tests (FSRS, grade math, streaks, parsing, import/export round-trips, tags, colors) |
 | CI / Packaging | **GitHub Actions** · **electron-builder** (NSIS) |
 
 ---
 
 ## Getting started
 
-Uses **[Bun](https://bun.sh)** as the package manager / script runner (npm works too). Electron runs the app on its own embedded Node — Bun just installs and orchestrates.
+Uses **[Bun](https://bun.sh)** as the package manager / script runner (npm works too). Electron runs the app on its own embedded Node. Bun just installs and orchestrates.
 
 ```bash
 bun install     # also rebuilds better-sqlite3 for Electron (postinstall)
@@ -156,28 +156,28 @@ bun run build       # production bundle
 bun run dist        # Windows installer (NSIS) → release/
 ```
 
-Prefer a prebuilt binary? Grab the latest installer for **Windows (`.exe`)**, **macOS (`.dmg`, universal — Intel + Apple Silicon)**, or **Linux (`.AppImage`)** from the [**Releases**](https://github.com/dominikkoenitzer/Inkling/releases/latest) page — each platform is built and attached automatically by the [release workflow](.github/workflows/release.yml).
+Prefer a prebuilt binary? Grab the latest installer for **Windows (`.exe`)**, **macOS (`.dmg`, universal, Intel + Apple Silicon)**, or **Linux (`.AppImage`)** from the [**Releases**](https://github.com/dominikkoenitzer/Inkling/releases/latest) page, each platform is built and attached automatically by the [release workflow](.github/workflows/release.yml).
 
-> **Note:** `trustedDependencies` in `package.json` lets Bun run the postinstall scripts of `electron` (binary download) and `better-sqlite3` — don't remove it.
+> **Note:** `trustedDependencies` in `package.json` lets Bun run the postinstall scripts of `electron` (binary download) and `better-sqlite3`, don't remove it.
 
 ---
 
 ## Project layout
 
 ```
-src/main       Electron main — db.ts (schema/migrations/backups), ipc.ts, index.ts
-src/main/repos the data layer, one module per domain — notebooks, notes, tags, links,
+src/main       Electron main: db.ts (schema/migrations/backups), ipc.ts, index.ts
+src/main/repos the data layer, one module per domain: notebooks, notes, tags, links,
                tasks, flashcards, focus, streak, grades, stats, search, onboarding;
                index.ts re-exports them, so callers still just `import * as repos`
 src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
-src/renderer   React app — stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
+src/renderer   React app: stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
 src/shared     types + API contract + the pure logic both processes use:
                fsrs.ts (scheduler), grades.ts, streaks.ts, tags.ts, markdown.ts /
                markdownImport.ts, deckImport.ts, tiptapHtml.ts
 test           Vitest suites for everything in src/shared
 ```
 
-Data lives in a single WAL-mode SQLite file in `%APPDATA%/Inkling`, with a `backups/` folder beside it. Fully offline — nothing leaves your machine.
+Data lives in a single WAL-mode SQLite file in `%APPDATA%/Inkling`, with a `backups/` folder beside it. Fully offline. Nothing leaves your machine.
 
 The schema is versioned via `PRAGMA user_version` and migrated on open (currently **v7**); every migration is additive, and a backup is written before each launch's migration runs.
 
@@ -229,6 +229,6 @@ See [`CHANGELOG.md`](CHANGELOG.md) for release history.
 
 ## Author
 
-**Dominik Könitzer** — software engineer in Zürich, Switzerland.
+**Dominik Könitzer**, software engineer in Zürich, Switzerland.
 
 [dk.punds.ch](https://dk.punds.ch) · [CV](https://dk.punds.ch/cv) · [@dominikkoenitzer](https://github.com/dominikkoenitzer) · [dominik.koenitzer@gmail.com](mailto:dominik.koenitzer@gmail.com)

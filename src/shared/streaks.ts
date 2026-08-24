@@ -22,7 +22,7 @@ function dayBefore(day: string): string {
 /**
  * Current and longest run of consecutive local days with any activity. Derived from the
  * review/focus history rather than the two counters in `settings`, so it stays true even
- * if the app never ran on a day you studied — and it can look backwards, which counters
+ * if the app never ran on a day you studied, and it can look backwards, which counters
  * can't.
  *
  * A run only counts as *current* if it reaches today or yesterday: one missed day

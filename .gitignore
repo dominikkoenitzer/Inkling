@@ -23,6 +23,6 @@ Thumbs.db
 .env
 .env.local
 
-# Starter-prompt material — not part of the deliverable
+# Starter-prompt material: not part of the deliverable
 files/
 files.zip

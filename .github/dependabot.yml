@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # JavaScript/TypeScript dependencies (managed with bun — bun.lock).
+  # JavaScript/TypeScript dependencies (managed with bun, bun.lock).
   # Dependabot's "bun" ecosystem reads package.json and regenerates the
   # text-based bun.lock, so `bun install --frozen-lockfile` in CI stays green
   # on every update PR.

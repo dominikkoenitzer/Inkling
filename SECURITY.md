@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security issues **privately** — do not open a public GitHub issue for anything security-sensitive.
+Please report security issues **privately**. Do not open a public GitHub issue for anything security-sensitive.
 
 - Preferred: open a [private security advisory](https://github.com/dominikkoenitzer/Inkling/security/advisories/new) on this repository.
 - Alternatively: email **dominik.koenitzer@gmail.com** with the details.
@@ -29,7 +29,7 @@ Reports most relevant to this project:
 - **IPC that trusts its input.** Every channel in `src/main/ipc.ts` is callable by the renderer with arbitrary arguments; a handler that writes outside the app's data directory, or that takes a path from the caller without validating it, is in scope.
 - **Navigation and window opening.** Links leave through `setWindowOpenHandler`, and a full navigation away from the renderer is blocked and handed to the browser. A way around either is in scope.
 - **SQL injection** into the SQLite layer (`src/main/db.ts`, `src/main/repos/`).
-- **Anything that gets note content off the machine** — an unexpected request, a leak into a log or a temporary file.
+- **Anything that gets note content off the machine**: an unexpected request, a leak into a log or a temporary file.
 - **Dependency and Electron vulnerabilities** with a plausible path to the above.
 
 Out of scope: reports that require an attacker to already have access to the user's account on the machine, since the database is readable by that user by design.
