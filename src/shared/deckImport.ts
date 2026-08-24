@@ -2,7 +2,7 @@
  * Flashcard import: CSV, TSV, or the `Term :: Definition` lines Inkling already understands
  * inside notes. Between them these cover what Quizlet, Anki, and a plain text file export.
  *
- * The delimiter is detected rather than asked for — a dialog asking "is this comma or tab
+ * The delimiter is detected rather than asked for; a dialog asking "is this comma or tab
  * separated?" is a question the file can answer itself.
  *
  * Pure and dependency-free.

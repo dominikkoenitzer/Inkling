@@ -39,7 +39,7 @@ for (const size of SIZES) {
 
 // icon.png is what electron-builder uses for macOS and Linux. macOS *requires*
 // at least 512x512 and hard-fails the build below that ("Icon must be at least
-// 512x512 pixels"), so this is 1024 — the standard master size it downscales
+// 512x512 pixels"), so this is 1024, the standard master size it downscales
 // the .icns set from. Do not drop it to match the icon-<n>.png ladder.
 await writeFile(out('icon.png'), await render(1024))
 console.log('  icon.png (1024)')

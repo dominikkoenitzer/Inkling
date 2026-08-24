@@ -124,7 +124,7 @@ function NoteTags({ noteId }: { noteId: number }): React.JSX.Element | null {
 }
 
 /**
- * The other end of a [[wiki-link]]. Hidden entirely when nothing points here — an empty
+ * The other end of a [[wiki-link]]. Hidden entirely when nothing points here: an empty
  * "no backlinks" box would just be noise on most pages.
  */
 function Backlinks({ noteId }: { noteId: number }): React.JSX.Element | null {

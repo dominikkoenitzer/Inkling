@@ -132,7 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_grades_notebook ON grades(notebook_id);
 
 /**
  * One row per answered card, never updated. `deck_id` is denormalised so a deleted deck
- * doesn't erase the fact that you studied — the history survives the content.
+ * doesn't erase the fact that you studied; the history survives the content.
  */
 const REVIEW_LOG_SCHEMA = `
 CREATE TABLE IF NOT EXISTS review_log (
@@ -179,7 +179,7 @@ function migrate(d: Database.Database): void {
     d.pragma('user_version = 1')
   }
   if (version < 2) {
-    // Grade tracker (added in v0.2.0) — additive, keeps existing data intact.
+    // Grade tracker (added in v0.2.0): additive, keeps existing data intact.
     d.exec(GRADES_SCHEMA)
     d.pragma('user_version = 2')
   }
@@ -201,12 +201,12 @@ function migrate(d: Database.Database): void {
     d.pragma('user_version = 3')
   }
   if (version < 4) {
-    // v0.4.0 — review history + FSRS memory state.
+    // v0.4.0: review history + FSRS memory state.
     //
     // Through v0.3.x a card stored only where SM-2 had left it; every answer overwrote
     // the last one, so the app could never show whether you were improving. `review_log`
     // keeps one immutable row per answer, and the three new card columns hold the FSRS
-    // state (stability/difficulty) that replaces the SM-2 ease factor. All additive —
+    // state (stability/difficulty) that replaces the SM-2 ease factor. All of it
     // the SM-2 columns stay, and existing cards are converted rather than reset.
     d.exec(REVIEW_LOG_SCHEMA)
     const cols = d.prepare(`PRAGMA table_info(flashcards)`).all() as Array<{ name: string }>
@@ -231,7 +231,7 @@ function migrate(d: Database.Database): void {
     d.pragma('user_version = 4')
   }
   if (version < 5) {
-    // v0.4.0 — soft-deleted notes. Deleting a page used to be an unrecoverable DELETE with
+    // v0.4.0: soft-deleted notes. Deleting a page used to be an unrecoverable DELETE with
     // no confirmation; now it sets a tombstone, the UI offers an undo, and `purgeExpired`
     // clears anything older than TRASH_RETENTION_DAYS on the next launch.
     const cols = d.prepare(`PRAGMA table_info(notes)`).all() as Array<{ name: string }>
@@ -242,14 +242,14 @@ function migrate(d: Database.Database): void {
     d.pragma('user_version = 5')
   }
   if (version < 6) {
-    // v0.4.0 — [[wiki-links]] between notes. The edge list is derived from note content on
+    // v0.4.0: [[wiki-links]] between notes. The edge list is derived from note content on
     // every save, so it is safe to rebuild at any time; storing it means backlinks are a
     // single indexed query instead of a scan over every note body.
     d.exec(NOTE_LINKS_SCHEMA)
     d.pragma('user_version = 6')
   }
   if (version < 7) {
-    // v0.4.0 — #hashtags. Like note links, the tag set is derived from note content on
+    // v0.4.0: #hashtags. Like note links, the tag set is derived from note content on
     // every save, so this table is a rebuildable index rather than primary data. Existing
     // notes are backfilled below so tags appear immediately after upgrading.
     d.exec(NOTE_TAGS_SCHEMA)
@@ -257,7 +257,7 @@ function migrate(d: Database.Database): void {
   }
 }
 
-/** Rolling local backups — keep the last 5, crash-safe via WAL checkpoint first. */
+/** Rolling local backups: keep the last 5, crash-safe via WAL checkpoint first. */
 function backup(d: Database.Database, file: string, dir: string): void {
   const backupsDir = join(dir, 'backups')
   fs.mkdirSync(backupsDir, { recursive: true })

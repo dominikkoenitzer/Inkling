@@ -50,7 +50,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
       setReviewed((r) => r + 1)
       setShowBack(false)
       if (g === 'again') {
-        // Struggled: FSRS puts it back inside the session, so requeue it at the end —
+        // Struggled: FSRS puts it back inside the session, so requeue it at the end,
         // with the memory state it just got, or its second showing would preview stale
         // intervals.
         setQueue((q) => [...q, updated ?? card])
@@ -65,7 +65,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (!queue[index]) {
-        // completion / empty screen — only Esc is live; ignore Space/number grades
+        // completion / empty screen: only Esc is live; ignore Space/number grades
         if (e.key === 'Escape') finish()
         return
       }
@@ -160,7 +160,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                     style={{ color: g.tone }}
                   >
                     {g.label}
-                    {/* What each answer would actually schedule — the choice is only
+                    {/* What each answer would actually schedule; the choice is only
                         meaningful if you can see what it costs. */}
                     <div className="text-[11px] font-normal text-faint">
                       {intervals ? (intervals[g.rating] === 0 ? `${RELEARN_MINUTES}m` : formatInterval(intervals[g.rating])) : ''}

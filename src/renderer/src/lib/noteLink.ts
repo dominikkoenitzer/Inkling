@@ -1,11 +1,11 @@
 import { Node, mergeAttributes, nodeInputRule, nodePasteRule } from '@tiptap/core'
 
 /**
- * `[[Wiki-link]]` — an inline reference from one note to another.
+ * `[[Wiki-link]]`: an inline reference from one note to another.
  *
  * Typing `[[Chapter 4]]` turns into a chip the moment the closing brackets land. The node
  * carries `noteId: null` until the next save, when the main process resolves the label to
- * an existing page (or creates one) and the id is stamped back in — exactly the flow the
+ * an existing page (or creates one) and the id is stamped back in, exactly the flow the
  * note↔task checkboxes already use, so an unsaved link is never a broken link.
  *
  * It is an atom: the label is an attribute rather than editable content, so a half-deleted

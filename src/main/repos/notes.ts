@@ -82,7 +82,7 @@ export const TRASH_RETENTION_DAYS = 30
 
 /**
  * Soft delete. Through v0.3.x this was an immediate `DELETE` with no confirmation and no
- * way back — one misclick in the sidebar and a page was gone. The row now gets a tombstone
+ * way back: one misclick in the sidebar and a page was gone. The row now gets a tombstone
  * instead: it drops out of every list and out of search, the UI offers an undo, and it is
  * purged for real after TRASH_RETENTION_DAYS.
  */
