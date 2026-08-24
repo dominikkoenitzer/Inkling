@@ -35,14 +35,14 @@ function useNow(intervalMs = 60_000): number {
 }
 
 /**
- * The daily study plan — assembles "what should I do right now" from due flashcards,
+ * The daily study plan, which assembles "what should I do right now" from due flashcards,
  * open tasks, the weakest graded subject and today's focus time, each with a one-click
  * start. Solves the blank-page problem that keeps people from starting at all.
  */
 export function TodayView(): React.JSX.Element {
   const app = useApp()
   const now = useNow()
-  // A focus session is live if it's running or paused part-way through — used so the plan
+  // A focus session is live if it's running or paused part-way through, used so the plan
   // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
   const timerActive = useTimer((s) => s.mode === 'focus' && (s.running || s.secondsLeft < s.totalSeconds))
   const version = useVersion('decks') + useVersion('tasks') + useVersion('grades') + useVersion('focus')
@@ -113,7 +113,7 @@ export function TodayView(): React.JSX.Element {
   }
 
   const startFocus = (): void => {
-    // Never clobber a live session — if one is already running, just jump to it.
+    // Never clobber a live session: if one is already running, just jump to it.
     if (!timerActive) void useTimer.getState().start(25)
     app.setSelectedDeck(null)
     app.setTab('study')

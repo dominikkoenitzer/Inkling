@@ -5,7 +5,7 @@
  * emits plus the handful of things people actually paste in: headings, bullet/ordered/task
  * lists, blockquotes, fenced and indented code, horizontal rules, and the inline marks
  * (bold, italic, strike, highlight, code, links, `[[wiki-links]]`). Anything unrecognised
- * survives as plain text rather than being dropped — a lossy import that silently eats a
+ * survives as plain text rather than being dropped. A lossy import that silently eats a
  * paragraph is worse than one that keeps it unstyled.
  *
  * Pure and dependency-free, so it runs in either process and is unit-testable.
@@ -255,7 +255,7 @@ export function inline(text: string): PMNode[] {
     let best: { index: number; length: number; node: PMNode } | null = null
 
     for (const { re, build } of INLINE_PATTERNS) {
-      // Ignore a delimiter that was escaped — the exporter writes `\*` for a literal star.
+      // Ignore a delimiter that was escaped; the exporter writes `\*` for a literal star.
       const m = re.exec(rest)
       if (!m || m.index === undefined) continue
       if (m.index > 0 && rest[m.index - 1] === '\\') continue

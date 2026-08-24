@@ -9,8 +9,8 @@ import tseslint from 'typescript-eslint'
  * compiler over both project configs, so turning it on here would pay for a
  * second full type-check to re-report what tsc has already said.
  *
- * The three source areas run in different places — the main process in Node,
- * the renderer in Chromium, the preload bridge in both — so each gets the
+ * The three source areas run in different places (the main process in Node,
+ * the renderer in Chromium, the preload bridge in both) so each gets the
  * globals it actually has instead of one union that hides typos.
  */
 export default tseslint.config(

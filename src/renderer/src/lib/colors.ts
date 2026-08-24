@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 
 type Ramp = Record<50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900, string>
 
-/** 7+ stop ramps per brand color (§11) — 50/100 for backgrounds, 600+ for text/borders. */
+/** 7+ stop ramps per brand color (§11): 50/100 for backgrounds, 600+ for text/borders. */
 export const RAMPS: Record<ColorKey, Ramp> = {
   teal: {
     50: '#E6F7F2',

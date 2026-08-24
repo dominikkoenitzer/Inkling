@@ -32,7 +32,7 @@ jobs:
             name: Windows (NSIS)
             args: --win nsis
           - os: macos-latest
-            name: macOS (universal — Intel + Apple Silicon)
+            name: macOS (universal, Intel + Apple Silicon)
             args: --mac dmg zip --universal
           - os: ubuntu-latest
             name: Linux (AppImage)

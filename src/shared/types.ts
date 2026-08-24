@@ -76,7 +76,7 @@ export interface Card {
   last_review: string | null
 }
 
-/** One row per answered card — the history SM-2 never kept, and what Stats is built on. */
+/** One row per answered card: the history SM-2 never kept, and what Stats is built on. */
 export interface ReviewLogEntry {
   id: number
   card_id: number

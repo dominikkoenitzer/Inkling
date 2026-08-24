@@ -124,7 +124,7 @@ export const useApp = create<AppState>((set, get) => ({
     const notebooks = await api.notebooks.list()
     const { activeNotebookId } = get()
     const stillThere = notebooks.some((n) => n.id === activeNotebookId)
-    // When the active notebook was deleted, its notes/tasks/decks are gone too — drop any
+    // When the active notebook was deleted, its notes/tasks/decks are gone too, so drop any
     // selection into them (mirrors setActiveNotebook) so MainPane can't render a phantom item.
     set({
       notebooks,
@@ -157,7 +157,7 @@ export const useApp = create<AppState>((set, get) => ({
     void api.settings.set('desired_retention', String(desiredRetention))
   },
 
-  // The tag filter is scoped to a notebook, so switching notebooks must drop it — otherwise
+  // The tag filter is scoped to a notebook, so switching notebooks must drop it, otherwise
   // the page list silently shows nothing under a tag the new notebook never used.
   setActiveNotebook: (id) =>
     set({ activeNotebookId: id, selectedNoteId: null, selectedTaskId: null, selectedDeckId: null, smartView: null, noteTagFilter: null }),
@@ -184,7 +184,7 @@ export const useApp = create<AppState>((set, get) => ({
   showToast: (t) => {
     const id = ++toastSeq
     set({ toast: { ...t, id } })
-    // Auto-dismiss, but only if this toast is still the one on screen — a newer toast
+    // Auto-dismiss, but only if this toast is still the one on screen; a newer toast
     // must not be cut short by an older one's timer.
     setTimeout(() => {
       if (get().toast?.id === id) set({ toast: null })

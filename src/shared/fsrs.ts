@@ -1,12 +1,12 @@
 /**
- * FSRS-4.5 — the Free Spaced Repetition Scheduler.
+ * FSRS-4.5, the Free Spaced Repetition Scheduler.
  *
  * Replaces the SM-2 implementation Inkling shipped through v0.3.x. SM-2 tracks one
  * number per card (an "ease factor") and multiplies the interval by it; FSRS models
  * two: **stability** (how many days until recall probability falls to 90%) and
  * **difficulty** (1–10, how much a review moves that needle). Because it knows both,
  * it can schedule a card for an explicit *desired retention* instead of an arbitrary
- * multiplier — you say "I want to remember 90% of what's due" and it solves for the
+ * multiplier. You say "I want to remember 90% of what's due" and it solves for the
  * interval.
  *
  * Everything here is pure: no dates from the environment, no database, no I/O. The
@@ -59,13 +59,13 @@ export interface ScheduleResult {
   state: CardState
   stability: number
   difficulty: number
-  /** Days since the previous review — recorded in the review log so parameters can be fitted later. */
+  /** Days since the previous review, recorded in the review log so parameters can be fitted later. */
   elapsedDays: number
   /** Whole days until the next review; 0 for a lapse, which comes back in RELEARN_MINUTES. */
   scheduledDays: number
   /** ISO timestamp the card next becomes due. */
   due: string
-  /** Recall probability at review time — 1 for a card being seen for the first time. */
+  /** Recall probability at review time, and 1 for a card being seen for the first time. */
   retrievability: number
 }
 
@@ -101,7 +101,7 @@ export function initialDifficulty(rating: Rating, w: readonly number[] = DEFAULT
 
 /**
  * Difficulty drifts down on Easy and up on Again, then reverts slightly toward the
- * difficulty of a card first answered Easy — so one bad day can't permanently brand
+ * difficulty of a card first answered Easy, so one bad day can't permanently brand
  * a card as hard.
  */
 export function nextDifficulty(difficulty: number, rating: Rating, w: readonly number[] = DEFAULT_PARAMS): number {
@@ -112,7 +112,7 @@ export function nextDifficulty(difficulty: number, rating: Rating, w: readonly n
 
 /**
  * Stability after a *successful* recall. The gain shrinks as stability and difficulty
- * grow, and — crucially — grows the longer you waited: recalling something you nearly
+ * grow, and, crucially, grows the longer you waited: recalling something you nearly
  * forgot is worth far more than recalling it twice in a row.
  */
 export function nextRecallStability(
@@ -214,7 +214,7 @@ export function schedule(
 }
 
 /**
- * What each button would schedule, without committing anything — used to print
+ * What each button would schedule, without committing anything, used to print
  * "1d / 3d / 10d / 21d" under the review buttons so the choice is informed.
  */
 export function previewIntervals(

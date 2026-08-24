@@ -9,7 +9,7 @@ import type { Note } from '@shared/types'
  *
  * Mirrors `syncNoteTasks`: the note's content is the source of truth, this runs on save,
  * and it hands back one id per label in the same order so the editor can stamp the ids
- * into the document. A label that doesn't match an existing page creates one — that's the
+ * into the document. A label that doesn't match an existing page creates one; that's the
  * whole point of linking as you write, rather than having to make the page first.
  */
 export function syncNoteLinks(sourceNoteId: number, notebookId: number, labels: string[]): number[] {
@@ -22,7 +22,7 @@ export function syncNoteLinks(sourceNoteId: number, notebookId: number, labels: 
         ids.push(0)
         continue
       }
-      // Prefer a page in the current notebook, then anywhere — so "Chapter 4" resolves to
+      // Prefer a page in the current notebook, then anywhere, so "Chapter 4" resolves to
       // this subject's page rather than a same-named one in another subject.
       const match = (db
         .prepare(
@@ -47,7 +47,7 @@ export function syncNoteLinks(sourceNoteId: number, notebookId: number, labels: 
   return ids
 }
 
-/** Notes that link *to* this one — the other half of a wiki-link, and the useful half. */
+/** Notes that link to this one: the other half of a wiki-link, and the useful half. */
 export function noteBacklinks(noteId: number): Note[] {
   return getDb()
     .prepare(

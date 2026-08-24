@@ -21,7 +21,7 @@ export default function QuickAdd(): React.JSX.Element {
     })
   }, [])
 
-  // Auto-suggest task the FIRST time a date-ish phrase appears (§7) — but only as a one-shot
+  // Auto-suggest task the FIRST time a date-ish phrase appears (§7), but only as a one-shot
   // nudge, so a deliberate click on "Note" for a dated capture isn't yanked back to "Task".
   useEffect(() => {
     const hasWhen = !!parsed.when

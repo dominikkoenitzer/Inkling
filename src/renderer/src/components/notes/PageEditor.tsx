@@ -155,7 +155,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     }
   }, [editor, noteId])
 
-  // reload when the note changed elsewhere (tasks view toggled a linked checkbox, quick-add, …)
+  // reload when the note changed elsewhere: tasks view toggled a linked checkbox, quick-add
   useEffect(() => {
     if (!editor || editor.isDestroyed || editor.isFocused) return
     void api.notes.get(noteId).then((note) => {
@@ -274,7 +274,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
 }
 
 /**
- * Stamp database ids back onto nodes of one type, in document order — the ids come back
+ * Stamp database ids back onto nodes of one type, in document order; the ids come back
  * from the main process in the same order the nodes were extracted. Used for both the
  * note↔task checkboxes and [[wiki-links]]. The transaction is kept out of the undo history
  * so pressing Ctrl+Z doesn't just un-assign an id.

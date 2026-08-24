@@ -7,7 +7,7 @@ import type { StreakInfo } from '@shared/types'
  * Gentle streak, derived from what you actually did.
  *
  * Through v0.3.x this was two counters in `settings`, bumped when the app happened to be
- * open at the right moment — which meant the user bar and any other reader could disagree,
+ * open at the right moment, which meant the user bar and any other reader could disagree,
  * and a study session that ended without a bump vanished. Since v0.4.0 the review log and
  * focus history are the record, so the streak is computed from them and there is exactly
  * one answer. The old counter is still honoured while it's live, so nobody upgrading loses
@@ -30,7 +30,7 @@ export function getStreak(): StreakInfo {
 
 /**
  * Called after a review session or focus block. The history row is already written by the
- * time this runs, so there is nothing to increment — it just re-reads the truth. The legacy
+ * time this runs, so there is nothing to increment; it just re-reads the truth. The legacy
  * counters are kept in step so a downgrade to v0.3.x still finds a sane streak.
  */
 export function bumpStreak(fallbackDay: string): StreakInfo {

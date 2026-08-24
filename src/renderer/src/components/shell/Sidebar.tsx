@@ -642,7 +642,7 @@ function GradesSidebar(): React.JSX.Element {
     .map((nb) => ({ nb, avg: subjectAverage(all.filter((g) => g.notebook_id === nb.id), gradingSystem) }))
     .filter((x): x is { nb: (typeof notebooks)[number]; avg: NonNullable<ReturnType<typeof subjectAverage>> } => x.avg !== null)
 
-  // Overall: mean Swiss grade, mean GPA, or mean percentage — depending on the system.
+  // Overall: mean Swiss grade, mean GPA, or mean percentage, depending on the system.
   let overallLabel = 'Average'
   let overallValue: string | null = null
   if (bySubject.length > 0) {

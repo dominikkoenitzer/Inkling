@@ -37,7 +37,7 @@ export function extractNoteTaskItems(doc: Record<string, unknown>): NoteTaskItem
       if (typeof m.text === 'string') parts.push(m.text)
       if (Array.isArray(m.content)) {
         m.content.forEach((c) => {
-          // don't descend into a nested checklist — that child taskItem is its own task,
+          // don't descend into a nested checklist; that child taskItem is its own task,
           // its text must not be folded into this item's title
           const type = (c as { type?: string }).type
           if (type === 'taskList' || type === 'taskItem') return
@@ -69,7 +69,7 @@ export interface NoteLinkItem {
   label: string
 }
 
-/** Every noteLink node in the document, in document order — the order ids come back in. */
+/** Every noteLink node in the document, in document order, the order ids come back in. */
 export function extractNoteLinks(doc: Record<string, unknown>): NoteLinkItem[] {
   const links: NoteLinkItem[] = []
   const walk = (n: { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }): void => {
@@ -148,7 +148,7 @@ export function parseQuickText(raw: string): QuickParse {
     st.text = st.text.replace(at[0], '').replace(/\s{2,}/g, ' ').trim()
   }
 
-  // If the whole input was just a date/time phrase, the stripped text is empty — fall back to a
+  // If the whole input was just a date/time phrase, the stripped text is empty, so fall back to a
   // neutral title rather than re-inserting the very date words we just consumed.
   if (!st.text) st.text = st.when ? 'Untitled' : raw.trim()
   return st

@@ -47,7 +47,7 @@ export interface InklingApi {
       id: number,
       patch: Partial<Pick<Note, 'title' | 'content' | 'color' | 'pos_x' | 'pos_y' | 'width' | 'height' | 'pinned' | 'notebook_id'>>
     ): Promise<Note | null>
-    /** Soft delete — recoverable via `restore` until the retention window expires. */
+    /** Soft delete, recoverable via `restore` until the retention window expires. */
     remove(id: number): Promise<void>
     restore(id: number): Promise<Note | null>
     listDeleted(notebookId?: number): Promise<Note[]>

@@ -5,7 +5,7 @@ import { streaksFrom } from '@shared/streaks'
 import type { ActivityDay, ForecastDay, RatingBreakdown, StatsOverview, SubjectStat } from '@shared/types'
 
 /**
- * Everything here buckets by *local* calendar day via SQLite's `localtime` modifier —
+ * Everything here buckets by local calendar day via SQLite's `localtime` modifier,
  * timestamps are stored as UTC ISO strings, but "did I study today" is a question about
  * the user's own calendar, and the main process runs in their timezone.
  */

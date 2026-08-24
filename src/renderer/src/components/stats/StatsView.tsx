@@ -18,7 +18,7 @@ const WINDOWS: Array<{ value: Window; label: string }> = [
   { value: '90', label: '90 days' }
 ]
 
-/** Weeks of history the heatmap shows — a bit over six months, like a contribution graph. */
+/** Weeks of history the heatmap shows: a bit over six months, like a contribution graph. */
 const HEATMAP_WEEKS = 27
 
 export function StatsView({ notebooks }: { notebooks: Notebook[] }): React.JSX.Element {

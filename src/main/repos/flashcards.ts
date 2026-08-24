@@ -73,7 +73,7 @@ export function desiredRetention(): number {
  *
  * The scheduling maths lives in `@shared/fsrs` and is pure; this function only reads the
  * card's memory state, writes the new one, and records what happened. The legacy SM-2
- * columns are kept roughly in step so a downgrade — or anything still reading them —
+ * columns are kept roughly in step so a downgrade, or anything still reading them,
  * doesn't see nonsense.
  */
 export function reviewCard(cardId: number, grade: ReviewGrade): Card {
@@ -118,7 +118,7 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
       cardId,
       card.deck_id,
       RATINGS[grade],
-      // The state the card was in *when asked* — that's what "true retention" measures
+      // The state the card was in when asked, which is what "true retention" measures
       // against (a brand-new card's first answer isn't a memory test) and what FSRS
       // parameter fitting expects. Stability/difficulty below are the resulting values.
       card.state ?? 'new',

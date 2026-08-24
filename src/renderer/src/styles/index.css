@@ -433,7 +433,7 @@ textarea:focus {
   animation: pop-in 0.16s ease-out both;
 }
 
-/* Staggered entrance for lists of cards/rows — first 10 children cascade in. */
+/* Staggered entrance for lists of cards/rows: first 10 children cascade in. */
 .stagger > * {
   animation: fade-up 0.24s ease-out both;
 }
