@@ -8,7 +8,7 @@
 [![tests](https://img.shields.io/badge/tests-166%20passing-10A37F)](test)
 [![Electron](https://img.shields.io/badge/Electron-43-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![better-sqlite3](https://img.shields.io/badge/better--sqlite3-FTS5-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-10A37F.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/dominikkoenitzer/Inkling?color=10A37F)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
@@ -42,34 +42,34 @@ The hardest part of studying isn't the studying, it's knowing what to do right n
 
 ## The six modules
 
-### ☀️ Today
+### Today
 <img src="docs/today.png" width="880" alt="Inkling: Today view with an auto-generated daily study plan" />
 
 An **auto-generated daily study plan**: due flashcard decks, tasks due today, your lowest-averaging subject, and a suggested focus block, each with a one-click start. Clear the plan, get confetti. That's the whole loop.
 
-### 📝 Notes
+### Notes
 TipTap rich-text **pages** (toolbar *and* live markdown shortcuts: `#`, `-`, `1.`, `>`, `**bold**`, `[]`) plus a freeform **sticky board** you can drag, resize, and recolor. Auto-saves as you type (debounced, flushed on blur).
 
 Notes cross-link: type `[[Chapter 4]]` to link another page. If it doesn't exist yet, it's created, so you can link as you write, and the context panel shows everything **linked from** elsewhere. `#hashtags` anywhere in your text become filters in the sidebar. Deleting a page moves it to a **trash** you can undo from.
 
-### ✅ Tasks
+### Tasks
 <img src="docs/tasks.png" width="880" alt="Inkling: tasks view with smart views and priority flags" />
 
 List **and** kanban board, due dates, priorities, subtasks, and **Today / This Week** smart views that aggregate across every notebook. Typing `[]` in a note creates a real, bidirectionally-linked task.
 
-### 📚 Study
+### Study
 <img src="docs/study.png" width="880" alt="Inkling: study view with a flashcard deck and Pomodoro timer" />
 
 **FSRS-4.5 spaced-repetition flashcards** (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card, **stability** (how long until your recall chance falls to 90%) and **difficulty**, instead of SM-2's single "ease factor", so it schedules for a **recall target you choose** (85 / 90 / 95%) rather than an arbitrary multiplier.
 
 Also here: one-click deck creation from `Term :: Definition` lines in a note, **CSV/TSV import** for Quizlet and Anki exports, a **Pomodoro focus timer** linked to a task or deck, and a gentle, non-punishing **study streak**. The timer stays visible in the Discord-style **user bar** at the bottom of the sidebar, wherever you are in the app.
 
-### 📊 Grades
+### Grades
 <img src="docs/grades.png" width="880" alt="Inkling grade tracker: Swiss 1–6 scale with weighted average and pass status" />
 
 Log assessments per subject and pick **your** grading system: **Swiss 1–6** (6 is best, 4 is a pass), **US letters + 4.0 GPA**, or plain **percentages**. Weighted averages per subject, an overall figure across subjects, and a "give this subject some love" nudge in your Today plan.
 
-### 📈 Progress
+### Progress
 
 Every card you answer is written to a permanent review log, which makes the whole picture available: a six-month **activity heatmap**, your **true retention** (how often a card that was genuinely due came back to you), reviews and focused hours, current and longest streak, a **14-day forecast** of what's coming due, an Again/Hard/Good/Easy split, and a per-subject table. Nothing here is a guess, it's all read back out of what you actually did.
 
