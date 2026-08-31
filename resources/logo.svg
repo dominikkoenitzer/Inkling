@@ -9,7 +9,7 @@
 
   <rect x="0" y="0" width="200" height="200" rx="44" fill="url(#ink)"/>
 
-  <!-- Inky, the mascot — same droplet body as <Inky />, with the face kept. -->
+  <!-- Inky, the mascot: same droplet body as <Inky />, with the face kept. -->
   <g transform="translate(35.2, 19) scale(1.08)">
     <path
       d="M60 10 C 90 45, 105 70, 105 95 C 105 120, 85 140, 60 140 C 35 140, 15 120, 15 95 C 15 70, 30 45, 60 10 Z"

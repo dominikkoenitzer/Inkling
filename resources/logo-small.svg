@@ -12,7 +12,7 @@
   <!--
     Small-size variant of the mark (16/24px). Same silhouette as logo.svg, but
     the mouth, cheeks and eye highlights are dropped and the droplet is scaled
-    up — at this size those details render as grey mush rather than a face.
+    up, because at this size those details render as grey mush rather than a face.
   -->
   <g transform="translate(31.5, 12) scale(1.15)">
     <path
