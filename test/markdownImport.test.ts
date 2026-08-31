@@ -6,7 +6,7 @@ const blocks = (md: string): PMNode[] => markdownToDoc(md).content ?? []
 const text = (n: PMNode): string => (typeof n.text === 'string' ? n.text : (n.content ?? []).map(text).join(''))
 const marksOf = (n: PMNode): string[] => (n.marks ?? []).map((m) => m.type)
 
-describe('markdownToDoc — blocks', () => {
+describe('markdownToDoc: blocks', () => {
   it('parses headings and clamps below the editor’s three levels', () => {
     const out = blocks('# One\n\n## Two\n\n##### Five')
     expect(out.map((b) => b.attrs?.level)).toEqual([1, 2, 3])

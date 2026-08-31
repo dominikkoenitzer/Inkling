@@ -38,7 +38,7 @@ describe('retrievability', () => {
     expect(retrievability(0, 10)).toBe(1)
   })
 
-  it('is exactly 0.9 after one stability-worth of days — the definition of stability', () => {
+  it('is exactly 0.9 after one stability-worth of days: the definition of stability', () => {
     expect(retrievability(10, 10)).toBeCloseTo(0.9, 6)
     expect(retrievability(1, 1)).toBeCloseTo(0.9, 6)
     expect(retrievability(365, 365)).toBeCloseTo(0.9, 6)
@@ -60,7 +60,7 @@ describe('retrievability', () => {
 })
 
 describe('intervalForRetention', () => {
-  it('inverts retrievability — scheduling at r gives back r', () => {
+  it('inverts retrievability: scheduling at r gives back r', () => {
     for (const r of [0.8, 0.85, 0.9, 0.95]) {
       const days = intervalForRetention(r, 12)
       expect(retrievability(days, 12)).toBeCloseTo(r, 6)
@@ -165,7 +165,7 @@ describe('nextForgetStability', () => {
   })
 })
 
-describe('schedule — a card seen for the first time', () => {
+describe('schedule: a card seen for the first time', () => {
   it('initialises memory state from the rating and reports full retrievability', () => {
     const r = schedule(fresh, 3, NOW)
     expect(r.stability).toBeCloseTo(initialStability(3), 10)
@@ -196,7 +196,7 @@ describe('schedule — a card seen for the first time', () => {
   })
 })
 
-describe('schedule — a card with history', () => {
+describe('schedule: a card with history', () => {
   it('measures elapsed time from the last review', () => {
     expect(schedule(reviewed(10, 5, 7), 3, NOW).elapsedDays).toBeCloseTo(7, 6)
   })

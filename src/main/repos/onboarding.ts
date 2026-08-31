@@ -11,7 +11,7 @@ function welcomeDoc(): string {
       {
         type: 'paragraph',
         content: [
-          { type: 'text', text: 'This is your first page. Type anywhere — everything saves automatically. Try ' },
+          { type: 'text', text: 'This is your first page. Type anywhere. Everything saves automatically. Try ' },
           { type: 'text', marks: [{ type: 'bold' }], text: '**bold**' },
           { type: 'text', text: ', ' },
           { type: 'text', marks: [{ type: 'italic' }], text: '*italic*' },
@@ -21,7 +21,7 @@ function welcomeDoc(): string {
       { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Checkboxes become real tasks' }] },
       {
         type: 'paragraph',
-        content: [{ type: 'text', text: 'Type [] at the start of a line — the item also shows up in your Tasks tab, fully linked both ways.' }]
+        content: [{ type: 'text', text: 'Type [] at the start of a line. The item also shows up in your Tasks tab, fully linked both ways.' }]
       },
       {
         type: 'taskList',
@@ -29,7 +29,7 @@ function welcomeDoc(): string {
           {
             type: 'taskItem',
             attrs: { checked: false, taskId: null },
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Check me off — watch the Tasks tab' }] }]
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Check me off, then watch the Tasks tab' }] }]
           }
         ]
       },

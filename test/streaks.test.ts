@@ -34,7 +34,7 @@ describe('localDay', () => {
   })
 })
 
-describe('streaksFrom — counting', () => {
+describe('streaksFrom: counting', () => {
   const today = at('2026-08-17')
 
   it('reports nothing for no history', () => {
@@ -71,7 +71,7 @@ describe('streaksFrom — counting', () => {
   })
 })
 
-describe('streaksFrom — the one-day grace', () => {
+describe('streaksFrom: the one-day grace', () => {
   const today = at('2026-08-17')
 
   it('keeps the streak alive when the last study day was yesterday', () => {
@@ -91,7 +91,7 @@ describe('streaksFrom — the one-day grace', () => {
   })
 })
 
-describe('streaksFrom — calendar edges', () => {
+describe('streaksFrom: calendar edges', () => {
   it('counts across the end of a month', () => {
     const today = at('2026-02-02')
     expect(streaksFrom(['2026-01-30', '2026-01-31', '2026-02-01', '2026-02-02'], today).current).toBe(4)
