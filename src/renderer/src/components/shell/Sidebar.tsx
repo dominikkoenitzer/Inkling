@@ -601,7 +601,7 @@ function StatsSidebar(): React.JSX.Element {
     <div className="px-2 pt-1">
       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">This week</p>
       <SidebarStat label="Reviews" value={o.reviews.toLocaleString()} />
-      <SidebarStat label="Retention" value={o.retention === null ? '—' : `${Math.round(o.retention * 100)}%`} />
+      <SidebarStat label="Retention" value={o.retention === null ? '-' : `${Math.round(o.retention * 100)}%`} />
       <SidebarStat label="Focused" value={`${o.focus_minutes}m`} />
       <SidebarStat label="Streak" value={`${o.current_streak}d`} />
       {o.due_now > 0 && (

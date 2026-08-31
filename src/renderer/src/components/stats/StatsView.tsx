@@ -89,7 +89,7 @@ export function StatsView({ notebooks }: { notebooks: Notebook[] }): React.JSX.E
             <Tile
               icon={<Target size={14} />}
               label="True retention"
-              value={overview.retention === null ? '—' : `${Math.round(overview.retention * 100)}%`}
+              value={overview.retention === null ? '-' : `${Math.round(overview.retention * 100)}%`}
               sub={overview.retention === null ? 'no cards were due yet' : 'recalled without a lapse'}
               accent
             />
@@ -393,13 +393,13 @@ function Subjects({ subjects, notebooks }: { subjects: SubjectStat[]; notebooks:
             <span className="min-w-0 flex-1 truncate text-[13px]">{nb.name}</span>
             <span className="shrink-0 text-[11px] tabular-nums text-muted">{s.reviews} reviews</span>
             <span className="w-12 shrink-0 text-right text-[11px] tabular-nums text-muted">
-              {s.retention === null ? '—' : `${Math.round(s.retention * 100)}%`}
+              {s.retention === null ? '-' : `${Math.round(s.retention * 100)}%`}
             </span>
             <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-faint">
-              {s.focus_minutes > 0 ? `${s.focus_minutes}m` : '—'}
+              {s.focus_minutes > 0 ? `${s.focus_minutes}m` : '-'}
             </span>
             <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-faint">
-              {s.cards_due > 0 ? `${s.cards_due} due` : '—'}
+              {s.cards_due > 0 ? `${s.cards_due} due` : '-'}
             </span>
           </div>
         )
