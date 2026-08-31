@@ -225,10 +225,9 @@ See [`CHANGELOG.md`](CHANGELOG.md) for release history.
 
 ## License
 
-[MIT](LICENSE) © 2026 dominikkoenitzer
+[MIT](LICENSE) © 2026 Inkling
 
 ## Author
 
-**dominikkoenitzer**, software engineer in Zürich, Switzerland.
+Built and written by [@dominikkoenitzer](https://github.com/dominikkoenitzer).
 
-[dk.punds.ch](https://dk.punds.ch) · [CV](https://dk.punds.ch/cv) · [@dominikkoenitzer](https://github.com/dominikkoenitzer) · [dominikkoenitzer@users.noreply.github.com](mailto:dominikkoenitzer@users.noreply.github.com)
