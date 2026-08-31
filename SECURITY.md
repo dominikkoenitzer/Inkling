@@ -4,8 +4,7 @@
 
 Please report security issues **privately**. Do not open a public GitHub issue for anything security-sensitive.
 
-- Preferred: open a [private security advisory](https://github.com/dominikkoenitzer/Inkling/security/advisories/new) on this repository.
-- Alternatively: email **dominikkoenitzer@users.noreply.github.com** with the details.
+Open a [private security advisory](https://github.com/dominikkoenitzer/Inkling/security/advisories/new) on this repository.
 
 Please include:
 

@@ -4,7 +4,7 @@
   "version": "0.5.0",
   "description": "Notes, tasks, schedule and study, together",
   "main": "out/main/index.js",
-  "author": "dominikkoenitzer <dominikkoenitzer@users.noreply.github.com>",
+  "author": "dominikkoenitzer",
   "license": "MIT",
   "trustedDependencies": [
     "electron",
