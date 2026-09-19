@@ -175,8 +175,12 @@ CREATE INDEX IF NOT EXISTS idx_note_tags_tag ON note_tags(tag);
 function migrate(d: Database.Database): void {
   const version = d.pragma('user_version', { simple: true }) as number
   if (version < 1) {
-    d.exec(SCHEMA)
-    d.pragma('user_version = 1')
+    // The schema has no IF NOT EXISTS, so it must land with its version bump or
+    // not at all; a half-applied v1 makes every later launch fail to open the file.
+    d.transaction(() => {
+      d.exec(SCHEMA)
+      d.pragma('user_version = 1')
+    })()
   }
   if (version < 2) {
     // Grade tracker (added in v0.2.0): additive, keeps existing data intact.

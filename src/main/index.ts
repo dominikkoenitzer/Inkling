@@ -2,6 +2,7 @@ import { app, BrowserWindow, globalShortcut, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
+import { pathToFileURL } from 'url'
 import { openDb, getDb } from './db'
 import { registerIpc } from './ipc'
 import * as repos from './repos'
@@ -16,6 +17,36 @@ let quickAddWindow: BrowserWindow | null = null
 
 const isDev = !!process.env['ELECTRON_RENDERER_URL']
 
+// Both the main window and quick add load a page from here, so the guard below
+// has to cover the directory rather than one file.
+const rendererDir = pathToFileURL(join(__dirname, '../renderer')).href + '/'
+
+/** Links leave the app for the web or a mail client, nothing else. */
+function openExternalLink(url: string): void {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:' && parsed.protocol !== 'mailto:') return
+  void shell.openExternal(parsed.href)
+}
+
+/** The app's own pages: the dev server origin, or a file in the bundled renderer. */
+function isAppUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (isDev) return parsed.origin === new URL(process.env['ELECTRON_RENDERER_URL'] as string).origin
+    parsed.hash = ''
+    parsed.search = ''
+    // The parser resolves any .. before this runs, so a traversal cannot match.
+    return parsed.href.startsWith(rendererDir)
+  } catch {
+    return false
+  }
+}
+
 /**
  * Nothing in the app navigates its own window; links leave through
  * setWindowOpenHandler. A full navigation therefore means a stray target="_self"
@@ -24,12 +55,9 @@ const isDev = !!process.env['ELECTRON_RENDERER_URL']
  */
 function blockOffAppNavigation(contents: Electron.WebContents): void {
   contents.on('will-navigate', (event, url) => {
-    const stays = isDev
-      ? url.startsWith(process.env['ELECTRON_RENDERER_URL'] as string)
-      : url.startsWith('file://')
-    if (stays) return
+    if (isAppUrl(url)) return
     event.preventDefault()
-    void shell.openExternal(url)
+    openExternalLink(url)
   })
 }
 
@@ -53,7 +81,7 @@ function createMainWindow(): void {
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    openExternalLink(url)
     return { action: 'deny' }
   })
   blockOffAppNavigation(mainWindow.webContents)
@@ -111,7 +139,7 @@ function createQuickAddWindow(): BrowserWindow {
     win.loadFile(join(__dirname, '../renderer/quickadd.html'))
   }
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    openExternalLink(url)
     return { action: 'deny' }
   })
   blockOffAppNavigation(win.webContents)
