@@ -47,7 +47,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
 
       # node-gyp (used to rebuild better-sqlite3) needs Python's distutils, which was
       # removed in 3.12+. The macOS runner defaults to 3.14, so pin a version that has it.
