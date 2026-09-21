@@ -19,7 +19,9 @@ permissions:
 # tag only ever builds once.
 concurrency:
   group: release-${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}
-  cancel-in-progress: true
+  # Never cancel a release in flight. `gh release create` fires two events for
+  # one tag, and cancelling the first one can kill an installer upload halfway.
+  cancel-in-progress: false
 
 jobs:
   build:
