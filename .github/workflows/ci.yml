@@ -30,7 +30,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
 
       # --ignore-scripts skips the electron/better-sqlite3 native postinstall: none of
       # typecheck, test, or build load the native module, so CI stays fast and reliable.
