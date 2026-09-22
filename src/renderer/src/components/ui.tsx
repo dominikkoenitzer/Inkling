@@ -2,7 +2,6 @@ import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { useApp } from '@/stores/app'
-import { NOTEBOOK_ICONS, NOTEBOOK_ICON_KEYS } from '@/lib/icons'
 
 export function Button({
   children,
@@ -106,10 +105,7 @@ export function Modal({
   )
 }
 
-/**
- * The single transient message strip, bottom-centre. Deliberately one at a time: the only
- * thing it is used for is "that's undoable", and a stack of those would be noise.
- */
+/** One transient message at a time, bottom-centre. Used for "that's undoable". */
 export function Toaster(): React.JSX.Element | null {
   const toast = useApp((s) => s.toast)
   const dismiss = useApp((s) => s.dismissToast)
@@ -154,40 +150,6 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 
 export const inputCls =
   'w-full rounded-lg border border-edge bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent'
-
-/** Notebook cover glyph picker: monochrome icon grid, "Aa" falls back to initials. */
-export function IconPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }): React.JSX.Element {
-  return (
-    <div className="grid max-h-44 grid-cols-8 gap-1 overflow-y-auto rounded-lg border border-edge bg-sunken p-2">
-      <button
-        type="button"
-        title="No icon, use initials"
-        onClick={() => onChange(null)}
-        className={`flex h-8 w-8 items-center justify-center rounded-md text-xs font-bold transition-transform hover:scale-110 ${
-          value === null ? 'bg-active text-ink ring-1 ring-[var(--accent)]' : 'text-muted hover:bg-hover'
-        }`}
-      >
-        Aa
-      </button>
-      {NOTEBOOK_ICON_KEYS.map((k) => {
-        const Icon = NOTEBOOK_ICONS[k]
-        return (
-          <button
-            key={k}
-            type="button"
-            title={k.replace(/-/g, ' ')}
-            onClick={() => onChange(k)}
-            className={`flex h-8 w-8 items-center justify-center rounded-md transition-transform hover:scale-110 ${
-              value === k ? 'bg-active text-ink ring-1 ring-[var(--accent)]' : 'text-muted hover:bg-hover hover:text-ink'
-            }`}
-          >
-            <Icon size={16} />
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 export function Segmented<T extends string>({
   options,

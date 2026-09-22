@@ -26,14 +26,6 @@ export default defineConfig({
         '@': resolve(__dirname, 'src/renderer/src'),
         '@shared': resolve(__dirname, 'src/shared')
       }
-    },
-    build: {
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/renderer/index.html'),
-          quickadd: resolve(__dirname, 'src/renderer/quickadd.html')
-        }
-      }
     }
   }
 })

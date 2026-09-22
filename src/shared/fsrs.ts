@@ -1,19 +1,9 @@
 /**
- * FSRS-4.5, the Free Spaced Repetition Scheduler.
+ * FSRS-4.5. Tracks stability (days until recall drops to 90%) and difficulty (1-10) per
+ * card, and solves for the interval that lands on a target retention.
  *
- * Replaces the SM-2 implementation Inkling shipped through v0.3.x. SM-2 tracks one
- * number per card (an "ease factor") and multiplies the interval by it; FSRS models
- * two: **stability** (how many days until recall probability falls to 90%) and
- * **difficulty** (1–10, how much a review moves that needle). Because it knows both,
- * it can schedule a card for an explicit *desired retention* instead of an arbitrary
- * multiplier. You say "I want to remember 90% of what's due" and it solves for the
- * interval.
- *
- * Everything here is pure: no dates from the environment, no database, no I/O. The
- * caller passes `now` and `elapsedDays`. That is what makes it unit-testable, and
- * every formula below is covered in test/fsrs.test.ts.
- *
- * Reference: https://github.com/open-spaced-repetition/fsrs4anki/wiki
+ * Pure: the caller passes `now` and `elapsedDays`. Formulas are covered in test/fsrs.test.ts.
+ * https://github.com/open-spaced-repetition/fsrs4anki/wiki
  */
 
 /** 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches the review UI's keys 1–4. */
@@ -23,10 +13,7 @@ export type CardState = 'new' | 'learning' | 'review' | 'relearning'
 export const RATINGS: Record<ReviewGradeName, Rating> = { again: 1, hard: 2, good: 3, easy: 4 }
 export type ReviewGradeName = 'again' | 'hard' | 'good' | 'easy'
 
-/**
- * The forgetting curve is a power function, not an exponential: R(t) = (1 + F·t/S)^D.
- * DECAY/FACTOR are fixed for FSRS-4.5 and chosen so that R(S) = 0.9 exactly.
- */
+/** R(t) = (1 + F·t/S)^D. Fixed for FSRS-4.5, chosen so R(S) = 0.9 exactly. */
 export const DECAY = -0.5
 export const FACTOR = 19 / 81
 
@@ -71,19 +58,13 @@ export interface ScheduleResult {
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v))
 
-/**
- * Probability of recalling a card `elapsedDays` after its last review, given stability.
- * R(0) = 1, and R(stability) = 0.9 by construction.
- */
+/** Recall probability `elapsedDays` after the last review. R(0) = 1, R(stability) = 0.9. */
 export function retrievability(elapsedDays: number, stability: number): number {
   if (stability <= 0) return 0
   return Math.pow(1 + (FACTOR * Math.max(0, elapsedDays)) / stability, DECAY)
 }
 
-/**
- * Days until recall probability decays to `desiredRetention`. The inverse of
- * `retrievability`, which is why FSRS can target a retention rate directly.
- */
+/** Days until recall decays to `desiredRetention`. The inverse of `retrievability`. */
 export function intervalForRetention(desiredRetention: number, stability: number): number {
   const r = clamp(desiredRetention, 0.7, 0.99)
   return (stability / FACTOR) * (Math.pow(r, 1 / DECAY) - 1)

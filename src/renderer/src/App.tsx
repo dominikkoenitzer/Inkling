@@ -1,23 +1,19 @@
 import { useEffect, useMemo } from 'react'
-import { useApp, useData } from '@/stores/app'
+import { useApp } from '@/stores/app'
 import { accentVars, isColorKey } from '@/lib/colors'
 import { IconRail } from '@/components/shell/IconRail'
 import { Sidebar } from '@/components/shell/Sidebar'
 import { MainPane } from '@/components/shell/MainPane'
 import { RightPanel } from '@/components/shell/RightPanel'
 import { CommandPalette } from '@/components/shell/CommandPalette'
-import { Onboarding } from '@/components/shell/Onboarding'
 import { SettingsModal } from '@/components/shell/SettingsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 
 const api = window.inkling
 
-const FONT_SIZES = { s: '13.5px', m: '14.5px', l: '16px' }
-
 export default function App(): React.JSX.Element {
   const app = useApp()
-  const bump = useData((s) => s.bump)
 
   useEffect(() => {
     void app.init()
@@ -25,25 +21,13 @@ export default function App(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Reflect data changes coming from other windows (quick-add popup).
+  // Theme on the root element; keep the native titlebar overlay in sync.
   useEffect(() => {
-    return api.app.onDataChanged((domain) => {
-      bump(domain)
-      if (domain === 'notebooks') void useApp.getState().refreshNotebooks()
-      if (domain === 'streak') void useApp.getState().refreshStreak()
-    })
-  }, [bump])
-
-  // Theme, contrast, font size on the root element; keep the native titlebar overlay in sync.
-  useEffect(() => {
-    const root = document.documentElement
-    root.dataset.theme = app.theme
-    root.dataset.contrast = app.contrast ? 'high' : 'normal'
-    root.style.setProperty('--font-base', FONT_SIZES[app.fontScale])
+    document.documentElement.dataset.theme = app.theme
     void api.app.setTitlebar(
       app.theme === 'dark' ? { color: '#191a1d', symbolColor: '#b9bbc2' } : { color: '#e2d4bf', symbolColor: '#6b6355' }
     )
-  }, [app.theme, app.contrast, app.fontScale])
+  }, [app.theme])
 
   // Global shortcuts: Ctrl+K palette, Ctrl+, settings
   useEffect(() => {
@@ -71,15 +55,6 @@ export default function App(): React.JSX.Element {
     return (
       <div className="flex h-full items-center justify-center bg-app">
         <LogoMark size={44} />
-      </div>
-    )
-  }
-
-  if (!app.onboardingDone) {
-    return (
-      <div style={accent} className="h-full">
-        <div className="titlebar-drag fixed left-0 right-0 top-0 z-40 h-9" />
-        <Onboarding />
       </div>
     )
   }

@@ -16,7 +16,6 @@ const GRADES: Array<{ grade: ReviewGrade; label: string; rating: Rating; tone: s
 ]
 
 export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void }): React.JSX.Element {
-  const desiredRetention = useApp((s) => s.desiredRetention)
   const [queue, setQueue] = useState<Card[]>([])
   const [index, setIndex] = useState(0)
   const [showBack, setShowBack] = useState(false)
@@ -90,11 +89,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   // too lets each button show the interval it would buy, without a round-trip per card.
   const intervals =
     card && showBack
-      ? previewIntervals(
-          { state: card.state, stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review },
-          new Date(),
-          desiredRetention
-        )
+      ? previewIntervals({ state: card.state, stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review }, new Date())
       : null
 
   return (

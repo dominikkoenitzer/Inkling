@@ -1,4 +1,4 @@
-import { Moon, Flame, Type, Contrast, Database, Keyboard, Percent, Brain } from 'lucide-react'
+import { Moon, Flame, Database, Keyboard, Percent } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { GRADING_SYSTEM_OPTIONS } from '@shared/grades'
 import { Modal, Segmented } from '@/components/ui'
@@ -21,56 +21,13 @@ export function SettingsModal(): React.JSX.Element {
           />
         </Row>
 
-        <Row icon={<Type size={16} />} label="Font size" hint="Applies everywhere, including the editor.">
-          <Segmented
-            options={[
-              { value: 's', label: 'Small' },
-              { value: 'm', label: 'Medium' },
-              { value: 'l', label: 'Large' }
-            ]}
-            value={app.fontScale}
-            onChange={app.setFontScale}
-          />
-        </Row>
-
-        <Row icon={<Contrast size={16} />} label="High contrast" hint="Stronger borders and text for readability.">
-          <Segmented
-            options={[
-              { value: 'off', label: 'Off' },
-              { value: 'on', label: 'On' }
-            ]}
-            value={app.contrast ? 'on' : 'off'}
-            onChange={(v) => app.setContrast(v === 'on')}
-          />
-        </Row>
-
-        <Row icon={<Percent size={16} />} label="Grading" hint="How Inkling shows your averages: Swiss 1–6 (6 is best), US letters, or plain percentages.">
+        <Row icon={<Percent size={16} />} label="Grading" hint="How Inkling shows your averages: the Swiss 1–6 scale (6 is best) or plain percentages.">
           <Segmented options={GRADING_SYSTEM_OPTIONS} value={app.gradingSystem} onChange={app.setGradingSystem} />
-        </Row>
-
-        <Row
-          icon={<Brain size={16} />}
-          label="Recall target"
-          hint="How much you want to remember when a card comes back. Higher means shorter intervals and more reviews."
-        >
-          <Segmented
-            options={[
-              { value: '0.85', label: '85%', title: 'Fewer reviews, more forgetting' },
-              { value: '0.9', label: '90%', title: 'The recommended balance' },
-              { value: '0.95', label: '95%', title: 'Little forgetting, many more reviews' }
-            ]}
-            value={String(app.desiredRetention)}
-            onChange={(v) => app.setDesiredRetention(Number(v))}
-          />
-          <p className="mt-1.5 text-[11px] text-faint">
-            Inkling schedules with FSRS, which solves each interval for this number. It applies from your next review on.
-          </p>
         </Row>
 
         <Row icon={<Keyboard size={16} />} label="Shortcuts" hint="">
           <div className="space-y-1 text-xs text-muted">
             <div><Kbd>Ctrl K</Kbd> command palette & search</div>
-            <div><Kbd>Ctrl Alt N</Kbd> quick-add from anywhere (global)</div>
             <div><Kbd>Space</Kbd> reveal flashcard · <Kbd>1–4</Kbd> grade it</div>
           </div>
         </Row>

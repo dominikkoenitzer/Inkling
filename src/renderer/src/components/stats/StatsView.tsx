@@ -1,56 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Flame, Target, Timer, Layers, TrendingUp } from 'lucide-react'
+import { Flame, Target, Timer, Layers } from 'lucide-react'
 import { useVersion } from '@/stores/app'
-import { ramp } from '@/lib/colors'
 import { EmptyState } from '@/components/Inky'
-import { Segmented } from '@/components/ui'
-import { NotebookGlyph } from '@/components/NotebookGlyph'
-import { hasGlyph, initials } from '@/lib/icons'
-import { formatInterval } from '@shared/fsrs'
-import type { ActivityDay, ForecastDay, Notebook, RatingBreakdown, StatsOverview, SubjectStat } from '@shared/types'
+import type { ActivityDay, StatsOverview } from '@shared/types'
 
 const api = window.inkling
 
-type Window = '7' | '30' | '90'
-const WINDOWS: Array<{ value: Window; label: string }> = [
-  { value: '7', label: '7 days' },
-  { value: '30', label: '30 days' },
-  { value: '90', label: '90 days' }
-]
-
 /** Weeks of history the heatmap shows: a bit over six months, like a contribution graph. */
 const HEATMAP_WEEKS = 27
+/** The window the counts cover. Fixed: a switcher here was three ways to read the same week. */
+const WINDOW_DAYS = 30
 
-export function StatsView({ notebooks }: { notebooks: Notebook[] }): React.JSX.Element {
+export function StatsView(): React.JSX.Element {
   const version = useVersion('decks') + useVersion('focus')
-  const [windowDays, setWindowDays] = useState<Window>('30')
   const [overview, setOverview] = useState<StatsOverview | null>(null)
   const [days, setDays] = useState<ActivityDay[]>([])
-  const [forecast, setForecast] = useState<ForecastDay[]>([])
-  const [ratings, setRatings] = useState<RatingBreakdown | null>(null)
-  const [subjects, setSubjects] = useState<SubjectStat[]>([])
 
   useEffect(() => {
-    const n = Number(windowDays)
     let alive = true
-    void Promise.all([
-      api.stats.overview(n),
-      api.stats.activity(HEATMAP_WEEKS * 7),
-      api.stats.forecast(14),
-      api.stats.ratings(n),
-      api.stats.subjects(n)
-    ]).then(([o, a, f, r, s]) => {
+    void Promise.all([api.stats.overview(WINDOW_DAYS), api.stats.activity(HEATMAP_WEEKS * 7)]).then(([o, a]) => {
       if (!alive) return
       setOverview(o)
       setDays(a)
-      setForecast(f)
-      setRatings(r)
-      setSubjects(s)
     })
     return () => {
       alive = false
     }
-  }, [windowDays, version])
+  }, [version])
 
   if (!overview) return <div className="p-6 text-sm text-muted">Reading your history…</div>
 
@@ -59,12 +35,12 @@ export function StatsView({ notebooks }: { notebooks: Notebook[] }): React.JSX.E
   if (overview.reviews_all_time === 0 && overview.focus_minutes === 0 && days.length === 0) {
     return (
       <div className="flex h-full flex-col">
-        <Header windowDays={windowDays} onWindow={setWindowDays} />
+        <Header />
         <div className="min-h-0 flex-1">
           <EmptyState
             pose="neutral"
             title="Your progress starts with the first card"
-            hint="Review a deck or run a focus block and this page fills in: an activity map, your true retention, and what's coming due."
+            hint="Review a deck or run a focus block and this page fills in: your activity and how much you are holding on to."
           />
         </div>
       </div>
@@ -76,7 +52,7 @@ export function StatsView({ notebooks }: { notebooks: Notebook[] }): React.JSX.E
 
   return (
     <div className="flex h-full flex-col">
-      <Header windowDays={windowDays} onWindow={setWindowDays} />
+      <Header />
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
         <div className="mx-auto grid max-w-4xl gap-5">
           <section className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -99,59 +75,27 @@ export function StatsView({ notebooks }: { notebooks: Notebook[] }): React.JSX.E
               value={hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
               sub={`${overview.active_days} day${overview.active_days === 1 ? '' : 's'} studied`}
             />
-            <Tile
-              icon={<Flame size={14} />}
-              label="Streak"
-              value={`${overview.current_streak}d`}
-              sub={`best ${overview.longest_streak}d`}
-            />
+            <Tile icon={<Flame size={14} />} label="Streak" value={`${overview.current_streak}d`} sub={`best ${overview.longest_streak}d`} />
           </section>
 
-          <Panel title="Activity" hint="Reviews and focus minutes, by day">
+          <section className="rounded-lg border border-edge bg-raised p-4">
+            <div className="mb-3 flex items-baseline gap-2">
+              <h3 className="text-[13px] font-semibold">Activity</h3>
+              <span className="text-[11px] text-faint">Reviews and focus minutes, by day</span>
+            </div>
             <Heatmap days={days} weeks={HEATMAP_WEEKS} />
-          </Panel>
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Panel title="Coming due" hint="Next 14 days">
-              <Forecast days={forecast} />
-            </Panel>
-            <Panel title="How it went" hint={`Answers over ${overview.window_days} days`}>
-              <Ratings ratings={ratings} />
-              <MemorySplit overview={overview} />
-            </Panel>
-          </div>
-
-          {subjects.length > 0 && (
-            <Panel title="By subject" hint={`Last ${overview.window_days} days`}>
-              <Subjects subjects={subjects} notebooks={notebooks} />
-            </Panel>
-          )}
+          </section>
         </div>
       </div>
     </div>
   )
 }
 
-function Header({ windowDays, onWindow }: { windowDays: Window; onWindow: (v: Window) => void }): React.JSX.Element {
+function Header(): React.JSX.Element {
   return (
     <div className="flex items-center gap-3 border-b border-edge px-5 py-2.5">
       <h2 className="text-base font-bold">Progress</h2>
-      <div className="ml-auto">
-        <Segmented options={WINDOWS} value={windowDays} onChange={onWindow} />
-      </div>
     </div>
-  )
-}
-
-function Panel({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }): React.JSX.Element {
-  return (
-    <section className="rounded-lg border border-edge bg-raised p-4">
-      <div className="mb-3 flex items-baseline gap-2">
-        <h3 className="text-[13px] font-semibold">{title}</h3>
-        {hint && <span className="text-[11px] text-faint">{hint}</span>}
-      </div>
-      {children}
-    </section>
   )
 }
 
@@ -188,9 +132,8 @@ const dayKey = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 /**
- * A contribution-graph of study effort: one column per week, Monday at the top. Intensity
- * is a card-equivalent score so a long focus block reads as real work even on a day with
- * no reviews (one focus minute ≈ one review).
+ * Contribution graph of study effort, one column per week, Monday at the top. Intensity
+ * counts one focus minute as one review, so a long block still shows on a no-review day.
  */
 function Heatmap({ days, weeks }: { days: ActivityDay[]; weeks: number }): React.JSX.Element {
   const { columns, max, monthLabels } = useMemo(() => {
@@ -274,136 +217,6 @@ function Heatmap({ days, weeks }: { days: ActivityDay[]; weeks: number }): React
           <span>More</span>
         </div>
       </div>
-    </div>
-  )
-}
-
-/* -------------------------------- Forecast -------------------------------- */
-
-function Forecast({ days }: { days: ForecastDay[] }): React.JSX.Element {
-  const max = Math.max(1, ...days.map((d) => d.due))
-  const total = days.reduce((n, d) => n + d.due, 0)
-  if (total === 0) {
-    return <p className="py-4 text-center text-xs text-faint">Nothing scheduled in the next two weeks. Add cards to fill it in.</p>
-  }
-  return (
-    <div>
-      <div className="flex h-24 items-end gap-1">
-        {days.map((d, i) => (
-          <div key={d.day} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={`${d.day} · ${d.due} due`}>
-            <div
-              className="w-full rounded-[3px] transition-all"
-              style={{
-                height: `${Math.max(d.due > 0 ? 4 : 2, (d.due / max) * 80)}px`,
-                background: d.due > 0 ? 'var(--accent)' : 'var(--bg-hover)',
-                opacity: i === 0 ? 1 : 0.75
-              }}
-            />
-            <span className="text-[9px] tabular-nums text-faint">{i === 0 ? 'now' : new Date(`${d.day}T12:00:00`).getDate()}</span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 text-[11px] text-faint">
-        {total} card{total === 1 ? '' : 's'} due over the next 14 days
-      </p>
-    </div>
-  )
-}
-
-/* --------------------------- Ratings & memory mix -------------------------- */
-
-const RATING_ROWS: Array<{ key: keyof RatingBreakdown; label: string; color: string }> = [
-  { key: 'again', label: 'Again', color: '#e06c75' },
-  { key: 'hard', label: 'Hard', color: '#e0a34a' },
-  { key: 'good', label: 'Good', color: 'var(--accent)' },
-  { key: 'easy', label: 'Easy', color: '#6aa9e0' }
-]
-
-function Ratings({ ratings }: { ratings: RatingBreakdown | null }): React.JSX.Element {
-  const total = ratings ? ratings.again + ratings.hard + ratings.good + ratings.easy : 0
-  if (!ratings || total === 0) {
-    return <p className="py-2 text-xs text-faint">No answers in this window yet.</p>
-  }
-  return (
-    <div className="space-y-1.5">
-      <div className="flex h-2 overflow-hidden rounded-full">
-        {RATING_ROWS.map((r) => (
-          <div key={r.key} style={{ width: `${(ratings[r.key] / total) * 100}%`, background: r.color }} />
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {RATING_ROWS.map((r) => (
-          <span key={r.key} className="flex items-center gap-1.5 text-[11px] text-muted">
-            <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
-            {r.label}
-            <span className="tabular-nums text-faint">{Math.round((ratings[r.key] / total) * 100)}%</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function MemorySplit({ overview }: { overview: StatsOverview }): React.JSX.Element {
-  if (overview.cards_total === 0) return <></>
-  return (
-    <div className="mt-4 border-t border-edge pt-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted">
-        <span className="flex items-center gap-1.5">
-          <TrendingUp size={12} style={{ color: 'var(--accent-text)' }} />
-          <span className="font-medium text-ink">{overview.cards_total}</span> cards
-        </span>
-        <span>
-          <span className="tabular-nums text-ink">{overview.cards_new}</span> new
-        </span>
-        <span>
-          <span className="tabular-nums text-ink">{overview.cards_learning}</span> learning
-        </span>
-        <span>
-          <span className="tabular-nums text-ink">{overview.cards_review}</span> in review
-        </span>
-        {overview.mean_stability !== null && (
-          <span title="Average time until a card's recall chance falls to 90%">
-            memory strength <span className="tabular-nums text-ink">{formatInterval(overview.mean_stability)}</span>
-          </span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/* -------------------------------- Subjects -------------------------------- */
-
-function Subjects({ subjects, notebooks }: { subjects: SubjectStat[]; notebooks: Notebook[] }): React.JSX.Element {
-  const byId = new Map(notebooks.map((n) => [n.id, n]))
-  return (
-    <div className="stagger space-y-1">
-      {subjects.map((s) => {
-        const nb = byId.get(s.notebook_id)
-        if (!nb) return null
-        const shades = ramp(nb.color)
-        return (
-          <div key={s.notebook_id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-hover">
-            <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
-              style={{ background: shades[500] }}
-            >
-              {hasGlyph(nb.icon) ? <NotebookGlyph icon={nb.icon} size={13} /> : initials(nb.name)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-[13px]">{nb.name}</span>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted">{s.reviews} reviews</span>
-            <span className="w-12 shrink-0 text-right text-[11px] tabular-nums text-muted">
-              {s.retention === null ? '-' : `${Math.round(s.retention * 100)}%`}
-            </span>
-            <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-faint">
-              {s.focus_minutes > 0 ? `${s.focus_minutes}m` : '-'}
-            </span>
-            <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-faint">
-              {s.cards_due > 0 ? `${s.cards_due} due` : '-'}
-            </span>
-          </div>
-        )
-      })}
     </div>
   )
 }

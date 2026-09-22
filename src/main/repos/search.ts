@@ -1,11 +1,7 @@
 import { getDb } from '../db'
 import type { SearchResult } from '@shared/types'
 
-/**
- * The full-text index. Notes, tasks and decks all write into one `search_index`
- * table keyed by (source_type, source_id), which is why every repository that
- * creates or destroys one of those rows calls in here.
- */
+/** One `search_index` table for notes, tasks and decks, keyed by (source_type, source_id). */
 
 export function tiptapToText(json: string): string {
   try {

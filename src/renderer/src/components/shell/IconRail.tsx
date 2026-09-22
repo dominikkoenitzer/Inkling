@@ -2,28 +2,37 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { RAMPS, COLOR_KEYS, isColorKey } from '@/lib/colors'
-import { NotebookGlyph } from '@/components/NotebookGlyph'
-import { JournalIcon, hasGlyph, initials } from '@/lib/icons'
-import { Modal, Field, inputCls, Button, IconPicker } from '@/components/ui'
+import { Modal, Field, inputCls, Button } from '@/components/ui'
 import type { ColorKey } from '@shared/types'
 
 const api = window.inkling
+
+/** Discord-style word initials for a notebook cover: "My Notebook" → "MN". */
+function initials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '?'
+  )
+}
 
 export function IconRail(): React.JSX.Element {
   const { notebooks, activeNotebookId, setActiveNotebook, refreshNotebooks } = useApp()
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [color, setColor] = useState<ColorKey>('teal')
-  const [icon, setIcon] = useState<string | null>(null)
 
   const createNotebook = async (): Promise<void> => {
     if (!name.trim()) return
-    const nb = await api.notebooks.create({ name: name.trim(), color, icon })
+    const nb = await api.notebooks.create({ name: name.trim(), color })
     await refreshNotebooks()
     setActiveNotebook(nb.id)
     setAdding(false)
     setName('')
-    setIcon(null)
   }
 
   return (
@@ -43,13 +52,7 @@ export function IconRail(): React.JSX.Element {
             style={{ background: `linear-gradient(135deg, ${r[400]}, ${r[600]})` }}
           >
             {isActive && <span className="absolute -left-[13px] h-7 w-1 rounded-r-full bg-ink" aria-hidden />}
-            {hasGlyph(nb.icon) ? (
-              <NotebookGlyph icon={nb.icon} size={20} />
-            ) : nb.is_journal ? (
-              <JournalIcon size={20} />
-            ) : (
-              initials(nb.name)
-            )}
+            {initials(nb.name)}
           </button>
         )
       })}
@@ -88,9 +91,6 @@ export function IconRail(): React.JSX.Element {
                 />
               ))}
             </div>
-          </Field>
-          <Field label="Icon">
-            <IconPicker value={icon} onChange={setIcon} />
           </Field>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setAdding(false)}>

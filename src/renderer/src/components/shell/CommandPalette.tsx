@@ -42,7 +42,7 @@ export function CommandPalette(): React.JSX.Element {
           label: 'New page',
           detail: `in ${nb.name}`,
           run: () => {
-            void api.notes.create({ notebook_id: nb.id, type: 'page' }).then((n) => {
+            void api.notes.create({ notebook_id: nb.id }).then((n) => {
               bumpData('notes')
               app.openNote(nb.id, n.id)
             })
@@ -55,7 +55,6 @@ export function CommandPalette(): React.JSX.Element {
           detail: `in ${nb.name}`,
           run: () => {
             app.setTab('tasks')
-            app.setSmartView(null)
             close()
           }
         },

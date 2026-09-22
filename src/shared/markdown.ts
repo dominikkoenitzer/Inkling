@@ -34,7 +34,6 @@ function renderInline(nodes: PMNode[] | undefined): string {
       if (n.type === 'hardBreak') return '  \n'
       // A [[wiki-link]] is an atom with no child content; export the syntax verbatim so
       // the exported Markdown round-trips into other wiki-style tools.
-      if (n.type === 'noteLink') return `[[${String(n.attrs?.label ?? '')}]]`
       if (n.type !== 'text') return renderInline(n.content)
       const marks = n.marks ?? []
       const has = (m: string): boolean => marks.some((x) => x.type === m)

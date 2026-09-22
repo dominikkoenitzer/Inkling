@@ -2,38 +2,25 @@ import type { GradingSystem } from './grades'
 import type { CardState } from './fsrs'
 
 export type ColorKey = 'teal' | 'coral' | 'amber' | 'pink' | 'gray'
-export type NotebookKind = 'general' | 'school_subject'
-export type NoteType = 'page' | 'sticky'
-export type TaskStatus = 'todo' | 'in_progress' | 'done'
-export type Priority = 'low' | 'medium' | 'high'
+export type TaskStatus = 'todo' | 'done'
 export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study' | 'grades' | 'stats'
 
 export interface Notebook {
   id: number
   name: string
   color: ColorKey
-  icon: string | null
-  kind: NotebookKind
   sort_order: number
-  is_journal: 0 | 1
   created_at: string
 }
 
 export interface Note {
   id: number
   notebook_id: number
-  type: NoteType
   title: string | null
   content: string // TipTap JSON string
-  color: string | null
-  pos_x: number | null
-  pos_y: number | null
-  width: number | null
-  height: number | null
-  pinned: 0 | 1
   created_at: string
   updated_at: string
-  /** Tombstone: set when the note is in the trash, null otherwise. */
+  /** Tombstone: set while the note is deleted and still undoable, null otherwise. */
   deleted_at: string | null
 }
 
@@ -43,9 +30,7 @@ export interface Task {
   note_id: number | null
   title: string
   status: TaskStatus
-  priority: Priority
   due_date: string | null // ISO UTC
-  parent_task_id: number | null
   created_at: string
   completed_at: string | null
 }
@@ -133,12 +118,6 @@ export interface ActivityDay {
   focus_minutes: number
 }
 
-/** Cards falling due on a given local day, for the "what's coming" forecast. */
-export interface ForecastDay {
-  day: string // YYYY-MM-DD, local
-  due: number
-}
-
 export interface StatsOverview {
   /** Window the counts cover, in days. */
   window_days: number
@@ -152,30 +131,8 @@ export interface StatsOverview {
   longest_streak: number
   /** Days studied at all, in the window. */
   active_days: number
-  cards_total: number
-  cards_new: number
-  cards_learning: number
-  cards_review: number
-  /** Mean stability across cards with a memory state, in days. Null when there are none. */
-  mean_stability: number | null
   /** Cards due right now, across every deck. */
   due_now: number
-}
-
-export interface RatingBreakdown {
-  again: number
-  hard: number
-  good: number
-  easy: number
-}
-
-/** Per-notebook study snapshot for the Stats subject table. */
-export interface SubjectStat {
-  notebook_id: number
-  reviews: number
-  retention: number | null
-  focus_minutes: number
-  cards_due: number
 }
 
 export interface NoteTaskItem {
@@ -184,16 +141,4 @@ export interface NoteTaskItem {
   checked: boolean
 }
 
-export interface OnboardingPayload {
-  notebookName: string
-  purpose: 'school' | 'work' | 'personal'
-  journal: boolean
-}
-
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy'
-
-export interface QuickAddPayload {
-  kind: 'note' | 'task'
-  text: string
-  due?: string | null // ISO, for task
-}

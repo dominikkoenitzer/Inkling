@@ -1,99 +1,67 @@
-import { ipcMain, BrowserWindow, dialog, app } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
-import { join } from 'path'
 import * as repos from './repos'
-import { printableDocument } from '@shared/tiptapHtml'
-import { markdownToNote } from '@shared/markdownImport'
-import { parseDeckFile, nameFromPath } from '@shared/deckImport'
-import type { QuickAddPayload } from '@shared/types'
-
-/** Broadcast a data change to every window except the one that caused it. */
-function broadcast(senderId: number, domain: string): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (win.webContents.id !== senderId && !win.isDestroyed()) {
-      win.webContents.send('data:changed', domain)
-    }
-  }
-}
 
 type Handler = (...args: never[]) => unknown
 
-function handle(channel: string, fn: Handler, mutates?: string): void {
-  ipcMain.handle(channel, (event, ...args) => {
-    const result = (fn as (...a: unknown[]) => unknown)(...args)
-    if (mutates) broadcast(event.sender.id, mutates)
-    return result
-  })
+function handle(channel: string, fn: Handler): void {
+  ipcMain.handle(channel, (_event, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
 }
 
-export function registerIpc(hideQuickAdd: () => void): void {
+export function registerIpc(): void {
   handle('notebooks.list', repos.listNotebooks)
-  handle('notebooks.create', repos.createNotebook, 'notebooks')
-  handle('notebooks.update', repos.updateNotebook, 'notebooks')
-  handle('notebooks.remove', repos.removeNotebook, 'notebooks')
+  handle('notebooks.create', repos.createNotebook)
+  handle('notebooks.update', repos.updateNotebook)
+  handle('notebooks.remove', repos.removeNotebook)
 
   handle('notes.list', repos.listNotes)
   handle('notes.get', repos.getNote)
-  handle('notes.create', repos.createNote, 'notes')
-  handle('notes.update', repos.updateNote, 'notes')
-  handle('notes.remove', repos.removeNote, 'notes')
-  handle('notes.restore', repos.restoreNote, 'notes')
-  handle('notes.listDeleted', repos.listDeletedNotes)
-  handle('notes.purge', repos.purgeNote, 'notes')
-  handle('notes.emptyTrash', repos.emptyTrash, 'notes')
-  handle('notes.syncTasks', repos.syncNoteTasks, 'tasks')
-  handle('notes.syncLinks', repos.syncNoteLinks, 'notes')
-  handle('notes.backlinks', repos.noteBacklinks)
-
-  handle('tags.list', repos.listTags)
-  handle('tags.forNote', repos.tagsForNote)
-  handle('tags.notes', repos.notesWithTag)
+  handle('notes.create', repos.createNote)
+  handle('notes.update', repos.updateNote)
+  handle('notes.remove', repos.removeNote)
+  handle('notes.restore', repos.restoreNote)
+  handle('notes.syncTasks', repos.syncNoteTasks)
 
   handle('tasks.list', repos.listTasks)
   handle('tasks.smart', repos.smartTasks)
   handle('tasks.forNote', repos.tasksForNote)
   handle('tasks.get', repos.getTask)
-  handle('tasks.create', repos.createTask, 'tasks')
-  handle('tasks.update', repos.updateTask, 'tasks')
-  handle('tasks.remove', repos.removeTask, 'tasks')
+  handle('tasks.create', repos.createTask)
+  handle('tasks.update', repos.updateTask)
+  handle('tasks.remove', repos.removeTask)
 
   handle('decks.list', repos.listDecks)
-  handle('decks.create', repos.createDeck, 'decks')
-  handle('decks.rename', repos.renameDeck, 'decks')
-  handle('decks.remove', repos.removeDeck, 'decks')
+  handle('decks.create', repos.createDeck)
+  handle('decks.rename', repos.renameDeck)
+  handle('decks.remove', repos.removeDeck)
   handle('decks.cards', repos.listCards)
   handle('decks.dueCards', repos.dueCards)
-  handle('decks.addCard', repos.addCard, 'decks')
-  handle('decks.updateCard', repos.updateCard, 'decks')
-  handle('decks.removeCard', repos.removeCard, 'decks')
-  handle('decks.review', repos.reviewCard, 'decks')
-  handle('decks.createFromPairs', repos.createDeckFromPairs, 'decks')
+  handle('decks.addCard', repos.addCard)
+  handle('decks.updateCard', repos.updateCard)
+  handle('decks.removeCard', repos.removeCard)
+  handle('decks.review', repos.reviewCard)
+  handle('decks.createFromPairs', repos.createDeckFromPairs)
 
   handle('focus.start', repos.startFocus)
-  handle('focus.complete', repos.completeFocus, 'focus')
+  handle('focus.complete', repos.completeFocus)
   handle('focus.todayMinutes', repos.todayFocusMinutes)
 
   handle('streak.get', repos.getStreak)
-  handle('streak.bump', repos.bumpStreak, 'streak')
+  handle('streak.bump', repos.bumpStreak)
 
   handle('settings.all', repos.allSettings)
-  handle('settings.set', repos.setSetting, 'settings')
+  handle('settings.set', repos.setSetting)
 
   handle('search.query', repos.searchQuery)
 
   handle('stats.overview', repos.statsOverview)
   handle('stats.activity', repos.activity)
-  handle('stats.forecast', repos.forecast)
-  handle('stats.ratings', repos.ratingBreakdown)
-  handle('stats.subjects', repos.subjectStats)
 
   handle('grades.list', repos.listGrades)
   handle('grades.all', repos.listAllGrades)
-  handle('grades.create', repos.createGrade, 'grades')
-  handle('grades.update', repos.updateGrade, 'grades')
-  handle('grades.remove', repos.removeGrade, 'grades')
-
-  handle('app.completeOnboarding', repos.completeOnboarding, 'notebooks')
+  handle('grades.create', repos.createGrade)
+  handle('grades.update', repos.updateGrade)
+  handle('grades.remove', repos.removeGrade)
 
   ipcMain.handle('app.setTitlebar', (event, colors: { color: string; symbolColor: string }) => {
     const win = BrowserWindow.fromWebContents(event.sender)
@@ -101,89 +69,6 @@ export function registerIpc(hideQuickAdd: () => void): void {
       win?.setTitleBarOverlay({ color: colors.color, symbolColor: colors.symbolColor, height: 36 })
     } catch {
       /* not supported on this platform */
-    }
-  })
-
-  ipcMain.handle('app.quickAdd', (event, payload: QuickAddPayload) => {
-    const notebooks = repos.listNotebooks()
-    const nb = notebooks.find((n) => !n.is_journal) ?? notebooks[0]
-    if (!nb) return
-    if (payload.kind === 'task') {
-      repos.createTask({ notebook_id: nb.id, title: payload.text, due_date: payload.due ?? null })
-    } else {
-      repos.createNote({
-        notebook_id: nb.id,
-        type: 'page',
-        title: payload.text.slice(0, 80),
-        content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: payload.text }] }] })
-      })
-    }
-    broadcast(event.sender.id, payload.kind === 'task' ? 'tasks' : 'notes')
-  })
-
-  ipcMain.handle('app.hideQuickAdd', () => hideQuickAdd())
-
-  // Import Markdown files as pages. Multi-select, because nobody migrates one note at a time.
-  ipcMain.handle('app.importMarkdown', async (event, notebookId: number) => {
-    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
-    const result = await dialog.showOpenDialog(win!, {
-      title: 'Import Markdown',
-      properties: ['openFile', 'multiSelections'],
-      filters: [
-        { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
-        { name: 'All files', extensions: ['*'] }
-      ]
-    })
-    if (result.canceled || result.filePaths.length === 0) return { imported: 0, failed: 0, firstNoteId: null }
-
-    let imported = 0
-    let failed = 0
-    let firstNoteId: number | null = null
-    for (const file of result.filePaths) {
-      try {
-        const text = fs.readFileSync(file, 'utf8')
-        const { title, doc } = markdownToNote(text, nameFromPath(file))
-        const note = repos.createNote({
-          notebook_id: notebookId,
-          type: 'page',
-          title: title ?? nameFromPath(file),
-          content: JSON.stringify(doc)
-        })
-        firstNoteId ??= note.id
-        imported++
-      } catch (err) {
-        console.error('markdown import failed', file, err)
-        failed++
-      }
-    }
-    broadcast(event.sender.id, 'notes')
-    return { imported, failed, firstNoteId }
-  })
-
-  // Import a CSV/TSV (Quizlet, Anki, a spreadsheet) as a flashcard deck.
-  ipcMain.handle('app.importDeck', async (event, notebookId: number) => {
-    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
-    const result = await dialog.showOpenDialog(win!, {
-      title: 'Import flashcards',
-      properties: ['openFile'],
-      filters: [
-        { name: 'Cards', extensions: ['csv', 'tsv', 'txt'] },
-        { name: 'All files', extensions: ['*'] }
-      ]
-    })
-    if (result.canceled || result.filePaths.length === 0) return { imported: 0, skipped: 0, deckId: null, deckName: null }
-
-    const file = result.filePaths[0]
-    try {
-      const parsed = parseDeckFile(fs.readFileSync(file, 'utf8'))
-      if (parsed.pairs.length === 0) return { imported: 0, skipped: parsed.skipped, deckId: null, deckName: null }
-      const name = nameFromPath(file)
-      const deck = repos.createDeckFromPairs(notebookId, name, parsed.pairs)
-      broadcast(event.sender.id, 'decks')
-      return { imported: parsed.pairs.length, skipped: parsed.skipped, deckId: deck.id, deckName: name }
-    } catch (err) {
-      console.error('deck import failed', file, err)
-      return { imported: 0, skipped: 0, deckId: null, deckName: null, error: String(err) }
     }
   })
 
@@ -204,39 +89,6 @@ export function registerIpc(hideQuickAdd: () => void): void {
     } catch (err) {
       console.error('saveFile failed', err)
       return { saved: false, path: null, error: String(err) }
-    }
-  })
-
-  // Export rendered note HTML to a PDF via a hidden print window. We render from a temp
-  // file (not a data: URL) so large notebooks don't hit Chromium's ~2MB URL cap.
-  ipcMain.handle('app.savePdf', async (event, bodyHtml: string, title: string, defaultName: string) => {
-    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
-    const result = await dialog.showSaveDialog(win!, {
-      defaultPath: defaultName,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }]
-    })
-    if (result.canceled || !result.filePath) return { saved: false, path: null }
-    const tmpPath = join(app.getPath('temp'), `inkling-print-${process.pid}-${Date.now()}.html`)
-    const printer = new BrowserWindow({ show: false, webPreferences: { sandbox: false } })
-    try {
-      fs.writeFileSync(tmpPath, printableDocument(title, bodyHtml), 'utf8')
-      await printer.loadFile(tmpPath)
-      const pdf = await printer.webContents.printToPDF({
-        printBackground: true,
-        margins: { top: 0.6, bottom: 0.6, left: 0.6, right: 0.6 }
-      })
-      fs.writeFileSync(result.filePath, pdf)
-      return { saved: true, path: result.filePath }
-    } catch (err) {
-      console.error('savePdf failed', err)
-      return { saved: false, path: null, error: String(err) }
-    } finally {
-      if (!printer.isDestroyed()) printer.destroy()
-      try {
-        fs.unlinkSync(tmpPath)
-      } catch {
-        /* temp file may not exist */
-      }
     }
   })
 }

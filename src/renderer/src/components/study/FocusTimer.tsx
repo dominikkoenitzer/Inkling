@@ -18,7 +18,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
   const [preset, setPreset] = useState(25)
 
   useEffect(() => {
-    void api.tasks.list(notebook.id).then((all) => setTasks(all.filter((t) => t.status !== 'done' && t.parent_task_id === null)))
+    void api.tasks.list(notebook.id).then((all) => setTasks(all.filter((t) => t.status !== 'done')))
   }, [notebook.id, tasksVersion])
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
           <div className="text-3xl font-bold tabular-nums">
             {clock}
           </div>
-          <div className="text-[11px] text-muted">{timer.mode === 'break' ? 'break ☕' : timer.linkedLabel ?? 'focus'}</div>
+          <div className="text-[11px] text-muted">{timer.mode === 'break' ? 'break' : timer.linkedLabel ?? 'focus'}</div>
         </div>
       </div>
 

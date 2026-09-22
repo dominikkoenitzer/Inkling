@@ -42,7 +42,7 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
                 pose="wave"
                 color={color}
                 title="First flashcard deck? Let’s make it"
-                hint="Create one in the sidebar, or write “Term :: Definition” lines in any note and hit the ✨ Flashcards button."
+                hint="Create one in the sidebar, or write “Term :: Definition” lines in any note and hit the Flashcards button."
               />
             </div>
           ) : (
@@ -55,7 +55,7 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
                   </button>
                   <div className="mb-3 text-xs text-muted">
                     {d.card_count} card{d.card_count === 1 ? '' : 's'}
-                    {d.due_count > 0 ? ` · ${d.due_count} due now` : d.card_count > 0 ? ' · all caught up ✨' : ''}
+                    {d.due_count > 0 ? ` · ${d.due_count} due now` : d.card_count > 0 ? ' · all caught up' : ''}
                   </div>
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={() => setReviewingDeck(d)} disabled={d.due_count === 0}>

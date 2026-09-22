@@ -34,10 +34,10 @@ export function UserBar(): React.JSX.Element {
         <Inky pose={app.celebrating ? 'happy' : activeToday ? 'neutral' : 'sleepy'} color={inkyColor} size={32} />
         <span className="min-w-0 leading-tight">
           <span className={`block truncate text-xs font-bold ${activeToday ? '' : 'text-muted'}`}>
-            {app.streak.count > 0 ? `${app.streak.count}-day streak ${activeToday ? '🔥' : ''}` : 'No streak yet'}
+            {app.streak.count > 0 ? `${app.streak.count}-day streak` : 'No streak yet'}
           </span>
           <span className="block truncate text-[11px] text-faint">
-            {activeToday ? 'Active today ✓' : app.streak.count > 0 ? 'Study today to keep it' : 'Review or focus to start'}
+            {activeToday ? 'Active today' : app.streak.count > 0 ? 'Study today to keep it' : 'Review or focus to start'}
           </span>
         </span>
       </button>
@@ -52,7 +52,7 @@ export function UserBar(): React.JSX.Element {
             app.setTab('study')
           }}
         >
-          {timer.mode === 'break' ? '☕ ' : ''}
+          {timer.mode === 'break' ? 'break ' : ''}
           {fmtClock(timer.secondsLeft)}
           <IconBtn
             title={timer.running ? 'Pause' : 'Resume'}
