@@ -4,7 +4,7 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.6.0] - 2026-09-22
 
 Inkling had grown a second way to do most things. This keeps one of each. No notes, tasks,
 decks, grades or review history were touched.

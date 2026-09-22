@@ -2,7 +2,7 @@
   "name": "inkling",
   "packageManager": "bun@1.3.14",
   "productName": "Inkling",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Notes, tasks, schedule and study, together",
   "main": "out/main/index.js",
   "author": "dominikkoenitzer",
