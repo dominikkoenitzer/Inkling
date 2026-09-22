@@ -93,17 +93,34 @@ function createMainWindow(): void {
   if (shotPath) {
     mainWindow.webContents.on('did-finish-load', () => {
       const evalJs = process.env['INKLING_EVAL']
-      if (evalJs) {
-        setTimeout(() => void mainWindow?.webContents.executeJavaScript(evalJs).catch(console.error), 1500)
-      }
-      setTimeout(async () => {
+      // INKLING_EVAL_RESULT writes whatever the snippet resolves to, so a caller can read an
+      // answer back out of the renderer without a channel of its own. With it set, the app
+      // waits for the snippet instead of the fixed delay, which a long script would outrun.
+      const resultPath = process.env['INKLING_EVAL_RESULT']
+
+      const capture = async (): Promise<void> => {
         try {
           const image = await mainWindow!.webContents.capturePage()
           fs.writeFileSync(shotPath, image.toPNG())
         } finally {
           app.quit()
         }
-      }, 3500)
+      }
+
+      if (evalJs) {
+        setTimeout(() => {
+          void mainWindow?.webContents
+            .executeJavaScript(evalJs)
+            .then((value) => {
+              if (resultPath) fs.writeFileSync(resultPath, String(value ?? ''), 'utf8')
+            })
+            .catch(console.error)
+            .finally(() => {
+              if (resultPath) void capture()
+            })
+        }, 1500)
+      }
+      if (!evalJs || !resultPath) setTimeout(() => void capture(), 3500)
     })
   }
 

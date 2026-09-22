@@ -9,27 +9,35 @@
  * Exits non-zero if any check fails, so CI can gate on it.
  */
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { createRequire } from 'node:module'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const require = createRequire(import.meta.url)
-// electron/path.txt names the binary for this platform: electron.exe, electron, or the
-// path inside Electron.app. Hardcoding the Windows name would break the Linux CI runner.
+// electron/path.txt names the binary for this platform: electron.exe, electron, or the path
+// inside Electron.app. It only exists once electron's postinstall has fetched the binary,
+// which Bun skips unless the package is trusted.
 const electronDir = join(root, 'node_modules', 'electron')
+if (!existsSync(join(electronDir, 'path.txt'))) {
+  console.error('the electron binary is missing. run: node node_modules/electron/install.js')
+  process.exit(1)
+}
 const electron = join(electronDir, 'dist', readFileSync(join(electronDir, 'path.txt'), 'utf8').trim())
 const profile = mkdtempSync(join(tmpdir(), 'inkling-smoke-'))
 
 /**
- * Runs in the renderer once the bridge exists. Results are written to a settings row rather
- * than the console, because the window is headless and quits on its own; the row survives it.
+ * Runs in the renderer once the bridge exists, and resolves to the result lines. The main
+ * process writes whatever it resolves to into INKLING_EVAL_RESULT, which keeps this script
+ * free of any database or native module of its own.
  */
 const checks = `
-(async function run() {
-  if (!window.inkling) return setTimeout(run, 80)
+(async function () {
+  // The bridge exists before React does; wait for it rather than assuming the timing.
+  await new Promise((res) => {
+    const tick = () => (window.inkling ? res() : setTimeout(tick, 50))
+    tick()
+  })
   const api = window.inkling
   const r = []
   const ok = (name, cond, detail) => r.push((cond ? 'PASS ' : 'FAIL ') + name + (detail ? ' (' + detail + ')' : ''))
@@ -76,7 +84,8 @@ const checks = `
   } catch (e) {
     r.push('FAIL threw: ' + (e && e.message ? e.message : String(e)))
   }
-  await window.inkling.settings.set('smoke_results', r.join('\\n'))
+  // String.fromCharCode(10) keeps a newline escape out of the template literal.
+  return r.join(String.fromCharCode(10))
 })()
 `
 
@@ -90,21 +99,15 @@ const run = spawnSync(electron, args, {
     ELECTRON_RUN_AS_NODE: undefined,
     INKLING_USERDATA: profile,
     INKLING_SCREENSHOT: join(profile, 'smoke.png'),
-    INKLING_EVAL: checks
+    INKLING_EVAL: checks,
+    INKLING_EVAL_RESULT: join(profile, 'results.txt')
   },
   stdio: 'ignore',
   timeout: 90_000
 })
 
-let results = null
-try {
-  const Database = require(join(root, 'node_modules', 'better-sqlite3'))
-  const db = new Database(join(profile, 'inkling.db'), { readonly: true })
-  results = db.prepare("SELECT value FROM settings WHERE key = 'smoke_results'").get()?.value ?? null
-  db.close()
-} catch (err) {
-  console.error('could not read the results back:', err.message)
-}
+const resultFile = join(profile, 'results.txt')
+const results = existsSync(resultFile) ? readFileSync(resultFile, 'utf8').trim() : null
 rmSync(profile, { recursive: true, force: true })
 
 if (run.status !== 0 || !results) {
