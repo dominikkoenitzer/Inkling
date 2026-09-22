@@ -6,16 +6,16 @@ export function listNotebooks(): Notebook[] {
   return getDb().prepare(`SELECT * FROM notebooks ORDER BY sort_order, id`).all() as Notebook[]
 }
 
-export function createNotebook(input: { name: string; color: ColorKey; icon?: string | null; kind?: string; is_journal?: boolean }): Notebook {
+export function createNotebook(input: { name: string; color: ColorKey }): Notebook {
   const max = (getDb().prepare(`SELECT COALESCE(MAX(sort_order), -1) AS m FROM notebooks`).get() as { m: number }).m
   const info = getDb()
-    .prepare(`INSERT INTO notebooks (name, color, icon, kind, sort_order, is_journal) VALUES (?, ?, ?, ?, ?, ?)`)
-    .run(input.name, input.color, input.icon ?? null, input.kind ?? 'general', max + 1, input.is_journal ? 1 : 0)
+    .prepare(`INSERT INTO notebooks (name, color, sort_order) VALUES (?, ?, ?)`)
+    .run(input.name, input.color, max + 1)
   return getDb().prepare(`SELECT * FROM notebooks WHERE id = ?`).get(info.lastInsertRowid) as Notebook
 }
 
 export function updateNotebook(id: number, patch: Record<string, unknown>): Notebook {
-  const allowed = ['name', 'color', 'icon', 'kind', 'sort_order'] as const
+  const allowed = ['name', 'color', 'sort_order'] as const
   const keys = allowed.filter((k) => k in patch)
   if (keys.length > 0) {
     const sets = keys.map((k) => `${k} = @${k}`).join(', ')

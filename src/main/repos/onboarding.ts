@@ -1,20 +1,18 @@
 import { createNote } from './notes'
-import { createNotebook } from './notebooks'
-import { setSetting } from './settings'
-import type { OnboardingPayload } from '@shared/types'
+import { createNotebook, listNotebooks } from './notebooks'
 
 function welcomeDoc(): string {
   return JSON.stringify({
     type: 'doc',
     content: [
-      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Welcome to Inkling 👋' }] },
+      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Welcome to Inkling' }] },
       {
         type: 'paragraph',
         content: [
-          { type: 'text', text: 'This is your first page. Type anywhere. Everything saves automatically. Try ' },
-          { type: 'text', marks: [{ type: 'bold' }], text: '**bold**' },
-          { type: 'text', text: ', ' },
-          { type: 'text', marks: [{ type: 'italic' }], text: '*italic*' },
+          { type: 'text', text: 'This is your first page. Type anywhere. Everything saves automatically. Wrap a word in asterisks for ' },
+          { type: 'text', marks: [{ type: 'bold' }], text: 'bold' },
+          { type: 'text', text: ' or ' },
+          { type: 'text', marks: [{ type: 'italic' }], text: 'italic' },
           { type: 'text', text: ', or start a line with # for a heading.' }
         ]
       },
@@ -38,26 +36,21 @@ function welcomeDoc(): string {
       { type: 'paragraph', content: [{ type: 'text', text: 'Mitochondria :: The powerhouse of the cell' }] },
       {
         type: 'paragraph',
-        content: [{ type: 'text', text: 'Open the ✨ menu in the editor toolbar and pick “Make flashcards from this note”.' }]
+        content: [{ type: 'text', text: 'Hit the Flashcards button in the editor toolbar to turn them into a deck.' }]
       }
     ]
   })
 }
 
-export function completeOnboarding(payload: OnboardingPayload): void {
-  const first = createNotebook({ name: payload.notebookName || 'My Notebook', color: 'teal', kind: payload.purpose === 'school' ? 'school_subject' : 'general' })
-  createNote({ notebook_id: first.id, type: 'page', title: 'Welcome to Inkling', content: welcomeDoc() })
-  if (payload.purpose === 'school') {
-    createNotebook({ name: 'Assignments', color: 'coral', icon: 'pen-tool', kind: 'school_subject' })
-    createNotebook({ name: 'Class Notes', color: 'amber', icon: 'book-open', kind: 'school_subject' })
-    createNotebook({ name: 'Study Decks', color: 'pink', icon: 'brain', kind: 'school_subject' })
-  } else if (payload.purpose === 'work') {
-    createNotebook({ name: 'Projects', color: 'coral', icon: 'briefcase' })
-    createNotebook({ name: 'Meetings', color: 'amber', icon: 'coffee' })
-  }
-  if (payload.journal) {
-    createNotebook({ name: 'Journal', color: 'gray', is_journal: true })
-  }
-  setSetting('onboarding_done', '1')
-  setSetting('purpose', payload.purpose)
+/**
+ * First run: one notebook and one page explaining the app, created on the spot.
+ *
+ * This replaced a three-step wizard that asked for a notebook name, a "purpose" that only
+ * changed which empty notebooks got made, and whether you wanted a journal. Renaming a
+ * notebook takes one click, so asking first was ceremony.
+ */
+export function bootstrapFirstRun(name = 'My Notebook'): void {
+  if (listNotebooks().length > 0) return
+  const first = createNotebook({ name, color: 'teal' })
+  createNote({ notebook_id: first.id, title: 'Welcome to Inkling', content: welcomeDoc() })
 }

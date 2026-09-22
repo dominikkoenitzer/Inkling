@@ -26,10 +26,8 @@ import {
   FileDown
 } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { extractNoteTaskItems, extractFlashcardPairs, extractNoteLinks, noteLinksEqual, type NoteLinkItem } from '@/lib/parse'
-import { NoteLink } from '@/lib/noteLink'
+import { extractNoteTaskItems, extractFlashcardPairs } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
-import { tiptapDocToHtml } from '@shared/tiptapHtml'
 import { IconBtn } from '@/components/ui'
 import type { Notebook, Note, NoteTaskItem } from '@shared/types'
 
@@ -66,7 +64,6 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
   const syncingRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastItemsRef = useRef<NoteTaskItem[]>([])
-  const lastLinksRef = useRef<NoteLinkItem[]>([])
   const loadedUpdatedAtRef = useRef<string>('')
   const titleRef = useRef('')
 
@@ -75,10 +72,9 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       // StarterKit v3 bundles Underline and Link; configure them here rather than registering twice.
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: true } }),
       Highlight,
-      Placeholder.configure({ placeholder: 'Write anything… try “# ” for a heading, “[] ” for a task, “[[” to link a page' }),
+      Placeholder.configure({ placeholder: 'Write anything… try “# ” for a heading, “[] ” for a task' }),
       TaskList,
-      LinkedTaskItem.configure({ nested: true }),
-      NoteLink
+      LinkedTaskItem.configure({ nested: true })
     ],
     onUpdate: () => {
       if (syncingRef.current) return
@@ -111,20 +107,6 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       bumpData('tasks')
     }
 
-    // Resolve any [[wiki-links]] the same way: the main process maps each label to a page
-    // (creating it when the title is new) and hands back ids to stamp into the document.
-    const links = extractNoteLinks(editor.getJSON() as Record<string, unknown>)
-    if (!noteLinksEqual(links, lastLinksRef.current)) {
-      const targetIds = await api.notes.syncLinks(
-        noteId,
-        notebook.id,
-        links.map((l) => l.label)
-      )
-      assignNodeIds(editor, 'noteLink', 'noteId', targetIds, syncingRef)
-      lastLinksRef.current = extractNoteLinks(editor.getJSON() as Record<string, unknown>)
-      bumpData('notes')
-    }
-
     const saved = await api.notes.update(noteId, {
       title: titleRef.current || null,
       content: JSON.stringify(editor.getJSON())
@@ -148,14 +130,13 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       titleRef.current = note.title ?? ''
       loadedUpdatedAtRef.current = note.updated_at
       lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
-      lastLinksRef.current = extractNoteLinks(safeParse(note.content) as Record<string, unknown>)
     })
     return () => {
       alive = false
     }
   }, [editor, noteId])
 
-  // reload when the note changed elsewhere: tasks view toggled a linked checkbox, quick-add
+  // reload when the note changed elsewhere, e.g. the tasks view toggled a linked checkbox
   useEffect(() => {
     if (!editor || editor.isDestroyed || editor.isFocused) return
     void api.notes.get(noteId).then((note) => {
@@ -168,7 +149,6 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
         titleRef.current = note.title ?? ''
         loadedUpdatedAtRef.current = note.updated_at
         lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
-        lastLinksRef.current = extractNoteLinks(safeParse(note.content) as Record<string, unknown>)
       }
     })
   }, [notesVersion, editor, noteId])
@@ -207,7 +187,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
     const res = await api.app.saveFile(`${base}.md`, md)
     if (res.saved) {
-      setFlashMsg('Exported to Markdown ✓')
+      setFlashMsg('Exported to Markdown')
       setTimeout(() => setFlashMsg(null), 2500)
     } else if (res.error) {
       setFlashMsg('Export failed: could not write the file.')
@@ -215,31 +195,10 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     }
   }
 
-  const exportPdf = async (): Promise<void> => {
-    if (!editor) return
-    await doSave()
-    const body = tiptapDocToHtml(editor.getJSON())
-    const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
-    const res = await api.app.savePdf(body, titleRef.current || 'Untitled', `${base}.pdf`)
-    if (res.saved) {
-      setFlashMsg('Exported to PDF ✓')
-      setTimeout(() => setFlashMsg(null), 2500)
-    } else if (res.error) {
-      setFlashMsg('Export failed: could not write the PDF.')
-      setTimeout(() => setFlashMsg(null), 3500)
-    }
-  }
-
   return (
     <div className="flex h-full flex-col">
       {editor && (
-        <Toolbar
-          editor={editor}
-          onFlashcards={() => void makeFlashcards()}
-          onExportMd={() => void exportMarkdown()}
-          onExportPdf={() => void exportPdf()}
-          savedAt={savedAt}
-        />
+        <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExportMd={() => void exportMarkdown()} savedAt={savedAt} />
       )}
       {flashMsg && <div className="mx-auto mt-2 rounded-lg border border-edge bg-raised px-3 py-1.5 text-xs text-muted pop-in">{flashMsg}</div>}
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -254,19 +213,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
             placeholder="Untitled"
             className="mb-2 w-full bg-transparent text-3xl font-bold text-ink placeholder:text-faint"
           />
-          {/* One delegated listener beats a React node view per link: clicking a resolved
-              [[wiki-link]] opens that page. */}
-          <EditorContent
-            editor={editor}
-            className="[&>div]:min-h-[50vh]"
-            onClick={(e) => {
-              const el = (e.target as HTMLElement).closest('[data-note-link]')
-              const id = el?.getAttribute('data-note-id')
-              if (!id) return
-              e.preventDefault()
-              void doSave().then(() => useApp.getState().openNote(notebook.id, Number(id)))
-            }}
-          />
+          <EditorContent editor={editor} className="[&>div]:min-h-[50vh]" />
         </div>
       </div>
     </div>
@@ -274,10 +221,8 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
 }
 
 /**
- * Stamp database ids back onto nodes of one type, in document order; the ids come back
- * from the main process in the same order the nodes were extracted. Used for both the
- * note↔task checkboxes and [[wiki-links]]. The transaction is kept out of the undo history
- * so pressing Ctrl+Z doesn't just un-assign an id.
+ * Stamp database ids onto nodes of one type, in document order, matching the order the
+ * main process returned. Kept out of the undo history so Ctrl+Z cannot un-assign an id.
  */
 function assignNodeIds(
   editor: Editor,
@@ -340,18 +285,15 @@ function Toolbar({
   editor,
   onFlashcards,
   onExportMd,
-  onExportPdf,
   savedAt
 }: {
   editor: Editor
   onFlashcards: () => void
   onExportMd: () => void
-  onExportPdf: () => void
   savedAt: Date | null
 }): React.JSX.Element {
   // subscribe to selection/transaction changes so active states repaint
   const [, setTick] = useState(0)
-  const [exportOpen, setExportOpen] = useState(false)
   useEffect(() => {
     const rerender = (): void => setTick((t) => t + 1)
     editor.on('transaction', rerender)
@@ -421,38 +363,9 @@ function Toolbar({
         <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
         Flashcards
       </IconBtn>
-      <div className="relative">
-        <IconBtn title="Export note…" active={exportOpen} onClick={() => setExportOpen((v) => !v)}>
-          <FileDown size={16} />
-        </IconBtn>
-        {exportOpen && (
-          <>
-            <div className="fixed inset-0 z-30" onClick={() => setExportOpen(false)} />
-            <div className="absolute right-0 top-full z-40 mt-1 w-44 overflow-hidden rounded-lg border border-edge bg-raised py-1 shadow-lg">
-              <button
-                type="button"
-                className="block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-hover"
-                onClick={() => {
-                  setExportOpen(false)
-                  onExportMd()
-                }}
-              >
-                Markdown (.md)
-              </button>
-              <button
-                type="button"
-                className="block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-hover"
-                onClick={() => {
-                  setExportOpen(false)
-                  onExportPdf()
-                }}
-              >
-                PDF (.pdf)
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <IconBtn title="Export as Markdown" onClick={onExportMd}>
+        <FileDown size={16} />
+      </IconBtn>
       <span className="ml-auto pr-1 text-[11px] text-faint">
         {savedAt ? `Saved ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Auto-saves as you type'}
       </span>

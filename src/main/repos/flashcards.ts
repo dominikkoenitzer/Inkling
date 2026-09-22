@@ -1,7 +1,6 @@
 import { getDb } from '../db'
 import { now } from './dates'
 import { ftsDelete, ftsUpsert } from './search'
-import { getSetting } from './settings'
 import { RATINGS, schedule } from '@shared/fsrs'
 import type { Card, Deck, ReviewGrade } from '@shared/types'
 
@@ -62,34 +61,22 @@ export function removeCard(id: number): void {
   getDb().prepare(`DELETE FROM flashcards WHERE id = ?`).run(id)
 }
 
-/** Desired retention, as a fraction. Settable in Settings; FSRS solves each interval for it. */
-export function desiredRetention(): number {
-  const raw = Number(getSetting('desired_retention') ?? '0.9')
-  return Number.isFinite(raw) ? Math.min(0.99, Math.max(0.7, raw)) : 0.9
-}
-
 /**
- * Review one card with FSRS-4.5 (replaced SM-2 in v0.4.0) and append to the review log.
- *
- * The scheduling maths lives in `@shared/fsrs` and is pure; this function only reads the
- * card's memory state, writes the new one, and records what happened. The legacy SM-2
- * columns are kept roughly in step so a downgrade, or anything still reading them,
- * doesn't see nonsense.
+ * Review one card and append to the review log. The scheduling maths is in `@shared/fsrs`;
+ * this reads the memory state, writes the new one and records what happened. The old SM-2
+ * columns are kept roughly in step for anything still reading them.
  */
 export function reviewCard(cardId: number, grade: ReviewGrade): Card {
   const db = getDb()
   const card = db.prepare(`SELECT * FROM flashcards WHERE id = ?`).get(cardId) as Card | undefined
   if (!card) throw new Error(`card ${cardId} not found`)
 
-  // Deliberately not the module-level `now()`: FSRS needs a Date to measure elapsed
-  // days from, and the two columns below need that same instant as a string. Reading
-  // the clock once and deriving both keeps the schedule and the log exactly in step.
+  // Not the module-level now(): the schedule and the log must use the same instant.
   const reviewedAt = new Date()
   const result = schedule(
     { state: card.state ?? 'new', stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review },
     RATINGS[grade],
-    reviewedAt,
-    desiredRetention()
+    reviewedAt
   )
   const reviewedAtIso = reviewedAt.toISOString()
 
@@ -118,9 +105,7 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
       cardId,
       card.deck_id,
       RATINGS[grade],
-      // The state the card was in when asked, which is what "true retention" measures
-      // against (a brand-new card's first answer isn't a memory test) and what FSRS
-      // parameter fitting expects. Stability/difficulty below are the resulting values.
+      // The state the card was in when asked; true retention only counts 'review' rows.
       card.state ?? 'new',
       result.stability,
       result.difficulty,

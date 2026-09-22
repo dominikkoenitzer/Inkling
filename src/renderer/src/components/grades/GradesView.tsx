@@ -4,7 +4,7 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { isColorKey } from '@/lib/colors'
 import { EmptyState } from '@/components/Inky'
 import { Button, IconBtn, Segmented } from '@/components/ui'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, letterGrade, gpaPoints, swissRound, swissPass, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
 import type { Notebook, Grade } from '@shared/types'
 
 const api = window.inkling
@@ -94,17 +94,10 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
           {swiss && shownSwiss !== null && (
             <>
               <Stat label="Ø Grade" value={shownSwiss.toFixed(1)} accent />
-              <Stat label="Status" value={swissPass(shownSwiss) ? 'Passing ✓' : 'Below 4'} />
+              <Stat label="Status" value={swissPass(shownSwiss) ? 'Passing' : 'Below 4'} />
             </>
           )}
-          {gradingSystem === 'us' && shownPct !== null && (
-            <>
-              <Stat label="Grade" value={`${shownPct.toFixed(1)}%`} />
-              <Stat label="Letter" value={letterGrade(shownPct)} accent />
-              <Stat label="GPA" value={gpaPoints(shownPct).toFixed(1)} />
-            </>
-          )}
-          {gradingSystem === 'percent' && shownPct !== null && <Stat label="Average" value={`${shownPct.toFixed(1)}%`} accent />}
+          {!swiss && shownPct !== null && <Stat label="Average" value={`${shownPct.toFixed(1)}%`} accent />}
           <Segmented options={GRADING_SYSTEM_OPTIONS} value={gradingSystem} onChange={setGradingSystem} />
         </div>
       </div>
@@ -194,7 +187,7 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
                         {fmt(g.score)} / {fmt(g.max)}
                       </span>
                       <span className="w-12 text-right text-sm font-semibold tabular-nums" style={{ color: 'var(--accent-text)' }}>
-                        {gradingSystem === 'us' ? letterGrade(p) : `${p.toFixed(0)}%`}
+                        {p.toFixed(0)}%
                       </span>
                     </>
                   )}

@@ -20,12 +20,7 @@ const api: InklingApi = {
     update: invoke('notes.update'),
     remove: invoke('notes.remove'),
     restore: invoke('notes.restore'),
-    listDeleted: invoke('notes.listDeleted'),
-    purge: invoke('notes.purge'),
-    emptyTrash: invoke('notes.emptyTrash'),
-    syncTasks: invoke('notes.syncTasks'),
-    syncLinks: invoke('notes.syncLinks'),
-    backlinks: invoke('notes.backlinks')
+    syncTasks: invoke('notes.syncTasks')
   },
   tasks: {
     list: invoke('tasks.list'),
@@ -65,17 +60,9 @@ const api: InklingApi = {
   search: {
     query: invoke('search.query')
   },
-  tags: {
-    list: invoke('tags.list'),
-    forNote: invoke('tags.forNote'),
-    notes: invoke('tags.notes')
-  },
   stats: {
     overview: invoke('stats.overview'),
-    activity: invoke('stats.activity'),
-    forecast: invoke('stats.forecast'),
-    ratings: invoke('stats.ratings'),
-    subjects: invoke('stats.subjects')
+    activity: invoke('stats.activity')
   },
   grades: {
     list: invoke('grades.list'),
@@ -85,19 +72,8 @@ const api: InklingApi = {
     remove: invoke('grades.remove')
   },
   app: {
-    completeOnboarding: invoke('app.completeOnboarding'),
     setTitlebar: invoke('app.setTitlebar'),
-    quickAdd: invoke('app.quickAdd'),
-    hideQuickAdd: invoke('app.hideQuickAdd'),
-    importMarkdown: invoke('app.importMarkdown'),
-    importDeck: invoke('app.importDeck'),
-    saveFile: invoke('app.saveFile'),
-    savePdf: invoke('app.savePdf'),
-    onDataChanged: (cb: (domain: string) => void) => {
-      const listener = (_e: unknown, domain: string): void => cb(domain)
-      ipcRenderer.on('data:changed', listener)
-      return () => ipcRenderer.removeListener('data:changed', listener)
-    }
+    saveFile: invoke('app.saveFile')
   }
 }
 

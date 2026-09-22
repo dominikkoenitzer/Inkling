@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractFlashcardPairs, extractNoteTaskItems, parseQuickText, fuzzyScore } from '../src/renderer/src/lib/parse'
+import { extractFlashcardPairs, extractNoteTaskItems, fuzzyScore } from '../src/renderer/src/lib/parse'
 
 const doc = (content: unknown[]): string => JSON.stringify({ type: 'doc', content })
 const para = (text: string): unknown => ({ type: 'paragraph', content: [{ type: 'text', text }] })
@@ -39,30 +39,6 @@ describe('extractNoteTaskItems', () => {
     expect(items).toHaveLength(2)
     expect(items[0].title).toBe('Groceries') // not "GroceriesMilk"
     expect(items[1].title).toBe('Milk')
-  })
-})
-
-describe('parseQuickText', () => {
-  it('strips a trailing date word, keeping the real title', () => {
-    const r = parseQuickText('buy milk friday')
-    expect(r.text).toBe('buy milk')
-    expect(r.when).toBeInstanceOf(Date)
-  })
-
-  it('falls back to a neutral title when the input is only a date/time (regression)', () => {
-    expect(parseQuickText('at 5pm').text).toBe('Untitled')
-    expect(parseQuickText('friday').text).toBe('Untitled')
-    expect(parseQuickText('tomorrow').text).toBe('Untitled')
-  })
-
-  it('leaves plain text untouched with no date', () => {
-    const r = parseQuickText('write the essay')
-    expect(r.text).toBe('write the essay')
-    expect(r.when).toBeNull()
-  })
-
-  it('interprets "at 5pm" as 17:00', () => {
-    expect(parseQuickText('meeting at 5pm').when?.getHours()).toBe(17)
   })
 })
 

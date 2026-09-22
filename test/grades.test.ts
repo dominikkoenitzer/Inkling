@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, letterGrade, gpaPoints, swissRound, swissPass, subjectAverage } from '../src/shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, subjectAverage } from '../src/shared/grades'
 
 describe('weightedPercentage', () => {
   it('averages equally-weighted items', () => {
@@ -13,27 +13,6 @@ describe('weightedPercentage', () => {
     expect(weightedPercentage([])).toBeNull()
     expect(weightedPercentage([{ score: 5, max: 0, weight: 1 }, { score: 5, max: 10, weight: 0 }])).toBeNull()
     expect(weightedPercentage([{ score: 9, max: 10, weight: 1 }, { score: 5, max: 0, weight: 1 }])).toBeCloseTo(90)
-  })
-})
-
-describe('letterGrade', () => {
-  it('maps percentages to letters at the boundaries', () => {
-    expect(letterGrade(97)).toBe('A+')
-    expect(letterGrade(93)).toBe('A')
-    expect(letterGrade(90)).toBe('A-')
-    expect(letterGrade(85)).toBe('B')
-    expect(letterGrade(72)).toBe('C-')
-    expect(letterGrade(59)).toBe('F')
-    expect(letterGrade(0)).toBe('F')
-  })
-})
-
-describe('gpaPoints', () => {
-  it('maps to the 4.0 scale', () => {
-    expect(gpaPoints(95)).toBe(4.0)
-    expect(gpaPoints(91)).toBe(3.7)
-    expect(gpaPoints(84)).toBe(3.0)
-    expect(gpaPoints(50)).toBe(0.0)
   })
 })
 
@@ -60,11 +39,10 @@ describe('per-row grading system (no reinterpretation on switch)', () => {
     expect(swissItemGrade(quiz)).toBeCloseTo(4.17, 1)
     expect(swissPass(swissItemGrade(quiz)!)).toBe(true)
   })
-  it('a native Swiss pass maps to the 60% / D- boundary under other systems, not grade/6', () => {
-    // Repro B: a Swiss 4.0 (the pass threshold) must land at the US pass boundary.
+  it('a native Swiss pass maps to 60% under percent, not grade/6', () => {
+    // Repro B: a Swiss 4.0 (the pass threshold) is 60%, not 4/6 = 66.7%.
     const lab = { score: 4, max: 6, weight: 1, system: 'swiss' as const }
     expect(itemPercent(lab)).toBeCloseTo(60)
-    expect(letterGrade(itemPercent(lab)!)).toBe('D-')
   })
   it('a native Swiss grade reads back as itself', () => {
     expect(swissItemGrade({ score: 5, max: 6, weight: 1, system: 'swiss' })).toBeCloseTo(5)
@@ -118,13 +96,8 @@ describe('subjectAverage', () => {
     expect(r?.value).toBeCloseTo(91.7)
     expect(r?.display).toBe('91.7%')
   })
-  it('returns a letter in us mode with a comparable percent value', () => {
-    const r = subjectAverage(items, 'us')
-    expect(r?.display).toBe('A-')
-    expect(r?.value).toBeCloseTo(91.7)
-  })
   it('returns null with nothing to average', () => {
     expect(subjectAverage([], 'swiss')).toBeNull()
-    expect(subjectAverage([], 'us')).toBeNull()
+    expect(subjectAverage([], 'percent')).toBeNull()
   })
 })

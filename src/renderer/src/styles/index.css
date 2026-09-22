@@ -3,7 +3,6 @@
 /* Tailwind v4 detects sources from the CSS file's project root; be explicit so the
    two renderer entry HTML files and every component are always scanned. */
 @source '../../index.html';
-@source '../../quickadd.html';
 @source '../**/*.{ts,tsx}';
 
 /* The design system, as Tailwind v4 theme tokens. Each maps to a runtime CSS variable
@@ -53,7 +52,7 @@
 
 /* ---------- Dark theme (Discord-like, default) ---------- */
 /* Elevation ladder does the separating (rail darkest → content lightest), Discord-style.
-   Borders are almost invisible here; high-contrast mode turns them back up. */
+   Borders stay almost invisible. */
 :root[data-theme='dark'] {
   --bg-app: #191a1d;
   --bg-panel: #26282c;
@@ -83,28 +82,6 @@
   --border: rgba(93, 78, 55, 0.09);
   --shadow: 0 8px 24px rgba(93, 78, 55, 0.18);
   color-scheme: light;
-}
-
-/* ---------- High contrast overrides ---------- */
-:root[data-contrast='high'][data-theme='dark'] {
-  --bg-app: #000000;
-  --bg-panel: #0a0a0a;
-  --bg-sunken: #121212;
-  --bg-raised: #1e1e1e;
-  --text-primary: #ffffff;
-  --text-muted: #d5d5d5;
-  --text-faint: #ababab;
-  --border: rgba(255, 255, 255, 0.35);
-}
-:root[data-contrast='high'][data-theme='cozy'] {
-  --bg-app: #ffffff;
-  --bg-panel: #ffffff;
-  --bg-sunken: #ffffff;
-  --bg-raised: #ffffff;
-  --text-primary: #1a1610;
-  --text-muted: #3d382f;
-  --text-faint: #57503f;
-  --border: rgba(26, 22, 16, 0.45);
 }
 
 html,
@@ -245,33 +222,6 @@ textarea:focus {
   text-decoration: underline;
   cursor: pointer;
 }
-/* [[wiki-link]] chips. A link whose target hasn't been resolved yet (the page is created
-   on the next save) reads as pending rather than broken. */
-.note-link {
-  color: var(--accent-text, #1d9e75);
-  background: var(--bg-hover);
-  border-radius: 4px;
-  padding: 0.05em 0.3em;
-  cursor: pointer;
-  box-decoration-break: clone;
-}
-.note-link::before {
-  content: '[[';
-  opacity: 0.4;
-}
-.note-link::after {
-  content: ']]';
-  opacity: 0.4;
-}
-.note-link:hover {
-  background: var(--bg-active);
-  text-decoration: underline;
-}
-.note-link[data-pending] {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;

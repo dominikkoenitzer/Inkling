@@ -1,26 +1,25 @@
 import { useEffect, useState } from 'react'
-import { PanelRightClose, PanelRightOpen, FileText, Flame, Timer, CalendarClock, Layers, Plus, Link2, Hash } from 'lucide-react'
+import { PanelRightClose, PanelRightOpen, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { ramp } from '@/lib/colors'
 import { inputCls } from '@/components/ui'
-import type { Task, Priority, Note } from '@shared/types'
+import type { Task } from '@shared/types'
 
 const api = window.inkling
 
+/** The panel exists only while a task is selected: it is that task's detail view. */
 export function RightPanel(): React.JSX.Element | null {
-  const { tab, selectedNoteId, selectedTaskId, notesView } = useApp()
-  const hasContext = (tab === 'notes' && notesView === 'pages' && selectedNoteId !== null) || (tab === 'tasks' && selectedTaskId !== null)
-  // Auto-open only when there is real context to show; a manual toggle wins for the session.
-  const [override, setOverride] = useState<boolean | null>(null)
-  const open = override ?? hasContext
+  const { tab, selectedTaskId } = useApp()
+  const [collapsed, setCollapsed] = useState(false)
 
-  if (!open) {
+  if (tab !== 'tasks' || selectedTaskId === null) return null
+
+  if (collapsed) {
     return (
       <button
         type="button"
         title="Open context panel"
-        onClick={() => setOverride(true)}
+        onClick={() => setCollapsed(false)}
         className="flex w-7 shrink-0 items-start justify-center pt-3 text-faint hover:text-ink"
       >
         <PanelRightOpen size={16} />
@@ -31,126 +30,15 @@ export function RightPanel(): React.JSX.Element | null {
   return (
     <aside className="flex w-[264px] shrink-0 flex-col border-l border-edge bg-panel">
       <div className="flex items-center justify-between px-3 py-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-faint">Context</span>
-        <button type="button" title="Collapse panel" onClick={() => setOverride(false)} className="text-faint hover:text-ink">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-faint">Task</span>
+        <button type="button" title="Collapse panel" onClick={() => setCollapsed(true)} className="text-faint hover:text-ink">
           <PanelRightClose size={16} />
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-        {tab === 'notes' && notesView === 'pages' && selectedNoteId !== null ? (
-          <NoteContext noteId={selectedNoteId} />
-        ) : tab === 'tasks' && selectedTaskId !== null ? (
-          <TaskContext taskId={selectedTaskId} />
-        ) : (
-          <UpcomingContext />
-        )}
+        <TaskContext taskId={selectedTaskId} />
       </div>
     </aside>
-  )
-}
-
-/* ------------------------- Linked tasks for a note ------------------------- */
-
-function NoteContext({ noteId }: { noteId: number }): React.JSX.Element {
-  const version = useVersion('tasks')
-  const [tasks, setTasks] = useState<Task[]>([])
-
-  useEffect(() => {
-    void api.tasks.forNote(noteId).then(setTasks)
-  }, [noteId, version])
-
-  return (
-    <div className="fade-up">
-      <PanelHeading icon={<FileText size={14} />}>Tasks in this note</PanelHeading>
-      {tasks.length === 0 ? (
-        <p className="text-xs text-faint">Type “[] ” in the note to create a linked task. It’ll show up here and in the Tasks tab.</p>
-      ) : (
-        tasks.map((t) => (
-          <label key={t.id} className="flex cursor-pointer items-start gap-2 rounded-lg px-1.5 py-1.5 text-sm hover:bg-hover">
-            <input
-              type="checkbox"
-              checked={t.status === 'done'}
-              onChange={() => {
-                void api.tasks.update(t.id, { status: t.status === 'done' ? 'todo' : 'done' }).then(() => {
-                  if (t.status !== 'done') useApp.getState().celebrate()
-                  bumpData('tasks')
-                  bumpData('notes')
-                })
-              }}
-              className="mt-0.5 accent-[var(--accent)]"
-            />
-            <span className={t.status === 'done' ? 'text-faint line-through' : ''}>{t.title}</span>
-          </label>
-        ))
-      )}
-
-      <NoteTags noteId={noteId} />
-      <Backlinks noteId={noteId} />
-    </div>
-  )
-}
-
-/** Tags picked up from `#hashtags` in the note. Clicking one filters the page list. */
-function NoteTags({ noteId }: { noteId: number }): React.JSX.Element | null {
-  const version = useVersion('notes')
-  const [tags, setTags] = useState<string[]>([])
-
-  useEffect(() => {
-    void api.tags.forNote(noteId).then(setTags)
-  }, [noteId, version])
-
-  if (tags.length === 0) return null
-  return (
-    <div className="mt-4">
-      <PanelHeading icon={<Hash size={14} />}>Tags</PanelHeading>
-      <div className="flex flex-wrap gap-1">
-        {tags.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => {
-              const app = useApp.getState()
-              app.setTab('notes')
-              app.setNoteTagFilter(t)
-            }}
-            className="rounded-md bg-raised px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-hover hover:text-ink"
-          >
-            #{t}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/**
- * The other end of a [[wiki-link]]. Hidden entirely when nothing points here: an empty
- * "no backlinks" box would just be noise on most pages.
- */
-function Backlinks({ noteId }: { noteId: number }): React.JSX.Element | null {
-  const version = useVersion('notes')
-  const [sources, setSources] = useState<Note[]>([])
-
-  useEffect(() => {
-    void api.notes.backlinks(noteId).then(setSources)
-  }, [noteId, version])
-
-  if (sources.length === 0) return null
-  return (
-    <div className="mt-4">
-      <PanelHeading icon={<Link2 size={14} />}>Linked from</PanelHeading>
-      {sources.map((n) => (
-        <button
-          key={n.id}
-          type="button"
-          onClick={() => useApp.getState().openNote(n.notebook_id, n.id)}
-          className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
-        >
-          <FileText size={13} className="shrink-0" />
-          <span className="truncate">{n.title || 'Untitled'}</span>
-        </button>
-      ))}
-    </div>
   )
 }
 
@@ -160,18 +48,12 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
   const version = useVersion('tasks')
   const { notebooks } = useApp()
   const [task, setTask] = useState<Task | null>(null)
-  const [subs, setSubs] = useState<Task[]>([])
-  const [newSub, setNewSub] = useState('')
   const [title, setTitle] = useState('')
 
   useEffect(() => {
     void api.tasks.get(taskId).then((t) => {
       setTask(t)
       setTitle(t?.title ?? '')
-      // Fetch subtasks from THIS task's notebook (not the previously-selected task's), so switching
-      // between tasks in different notebooks doesn't flash an empty/wrong subtask list.
-      if (t) void api.tasks.list(t.notebook_id).then((all) => setSubs(all.filter((s) => s.parent_task_id === taskId)))
-      else setSubs([])
     })
   }, [taskId, version])
 
@@ -200,30 +82,11 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
         />
       </PanelField>
 
-      <PanelField label="Priority">
-        <div className="flex gap-1">
-          {(['low', 'medium', 'high'] as Priority[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => patch({ priority: p })}
-              className={`flex-1 rounded-lg border py-1 text-xs font-medium capitalize ${
-                task.priority === p ? 'border-transparent text-white' : 'border-edge text-muted'
-              }`}
-              style={task.priority === p ? { background: 'var(--accent)' } : undefined}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      </PanelField>
-
       <PanelField label="Status">
         <div className="flex gap-1">
           {(
             [
               ['todo', 'To do'],
-              ['in_progress', 'Doing'],
               ['done', 'Done']
             ] as const
           ).map(([s, label]) => (
@@ -255,115 +118,9 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
         </button>
       )}
 
-      <PanelField label="Subtasks">
-        {subs.map((s) => (
-          <label key={s.id} className="flex cursor-pointer items-center gap-2 py-1 text-sm">
-            <input
-              type="checkbox"
-              checked={s.status === 'done'}
-              onChange={() => {
-                void api.tasks.update(s.id, { status: s.status === 'done' ? 'todo' : 'done' }).then(() => bumpData('tasks'))
-              }}
-              className="accent-[var(--accent)]"
-            />
-            <span className={s.status === 'done' ? 'text-faint line-through' : ''}>{s.title}</span>
-          </label>
-        ))}
-        <div className="flex items-center gap-1.5">
-          <Plus size={14} className="text-faint" />
-          <input
-            className="flex-1 bg-transparent py-1 text-sm placeholder:text-faint"
-            placeholder="Add subtask…"
-            value={newSub}
-            onChange={(e) => setNewSub(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newSub.trim()) {
-                void api.tasks
-                  .create({ notebook_id: task.notebook_id, title: newSub.trim(), parent_task_id: taskId })
-                  .then(() => bumpData('tasks'))
-                setNewSub('')
-              }
-            }}
-          />
-        </div>
-      </PanelField>
-
       <p className="text-xs text-faint">
         In {notebooks.find((n) => n.id === task.notebook_id)?.name ?? 'notebook'} · created {format(new Date(task.created_at), 'd MMM yyyy')}
       </p>
-    </div>
-  )
-}
-
-/* --------------------------- Upcoming (default) --------------------------- */
-
-function UpcomingContext(): React.JSX.Element {
-  const { notebooks, streak, openTask, setTab } = useApp()
-  const version = useVersion('tasks') + useVersion('focus') + useVersion('decks')
-  const [due, setDue] = useState<Task[]>([])
-  const [minutes, setMinutes] = useState(0)
-  const [dueCards, setDueCards] = useState(0)
-
-  useEffect(() => {
-    void Promise.all([api.tasks.smart('week'), api.focus.todayMinutes(), api.decks.list()]).then(([tasks, mins, decks]) => {
-      setMinutes(mins)
-      setDueCards(decks.reduce((a, d) => a + d.due_count, 0))
-      setDue(tasks.slice(0, 8))
-    })
-    // colors come from the store at render time; notebook identity changes don't need a refetch
-  }, [version])
-
-  return (
-    <div className="fade-up space-y-4">
-      {due.length > 0 && (
-        <div>
-          <PanelHeading icon={<CalendarClock size={14} />}>Due soon</PanelHeading>
-          {due.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => openTask(t.notebook_id, t.id)}
-              className="mb-1 flex w-full items-start gap-2 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-hover"
-            >
-              <span
-                className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                style={{ background: ramp(notebooks.find((n) => n.id === t.notebook_id)?.color)[500] }}
-              />
-              <span className="min-w-0">
-                <span className="block truncate text-sm">{t.title}</span>
-                <span className="block text-xs text-faint">{t.due_date ? `due ${format(new Date(t.due_date), 'EEE d MMM')}` : ''}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-      {dueCards > 0 && (
-        <div>
-          <PanelHeading icon={<Layers size={14} />}>Cards to review</PanelHeading>
-          <button type="button" className="text-sm font-medium" style={{ color: 'var(--accent-text)' }} onClick={() => setTab('today')}>
-            {dueCards} card{dueCards === 1 ? '' : 's'} ready. See your plan →
-          </button>
-        </div>
-      )}
-      <div>
-        <PanelHeading icon={<Timer size={14} />}>Focus today</PanelHeading>
-        <p className="text-sm">{minutes > 0 ? `${minutes} focused minutes. Keep it up.` : 'No focus sessions yet today.'}</p>
-      </div>
-      <div>
-        <PanelHeading icon={<Flame size={14} />}>Streak</PanelHeading>
-        <p className="text-sm">
-          {streak.count > 0 ? `${streak.count} day${streak.count === 1 ? '' : 's'} of showing up. Quietly impressive.` : 'Review cards or finish a focus session to start one.'}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function PanelHeading({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }): React.JSX.Element {
-  return (
-    <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-faint">
-      {icon}
-      {children}
     </div>
   )
 }

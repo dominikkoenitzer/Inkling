@@ -21,7 +21,7 @@ export function smartTasks(view: 'today' | 'week'): Task[] {
   return getDb()
     .prepare(
       `SELECT * FROM tasks WHERE status != 'done' AND due_date IS NOT NULL AND due_date < ?
-       ORDER BY due_date, CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END`
+       ORDER BY due_date`
     )
     .all(end.toISOString()) as Task[]
 }
@@ -38,24 +38,20 @@ export function createTask(input: {
   notebook_id: number
   title: string
   status?: string
-  priority?: string
   due_date?: string | null
-  parent_task_id?: number | null
   note_id?: number | null
 }): Task {
   const info = getDb()
     .prepare(
-      `INSERT INTO tasks (notebook_id, note_id, title, status, priority, due_date, parent_task_id, created_at)
-       VALUES (@notebook_id, @note_id, @title, @status, @priority, @due_date, @parent_task_id, @ts)`
+      `INSERT INTO tasks (notebook_id, note_id, title, status, due_date, created_at)
+       VALUES (@notebook_id, @note_id, @title, @status, @due_date, @ts)`
     )
     .run({
       notebook_id: input.notebook_id,
       note_id: input.note_id ?? null,
       title: input.title,
       status: input.status ?? 'todo',
-      priority: input.priority ?? 'medium',
       due_date: input.due_date ?? null,
-      parent_task_id: input.parent_task_id ?? null,
       ts: now()
     })
   const task = getTask(Number(info.lastInsertRowid))!
@@ -65,7 +61,7 @@ export function createTask(input: {
 
 export function updateTask(id: number, patch: Record<string, unknown>): Task {
   const before = getTask(id)
-  const allowed = ['title', 'status', 'priority', 'due_date', 'notebook_id', 'parent_task_id'] as const
+  const allowed = ['title', 'status', 'due_date', 'notebook_id'] as const
   const keys = allowed.filter((k) => k in patch)
   if (keys.length > 0) {
     const sets = keys.map((k) => `${k} = @${k}`).join(', ')
@@ -82,18 +78,15 @@ export function updateTask(id: number, patch: Record<string, unknown>): Task {
 }
 
 export function removeTask(id: number): void {
-  const subs = getDb().prepare(`SELECT id FROM tasks WHERE parent_task_id = ?`).all(id) as Array<{ id: number }>
   getDb().prepare(`DELETE FROM tasks WHERE id = ?`).run(id)
   ftsDelete('task', id)
-  for (const s of subs) ftsDelete('task', s.id)
 }
 
 /* ----------------------------- Note ↔ task bridge ------------------------- */
 
 /**
- * Bidirectional note↔task linking: given the checklist items currently present in a
- * note's content, create/update matching task rows and prune tasks whose checkbox
- * was deleted from the note. Returns task ids in the same order as `items`.
+ * Create or update a task row per checklist item in a note, and prune tasks whose checkbox
+ * was deleted. Returns ids in the same order as `items`, for stamping back into the doc.
  */
 export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): number[] {
   const db = getDb()
@@ -120,8 +113,8 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
       } else {
         const info = db
           .prepare(
-            `INSERT INTO tasks (notebook_id, note_id, title, status, priority, created_at, completed_at)
-             VALUES (?, ?, ?, ?, 'medium', ?, ?)`
+            `INSERT INTO tasks (notebook_id, note_id, title, status, created_at, completed_at)
+             VALUES (?, ?, ?, ?, ?, ?)`
           )
           .run(notebookId, noteId, title, item.checked ? 'done' : 'todo', now(), item.checked ? now() : null)
         const newId = Number(info.lastInsertRowid)

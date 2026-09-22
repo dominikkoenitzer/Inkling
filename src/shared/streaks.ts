@@ -1,12 +1,4 @@
-/**
- * Streak arithmetic over local calendar days.
- *
- * Pure on purpose: the counting rules are the part that is easy to get subtly
- * wrong (month ends, leap days, the "yesterday still counts" grace), so they
- * live here with no database and no Electron behind them, where the test suite
- * can reach them. `repos/streak.ts` supplies the days from the review and focus
- * history and does nothing but call in.
- */
+/** Streak arithmetic over local calendar days. `repos/streak.ts` supplies the days. */
 
 /** A Date rendered as its local calendar day (`YYYY-MM-DD`), not its UTC one. */
 export const localDay = (d: Date): string =>
@@ -20,13 +12,8 @@ function dayBefore(day: string): string {
 }
 
 /**
- * Current and longest run of consecutive local days with any activity. Derived from the
- * review/focus history rather than the two counters in `settings`, so it stays true even
- * if the app never ran on a day you studied, and it can look backwards, which counters
- * can't.
- *
- * A run only counts as *current* if it reaches today or yesterday: one missed day
- * shouldn't zero the number before the user has had a chance to study.
+ * Current and longest run of consecutive active days. A run counts as current only if it
+ * reaches today or yesterday, so one missed day does not zero the number mid-day.
  */
 export function streaksFrom(activeDays: readonly string[], today: Date = new Date()): { current: number; longest: number } {
   if (activeDays.length === 0) return { current: 0, longest: 0 }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, shell } from 'electron'
+import { app, BrowserWindow, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
@@ -13,12 +13,10 @@ if (process.env['INKLING_USERDATA']) {
 }
 
 let mainWindow: BrowserWindow | null = null
-let quickAddWindow: BrowserWindow | null = null
 
 const isDev = !!process.env['ELECTRON_RENDERER_URL']
 
-// Both the main window and quick add load a page from here, so the guard below
-// has to cover the directory rather than one file.
+// The guard below covers the renderer directory, not a single file.
 const rendererDir = pathToFileURL(join(__dirname, '../renderer')).href + '/'
 
 /** Links leave the app for the web or a mail client, nothing else. */
@@ -48,10 +46,8 @@ function isAppUrl(url: string): boolean {
 }
 
 /**
- * Nothing in the app navigates its own window; links leave through
- * setWindowOpenHandler. A full navigation therefore means a stray target="_self"
- * or a renderer that has been talked into one, so send it to the browser
- * instead of letting it replace the app.
+ * Nothing in the app navigates its own window, so a full navigation means a stray
+ * target="_self". Send it to the browser instead of letting it replace the app.
  */
 function blockOffAppNavigation(contents: Electron.WebContents): void {
   contents.on('will-navigate', (event, url) => {
@@ -116,74 +112,46 @@ function createMainWindow(): void {
   })
 }
 
-function createQuickAddWindow(): BrowserWindow {
-  const win = new BrowserWindow({
-    width: 560,
-    height: 132,
-    frame: false,
-    resizable: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    show: false,
-    backgroundColor: '#26282c',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  })
-  if (isDev) {
-    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/quickadd.html`)
-  } else {
-    win.loadFile(join(__dirname, '../renderer/quickadd.html'))
-  }
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    openExternalLink(url)
-    return { action: 'deny' }
-  })
-  blockOffAppNavigation(win.webContents)
-  win.on('blur', () => win.hide())
-  return win
-}
-
-function toggleQuickAdd(): void {
-  if (!quickAddWindow || quickAddWindow.isDestroyed()) {
-    quickAddWindow = createQuickAddWindow()
-  }
-  if (quickAddWindow.isVisible()) {
-    quickAddWindow.hide()
-  } else {
-    quickAddWindow.center()
-    quickAddWindow.show()
-    quickAddWindow.focus()
-  }
-}
-
 function seedDemo(): void {
-  if (repos.getSetting('onboarding_done')) return
-  repos.completeOnboarding({ notebookName: 'Biology 101', purpose: 'school', journal: true })
+  if (repos.listNotebooks().length > 0) return
+  repos.bootstrapFirstRun('Biology 101')
   const nb = repos.listNotebooks()[0]
   const today = new Date()
   today.setHours(17, 0, 0, 0)
   const tomorrow = new Date(today.getTime() + 24 * 3600 * 1000)
-  repos.createTask({ notebook_id: nb.id, title: 'Finish reading Ch. 4', priority: 'high', due_date: today.toISOString() })
+  repos.createTask({ notebook_id: nb.id, title: 'Finish reading Ch. 4', due_date: today.toISOString() })
   repos.createTask({ notebook_id: nb.id, title: 'Lab report draft', due_date: tomorrow.toISOString() })
-  repos.createTask({ notebook_id: nb.id, title: 'Email study group', priority: 'low' })
+  repos.createTask({ notebook_id: nb.id, title: 'Email study group' })
   repos.createGrade({ notebook_id: nb.id, title: 'Quiz 1', score: 5, max: 6, weight: 1, system: 'swiss' })
+  repos.createGrade({ notebook_id: nb.id, title: 'Midterm', score: 4.5, max: 6, weight: 2, system: 'swiss' })
   const deck = repos.createDeckFromPairs(nb.id, 'Cell biology', [
     ['Photosynthesis', 'The process plants use to convert light into energy'],
     ['Mitochondria', 'The powerhouse of the cell'],
     ['Osmosis', 'Diffusion of water across a semipermeable membrane']
   ])
   seedHistory(deck.id)
+
+  // A couple of neighbours so the notebook rail and the subject list are not a single item.
+  const maths = repos.createNotebook({ name: 'Maths', color: 'coral' })
+  repos.createNote({ notebook_id: maths.id, title: 'Integration by parts', content: page('Integration by parts', 'u dv = uv minus the integral of v du. Pick u so that du is simpler.') })
+  repos.createTask({ notebook_id: maths.id, title: 'Problem set 7', due_date: tomorrow.toISOString() })
+  repos.createGrade({ notebook_id: maths.id, title: 'Test 1', score: 5.5, max: 6, weight: 1, system: 'swiss' })
+  const history = repos.createNotebook({ name: 'History', color: 'amber' })
+  repos.createNote({ notebook_id: history.id, title: 'Cold War timeline', content: page('Cold War timeline', '1947 Truman Doctrine. 1961 Berlin Wall. 1989 it comes down.') })
 }
 
-/**
- * Demo-only study history, so the Progress view has something to draw in screenshots and
- * manual testing. Deterministic (no Math.random) so successive captures are identical.
- * Only ever runs behind INKLING_SEED on a fresh profile.
- */
+/** A one-heading, one-paragraph TipTap document, for demo pages. */
+function page(title: string, body: string): string {
+  return JSON.stringify({
+    type: 'doc',
+    content: [
+      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: title }] },
+      { type: 'paragraph', content: [{ type: 'text', text: body }] }
+    ]
+  })
+}
+
+/** Demo study history for screenshots. Deterministic, and only behind INKLING_SEED. */
 function seedHistory(deckId: number): void {
   const db = getDb()
   const cardIds = (db.prepare(`SELECT id FROM flashcards WHERE deck_id = ?`).all(deckId) as Array<{ id: number }>).map((c) => c.id)
@@ -238,23 +206,13 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('trash purge failed', err)
   }
-  // First launch after the v0.4.0 tag index was added: derive tags from existing notes.
-  try {
-    if (repos.getSetting('tags_backfilled') !== '1') {
-      repos.backfillTags()
-      repos.setSetting('tags_backfilled', '1')
-    }
-  } catch (err) {
-    console.error('tag backfill failed', err)
-  }
   if (process.env['INKLING_SEED']) seedDemo()
-  registerIpc(() => quickAddWindow?.hide())
+  // First run: one notebook and a welcome page, rather than a wizard asking for both.
+  repos.bootstrapFirstRun()
+  registerIpc()
   createMainWindow()
 
-  globalShortcut.register('Control+Alt+N', toggleQuickAdd)
-
-  // Auto-update against GitHub Releases, only for packaged builds, never during
-  // dev or headless screenshot capture.
+  // Packaged builds only, never in dev or during a headless capture.
   if (app.isPackaged && !process.env['INKLING_SCREENSHOT']) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
   }
@@ -264,7 +222,7 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('will-quit', () => globalShortcut.unregisterAll())
+
 
 app.on('window-all-closed', () => {
   app.quit()

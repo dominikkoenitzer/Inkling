@@ -5,8 +5,6 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { useTimer } from '@/stores/timer'
 import { subjectAverage } from '@shared/grades'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
-import { NotebookGlyph } from '@/components/NotebookGlyph'
-import { hasGlyph } from '@/lib/icons'
 import { Inky } from '@/components/Inky'
 import type { Deck, Task, Grade, Note, Notebook } from '@shared/types'
 
@@ -20,11 +18,7 @@ function greeting(): string {
   return 'Good evening'
 }
 
-/**
- * The wall clock, re-read once a minute. Due labels compare against this instead of
- * calling Date.now() while rendering, so a row flips to "overdue" as the deadline
- * passes rather than waiting for the next data change to repaint it.
- */
+/** The wall clock, re-read once a minute, so a row flips to overdue without a data change. */
 function useNow(intervalMs = 60_000): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -35,9 +29,8 @@ function useNow(intervalMs = 60_000): number {
 }
 
 /**
- * The daily study plan, which assembles "what should I do right now" from due flashcards,
- * open tasks, the weakest graded subject and today's focus time, each with a one-click
- * start. Solves the blank-page problem that keeps people from starting at all.
+ * The daily plan: due flashcards, open tasks, the weakest graded subject and today's focus
+ * time, each with a one-click start.
  */
 export function TodayView(): React.JSX.Element {
   const app = useApp()
@@ -74,7 +67,7 @@ export function TodayView(): React.JSX.Element {
 
   useEffect(() => {
     if (app.activeNotebookId === null) return
-    void api.notes.list(app.activeNotebookId, 'page').then((pages) => {
+    void api.notes.list(app.activeNotebookId).then((pages) => {
       setRecent([...pages].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4))
     })
   }, [app.activeNotebookId, notesVersion])
@@ -121,7 +114,7 @@ export function TodayView(): React.JSX.Element {
 
   const newPage = async (): Promise<void> => {
     if (app.activeNotebookId === null) return
-    const note = await api.notes.create({ notebook_id: app.activeNotebookId, type: 'page' })
+    const note = await api.notes.create({ notebook_id: app.activeNotebookId })
     bumpData('notes')
     app.openNote(app.activeNotebookId, note.id)
   }
@@ -154,7 +147,6 @@ export function TodayView(): React.JSX.Element {
         {cleared && (
           <>
             <div className="pop-in flex items-center gap-2 rounded-lg bg-raised px-3 py-2 text-sm">
-              <span aria-hidden>🎉</span>
               <span className="font-semibold">Plan cleared.</span>
               <span className="text-muted">Nothing due. Get ahead, or enjoy it.</span>
             </div>
@@ -179,7 +171,7 @@ export function TodayView(): React.JSX.Element {
             return (
               <PlanCard
                 key={`d${d.id}`}
-                bubble={hasGlyph(nb?.icon) ? <NotebookGlyph icon={nb?.icon} size={18} /> : <Layers size={18} />}
+                bubble={<Layers size={18} />}
                 tint={softTint(nb?.color, app.theme)}
                 title={`Review ${d.name}`}
                 sub={`${d.due_count} card${d.due_count === 1 ? '' : 's'} due · ${nb?.name ?? 'notebook'}`}
@@ -220,7 +212,7 @@ export function TodayView(): React.JSX.Element {
 
           {weakest && (
             <PlanCard
-              bubble={hasGlyph(weakest.nb.icon) ? <NotebookGlyph icon={weakest.nb.icon} size={18} /> : <TrendingUp size={18} />}
+              bubble={<TrendingUp size={18} />}
               tint={softTint(weakest.nb.color, app.theme)}
               title={`Give ${weakest.nb.name} some love`}
               sub={`Your lowest average right now (${weakest.avg.display})`}
