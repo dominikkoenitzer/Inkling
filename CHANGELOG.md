@@ -4,6 +4,62 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Inkling had grown a second way to do most things. This keeps one of each. No notes, tasks,
+decks, grades or review history were touched.
+
+### Removed
+- The sticky board. Existing stickies become ordinary pages on first launch.
+- The kanban board in Tasks, and `@dnd-kit` with it. The grouped list stays.
+- `#hashtags`, their sidebar chips and the context-panel block.
+- The journal notebook and its "Today's entry" shortcut.
+- Notebook icon glyphs. A notebook is a colour and its initials.
+- The recall-target setting. FSRS schedules for 90%.
+- High-contrast mode, and the font-size setting.
+- Markdown import, and CSV/TSV deck import. `Term :: Definition` lines in a note still
+  build a deck.
+- The trash browser. Deleting a page is still undoable from the toast and still cleared
+  for good after 30 days.
+- Progress panels: the 14-day forecast, the rating split, the stability readout, the
+  subject table and the window switcher. Reviews, true retention, focused time, the streak
+  and the activity heatmap remain.
+- Both Tasks smart views, and the context panel's "Upcoming" block. What is due this week
+  is in the Today sidebar.
+- The global quick-add window (`Ctrl+Alt+N`), its second renderer bundle and the date parser.
+- `[[wiki-links]]` and backlinks. Labels you already typed stay as plain text.
+- PDF export. Markdown export stays.
+- The onboarding wizard. First launch makes a notebook and a welcome page.
+- The "Doing" task status, task priorities and subtasks. A task is a title, a due date and
+  a checkbox.
+- US letters and the 4.0 GPA scale. Swiss 1-6 and percentages remain, and rows entered
+  under the US setting read as percentages, which is what they always were.
+- Pinned notes, and the Progress numbers in the sidebar.
+- Every emoji in the interface.
+
+### Fixed
+- A fresh install could not open its database. New databases were created at the oldest
+  schema version and then walked through every migration since, and those steps reference
+  columns the current schema no longer has. A new database is now created in its current
+  shape; upgrades still replay what they need.
+
+### Added
+- `bun run smoke`: launches the built app against a throwaway profile and runs twelve
+  checks through the real IPC bridge, covering the note-to-task bridge, search, undo, FSRS
+  scheduling, grades, focus minutes, the streak and the review log. CI runs it too, under
+  xvfb, so a broken fresh install fails the build instead of a release.
+
+### Changed
+- The context panel is the selected task's detail view. No selection, no panel.
+- Schema `user_version` 10 drops the columns the removed features left behind and
+  normalises rows still carrying `in_progress` or the US grading system.
+- Screenshots in `docs/` regenerated against the current app.
+- The editor is loaded when a page is opened rather than at startup. TipTap and ProseMirror
+  were two thirds of the renderer bundle while the app opens on Today: 1881 kB down to
+  819 kB, with the editor's 1065 kB fetched on demand.
+- 9.8k lines of source down to 6.5k, 65 IPC handlers down to 48, one renderer bundle
+  instead of two.
+
 ## [0.5.0] - 2026-08-17
 
 **A face.** The logo was Inky with his face deleted, the same droplet path as the mascot,
