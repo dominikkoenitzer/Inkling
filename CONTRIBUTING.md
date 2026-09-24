@@ -25,14 +25,14 @@ bun run test
 bun run build
 ```
 
-Tests are Vitest over the pure logic: the FSRS scheduler, the quick-add parser, the repositories. Anything scheduling-related needs a test: the spaced-repetition engine is the part of this app a user cannot check by eye.
+Tests are Vitest over the pure logic: the FSRS scheduler, the quick-add parser, grades, streaks, colours and the markdown export. The repositories are covered end to end by `bun run smoke`. Anything scheduling-related needs a test: the spaced-repetition engine is the part of this app a user cannot check by eye.
 
 ## Code style
 
 - **Three processes, three tsconfigs.** `src/main` and `src/preload` are Node; `src/renderer` is the browser. `bun run typecheck` checks the web and node projects separately, and code must not drift across the boundary.
 - **The preload bridge is the only door.** New capability means a new IPC channel in `src/main/ipc.ts` plus an explicit method on the `window.inkling` API in `src/preload/index.ts`. Never widen the bridge to pass a raw module through, and never turn `contextIsolation` off.
 - **Data access goes through `src/main/repos/`,** one module per domain, with parameterised statements. Components do not touch the database.
-- **A module exports either components or values, not both.** Fast Refresh is lost for every consumer otherwise, which is why `lib/icons.ts` holds the registry and `components/NotebookGlyph.tsx` holds the component.
+- **A module exports either components or values, not both.** Fast Refresh is lost for every consumer otherwise, which is why shared values such as the palette live in `lib/colors.ts` and never in a component file.
 - **Windows is case-insensitive.** `QuickAdd.tsx` and `quickadd.tsx` are the same file; pick names that differ by more than case.
 
 ## Commits and pull requests
