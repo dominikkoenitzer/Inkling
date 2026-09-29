@@ -59,3 +59,11 @@ describe('updateNote after a soft delete', () => {
     expect(searchQuery('mitochondria').map((r) => r.source_id)).toEqual([note.id])
   })
 })
+
+describe('searchQuery', () => {
+  it('skips an index row that still points at a trashed page', () => {
+    const note = createNote({ notebook_id: 1, title: 'Chapter 2', content: doc('mitochondria') })
+    db.prepare(`UPDATE notes SET deleted_at = ? WHERE id = ?`).run(new Date().toISOString(), note.id)
+    expect(searchQuery('mitochondria')).toEqual([])
+  })
+})

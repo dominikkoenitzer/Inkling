@@ -48,7 +48,7 @@ export function searchQuery(q: string): SearchResult[] {
   for (const r of rows) {
     const id = Number(r.source_id)
     let notebookId: number | null = null
-    if (r.source_type === 'note') notebookId = (getDb().prepare(`SELECT notebook_id FROM notes WHERE id = ?`).get(id) as { notebook_id: number } | undefined)?.notebook_id ?? null
+    if (r.source_type === 'note') notebookId = (getDb().prepare(`SELECT notebook_id FROM notes WHERE id = ? AND deleted_at IS NULL`).get(id) as { notebook_id: number } | undefined)?.notebook_id ?? null
     else if (r.source_type === 'task') notebookId = (getDb().prepare(`SELECT notebook_id FROM tasks WHERE id = ?`).get(id) as { notebook_id: number } | undefined)?.notebook_id ?? null
     else if (r.source_type === 'deck') notebookId = (getDb().prepare(`SELECT notebook_id FROM flashcard_decks WHERE id = ?`).get(id) as { notebook_id: number } | undefined)?.notebook_id ?? null
     if (notebookId === null) continue // stale index row
