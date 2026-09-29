@@ -79,8 +79,10 @@ export function SettingsModal(): React.JSX.Element {
   )
 }
 
-function outcomeText(o: OptimiseOutcome): string {
-  if (o.status === 'too-few') return `Needs ${o.needed} reviews a day or more apart, you have ${o.reviews}. Keeping the defaults.`
+function outcomeText(o: OptimiseOutcome, fitted: boolean): string {
+  if (o.status === 'too-few') {
+    return `Needs ${o.needed} reviews a day or more apart, you have ${o.reviews}. Keeping the ${fitted ? 'current parameters' : 'defaults'}.`
+  }
   if (o.status === 'no-better') return 'The parameters in use already fit your reviews best.'
   const better = Math.max(1, Math.round((1 - o.lossAfter / o.lossBefore) * 100))
   return `Fitted to ${o.reviews} reviews. Predictions ${better}% closer.`
@@ -100,7 +102,7 @@ function Optimise(): React.JSX.Element {
         setFsrsParams(outcome.params)
         bumpData('decks')
       }
-      setMessage(outcomeText(outcome))
+      setMessage(outcomeText(outcome, fitted))
     } catch {
       setMessage('Could not optimise. Your parameters are unchanged.')
     } finally {
