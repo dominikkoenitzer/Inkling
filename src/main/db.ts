@@ -39,7 +39,8 @@ CREATE TABLE flashcard_decks (
   id INTEGER PRIMARY KEY,
   notebook_id INTEGER REFERENCES notebooks(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL
 );
 
 CREATE TABLE flashcards (
@@ -54,7 +55,9 @@ CREATE TABLE flashcards (
   stability REAL,
   difficulty REAL,
   state TEXT NOT NULL DEFAULT 'new',
-  last_review DATETIME
+  last_review DATETIME,
+  source_line INTEGER,
+  cloze INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE focus_sessions (
@@ -80,6 +83,7 @@ CREATE INDEX idx_tasks_notebook ON tasks(notebook_id);
 CREATE INDEX idx_tasks_due ON tasks(due_date);
 CREATE INDEX idx_tasks_note ON tasks(note_id);
 CREATE INDEX idx_cards_deck ON flashcards(deck_id);
+CREATE INDEX idx_decks_note ON flashcard_decks(note_id);
 `
 // The calendar module's `events` table is not created any more. Existing databases keep
 // their rows; fresh ones have no reason to carry it.
@@ -140,9 +144,10 @@ CREATE INDEX IF NOT EXISTS idx_review_log_deck ON review_log(deck_id);
 `
 
 /** The schema version the code in this build expects. */
-const CURRENT_VERSION = 10
+const CURRENT_VERSION = 11
 
-function migrate(d: Database.Database): void {
+/** Exported for the migration tests; `openDb` is the only caller in the app. */
+export function migrate(d: Database.Database): void {
   const version = d.pragma('user_version', { simple: true }) as number
 
   if (version === 0) {
@@ -246,6 +251,24 @@ function migrate(d: Database.Database): void {
       for (const c of ['priority', 'parent_task_id']) dropIfPresent('tasks', c)
       for (const c of ['icon', 'kind', 'is_journal']) dropIfPresent('notebooks', c)
       d.exec(`CREATE INDEX IF NOT EXISTS idx_notes_notebook ON notes(notebook_id)`)
+      d.pragma('user_version = 10')
+    })()
+  }
+  if (version < 11) {
+    // Cards made from a note stay linked to it. The deck points at its note, and each card
+    // at the note line it came from (`source_line`, shared by every card of that line), so
+    // syncing again updates cards in place instead of copying the note into a new deck.
+    // `cloze` is the cloze number a card asks, 0 for a plain front/back card. Additive:
+    // existing decks and cards keep their rows, scheduling and review history.
+    const has = (table: string, column: string): boolean =>
+      (d.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).some((c) => c.name === column)
+    d.transaction(() => {
+      if (!has('flashcard_decks', 'note_id')) {
+        d.exec(`ALTER TABLE flashcard_decks ADD COLUMN note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL`)
+      }
+      if (!has('flashcards', 'source_line')) d.exec(`ALTER TABLE flashcards ADD COLUMN source_line INTEGER`)
+      if (!has('flashcards', 'cloze')) d.exec(`ALTER TABLE flashcards ADD COLUMN cloze INTEGER NOT NULL DEFAULT 0`)
+      d.exec(`CREATE INDEX IF NOT EXISTS idx_decks_note ON flashcard_decks(note_id)`)
       d.pragma(`user_version = ${CURRENT_VERSION}`)
     })()
   }
