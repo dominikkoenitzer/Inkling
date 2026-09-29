@@ -60,6 +60,15 @@ export function countScoredReviews(seqs: readonly TrainingSequence[]): number {
   return n
 }
 
+/** One card's reviews as a sequence, sorted by time, with the gaps in days. */
+export function toSequence(history: readonly ReviewEvent[]): TrainingSequence {
+  const h = [...history].sort((a, b) => a.at - b.at)
+  return {
+    ratings: h.map((e) => e.rating),
+    elapsed: h.map((e, i) => (i === 0 ? 0 : Math.max(0, (e.at - h[i - 1].at) / 86_400_000)))
+  }
+}
+
 /**
  * Turns complete card histories (each starting at the card's first ever review) into
  * training sequences: sorted, capped at 64 reviews, cards with a single review dropped,
@@ -70,10 +79,7 @@ export function toTrainingSequences(histories: ReadonlyArray<readonly ReviewEven
     .map((h) => [...h].sort((a, b) => a.at - b.at).slice(0, MAX_REVIEWS_PER_CARD))
     .filter((h) => h.length > 1)
     .sort((a, b) => a[0].at - b[0].at)
-    .map((h) => ({
-      ratings: h.map((e) => e.rating),
-      elapsed: h.map((e, i) => (i === 0 ? 0 : Math.max(0, (e.at - h[i - 1].at) / 86_400_000)))
-    }))
+    .map(toSequence)
   let total = 0
   let start = seqs.length
   while (start > 0) {
