@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn } from '@/components/ui'
+import { ignoresShortcut } from '@/lib/keys'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
 
@@ -63,6 +64,10 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   // keyboard: space reveals, 1-4 grade
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // Typing "Chapter 2" in a field, or Esc in the palette, must not reveal, grade or end.
+      const app = useApp.getState()
+      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
+      if (ignoresShortcut(e, overlayOpen)) return
       if (!queue[index]) {
         // completion / empty screen: only Esc is live; ignore Space/number grades
         if (e.key === 'Escape') finish()
