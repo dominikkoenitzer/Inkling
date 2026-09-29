@@ -5,6 +5,7 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { useTimer } from '@/stores/timer'
 import { subjectAverage } from '@shared/grades'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
+import { onActivateKey } from '@/lib/keys'
 import { Inky } from '@/components/Inky'
 import type { Deck, Task, Grade, Note, Notebook } from '@shared/types'
 
@@ -188,7 +189,10 @@ export function TodayView(): React.JSX.Element {
               <div
                 key={`t${t.id}`}
                 className="plan-card group flex cursor-pointer items-center gap-3 rounded-lg border border-edge bg-raised px-4 py-3"
+                role="button"
+                tabIndex={0}
                 onClick={() => app.openTask(t.notebook_id, t.id)}
+                onKeyDown={onActivateKey(() => app.openTask(t.notebook_id, t.id))}
               >
                 <input
                   type="checkbox"
@@ -280,7 +284,13 @@ function PlanCard({
   onAction: () => void
 }): React.JSX.Element {
   return (
-    <div className="plan-card group flex cursor-pointer items-center gap-3 rounded-lg border border-edge bg-raised px-4 py-3" onClick={onAction}>
+    <div
+      className="plan-card group flex cursor-pointer items-center gap-3 rounded-lg border border-edge bg-raised px-4 py-3"
+      role="button"
+      tabIndex={0}
+      onClick={onAction}
+      onKeyDown={onActivateKey(onAction)}
+    >
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg"
         style={{ background: tint.bg, color: tint.text }}
@@ -292,7 +302,7 @@ function PlanCard({
         <div className="truncate text-xs text-faint">{sub}</div>
       </div>
       <span
-        className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100"
+        className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         style={{ background: 'var(--accent)' }}
       >
         {actionLabel} <ArrowRight size={12} />
