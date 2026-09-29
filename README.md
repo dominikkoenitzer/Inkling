@@ -5,7 +5,7 @@
 <br />
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-145%20passing-10A37F)](test)
+[![tests](https://img.shields.io/badge/tests-176%20passing-10A37F)](test)
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -60,7 +60,9 @@ One list, grouped by when things are due: overdue, today, upcoming, someday, don
 ### Study
 <img src="docs/study.png" width="880" alt="Inkling: study view with a flashcard deck and Pomodoro timer" />
 
-FSRS-4.5 spaced-repetition flashcards (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card, stability (how long until your recall chance falls to 90%) and difficulty, instead of SM-2's single "ease factor", so it schedules for a real 90% recall target rather than an arbitrary multiplier.
+FSRS-6 spaced-repetition flashcards (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card, stability (how long until your recall chance falls to 90%) and difficulty, instead of SM-2's single "ease factor", so it schedules for a real recall target rather than an arbitrary multiplier. Pick the target in Settings (70–97%, default 90%).
+
+Once you have 400 reviews spaced a day or more apart, *Optimise from my reviews* in Settings fits all 21 FSRS parameters to your own review log, and keeps them only if they predict your recall better than the ones in use.
 
 Write `Term :: Definition` lines in a note and hit Flashcards: the note gets its own deck, and it stays linked. Hit it again after editing and changed lines update their cards in place, keeping their schedule; new lines are added, deleted ones removed. Cloze works too: `{{c1::Bern}} is the capital of {{c2::Switzerland}}` makes one card per number and reveals the answer in place, in notes and in the deck editor. Indent the lines under a `::` line to give a card a longer answer.
 
@@ -126,9 +128,9 @@ Pick the sleek Dark theme or the warm Cozy one.
 | State | Zustand (per-module stores) |
 | Database | better-sqlite3 + typed repositories, FTS5 search |
 | Dates | date-fns |
-| Spaced repetition | Custom FSRS-4.5 implementation (`src/shared/fsrs.ts`) |
+| Spaced repetition | Custom FSRS-6 implementation (`src/shared/fsrs.ts`) with a parameter optimiser (`src/shared/fsrs-optimise.ts`) |
 | Icons | lucide-react |
-| Tests | Vitest, 145 tests (FSRS, grade math, streaks, parsing, cloze, note-to-deck sync, migrations, Markdown export, colors) |
+| Tests | Vitest, 176 tests (FSRS, the optimiser, grade math, streaks, parsing, cloze, note-to-deck sync, migrations, Markdown export, colors) |
 | CI / Packaging | GitHub Actions · electron-builder (NSIS) |
 
 ---
@@ -163,12 +165,12 @@ Prefer a prebuilt binary? Grab the latest installer for Windows (`.exe`), macOS 
 ```
 src/main       Electron main: db.ts (schema/migrations/backups), ipc.ts, index.ts
 src/main/repos the data layer, one module per domain: notebooks, notes, tasks,
-               flashcards, focus, streak, grades, stats, search, onboarding;
+               flashcards, scheduler, focus, streak, grades, stats, search, onboarding;
                index.ts re-exports them, so callers still just `import * as repos`
 src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
 src/renderer   React app: stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
 src/shared     types + API contract + the pure logic both processes use:
-               fsrs.ts (scheduler), cloze.ts, grades.ts, streaks.ts, markdown.ts
+               fsrs.ts (scheduler), fsrs-optimise.ts, cloze.ts, grades.ts, streaks.ts, markdown.ts
 test           Vitest suites for everything in src/shared
 ```
 
@@ -207,7 +209,7 @@ review log. Unit tests cover the pure logic; this covers the wiring between the 
 - [x] Today view (auto-generated daily study plan), Swiss 1–6 and percentage grading, user bar
 - [x] Review history + Progress view (activity heatmap, true retention) and FSRS-4.5 scheduling
 - [x] Undoable deletes
-- [ ] Fit FSRS parameters to your own review log instead of the published defaults
+- [x] FSRS-6, fitted to your own review log instead of the published defaults
 - [ ] Optional end-to-end-encrypted cloud sync
 - [ ] Mobile companion
 
