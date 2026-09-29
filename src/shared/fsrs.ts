@@ -8,6 +8,11 @@
  * Repetition, https://github.com/open-spaced-repetition/ts-fsrs), checked against py-fsrs.
  * Written from the published algorithm, not copied.
  *
+ * Cards scheduled under FSRS-4.5 carry over as they are, with no migration: both models
+ * define stability as the days until recall falls to 90% and difficulty on the same 1-10
+ * scale, and every old due date was solved for 90%, where the two curves meet (R(S) = 0.9).
+ * So a card comes due exactly when it did, and its next review simply runs the new formulas.
+ *
  * Pure: the caller passes `now`. Formulas are covered in test/fsrs.test.ts.
  * https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm
  */
