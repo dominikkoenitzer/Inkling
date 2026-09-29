@@ -153,12 +153,12 @@ describe('reviewCard settings', () => {
     return reviewCard(card.id, 'good')
   }
 
-  it('schedules for the desired retention in the settings', () => {
+  it('keeps scheduling for 90% even with a retention stored before 0.6.0 removed the setting', () => {
     const standard = firstGood()
     raw.exec(`INSERT INTO settings (key, value) VALUES ('desired_retention', '0.8')`)
-    const relaxed = firstGood()
-    expect(relaxed.stability).toBe(standard.stability)
-    expect(relaxed.interval_days).toBeGreaterThan(standard.interval_days)
+    const after = firstGood()
+    expect(after.stability).toBe(standard.stability)
+    expect(after.interval_days).toBe(standard.interval_days)
   })
 
   it('uses fitted parameters from the settings, and the defaults when they are unusable', () => {
