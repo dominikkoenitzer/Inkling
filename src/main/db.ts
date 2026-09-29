@@ -91,12 +91,13 @@ export function openDb(): Database.Database {
   db = new Database(file)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
-  migrate(db)
+  // Back up first, so a migration that goes wrong still leaves the file as it was.
   try {
     backup(db, file, dir)
   } catch (err) {
     console.error('backup failed', err)
   }
+  migrate(db)
   return db
 }
 
