@@ -12,7 +12,8 @@ import type {
   ReviewGrade,
   Grade,
   StatsOverview,
-  ActivityDay
+  ActivityDay,
+  OptimiseOutcome
 } from './types'
 import type { GradingSystem } from './grades'
 
@@ -62,6 +63,8 @@ export interface InklingApi {
     removeCard(id: number): Promise<void>
     review(cardId: number, grade: ReviewGrade): Promise<Card>
     createFromPairs(notebookId: number, name: string, pairs: Array<[string, string]>): Promise<Deck>
+    /** Fits the FSRS parameters to the review log; keeps the ones in use unless the fit is better. */
+    optimise(): Promise<OptimiseOutcome>
   }
   focus: {
     start(input: { task_id?: number | null; deck_id?: number | null }): Promise<number>
