@@ -7,6 +7,7 @@ import type {
   SearchResult,
   StreakInfo,
   NoteTaskItem,
+  NoteCardLine,
   ColorKey,
   ReviewGrade,
   Grade,
@@ -31,6 +32,8 @@ export interface InklingApi {
     remove(id: number): Promise<void>
     restore(id: number): Promise<Note | null>
     syncTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): Promise<Array<number>>
+    /** Syncs the note's card lines into its linked deck, made on the first run and named `name`. */
+    syncCards(noteId: number, notebookId: number, name: string, lines: NoteCardLine[]): Promise<{ deck: Deck; lineIds: number[] }>
   }
   tasks: {
     list(notebookId: number): Promise<Task[]>
