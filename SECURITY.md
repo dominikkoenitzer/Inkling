@@ -20,7 +20,7 @@ Please include:
 
 ## Scope
 
-Inkling is a **local-first desktop app**. Notes, tasks, flashcards and grades live in a SQLite file in the user's own app-data directory; the main process makes no network requests, and there is no account and no sync. The threat model is therefore about the desktop boundary, not a server.
+Inkling is a **local-first desktop app**. Notes, tasks, flashcards and grades live in a SQLite file in the user's own app-data directory; the main process goes online only in packaged builds, to check this repository's GitHub Releases for an update and download it, and there is no account and no sync. The threat model is therefore about the desktop boundary, not a server.
 
 Reports most relevant to this project:
 
