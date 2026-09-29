@@ -156,3 +156,16 @@ export interface NoteCardLine {
 }
 
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy'
+
+/** What "Optimise from my reviews" did: saved new parameters, or kept the ones in use and why. */
+export interface OptimiseOutcome {
+  status: 'fitted' | 'too-few' | 'no-better'
+  /** Reviews the fit could score, and how many it needs before it runs. */
+  reviews: number
+  needed: number
+  /** Mean log-loss of the recall predictions, with the parameters in use and with the result. */
+  lossBefore: number
+  lossAfter: number
+  /** The new parameters, when they were saved. */
+  params?: number[]
+}
