@@ -5,7 +5,7 @@
 <br />
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-101%20passing-10A37F)](test)
+[![tests](https://img.shields.io/badge/tests-145%20passing-10A37F)](test)
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -62,7 +62,9 @@ One list, grouped by when things are due: overdue, today, upcoming, someday, don
 
 FSRS-4.5 spaced-repetition flashcards (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card, stability (how long until your recall chance falls to 90%) and difficulty, instead of SM-2's single "ease factor", so it schedules for a real 90% recall target rather than an arbitrary multiplier.
 
-Also here: one-click deck creation from `Term :: Definition` lines in a note, a Pomodoro focus timer linked to a task or deck, and a gentle, non-punishing study streak. The timer stays visible in the Discord-style user bar at the bottom of the sidebar, wherever you are in the app.
+Write `Term :: Definition` lines in a note and hit Flashcards: the note gets its own deck, and it stays linked. Hit it again after editing and changed lines update their cards in place, keeping their schedule; new lines are added, deleted ones removed. Cloze works too: `{{c1::Bern}} is the capital of {{c2::Switzerland}}` makes one card per number and reveals the answer in place, in notes and in the deck editor. Indent the lines under a `::` line to give a card a longer answer.
+
+Also here: a Pomodoro focus timer linked to a task or deck, and a gentle, non-punishing study streak. The timer stays visible in the Discord-style user bar at the bottom of the sidebar, wherever you are in the app.
 
 ### Grades
 <img src="docs/grades.png" width="880" alt="Inkling grade tracker: Swiss 1–6 scale with weighted average and pass status" />
@@ -126,7 +128,7 @@ Pick the sleek Dark theme or the warm Cozy one.
 | Dates | date-fns |
 | Spaced repetition | Custom FSRS-4.5 implementation (`src/shared/fsrs.ts`) |
 | Icons | lucide-react |
-| Tests | Vitest, 101 tests (FSRS, grade math, streaks, parsing, Markdown export, colors) |
+| Tests | Vitest, 145 tests (FSRS, grade math, streaks, parsing, cloze, note-to-deck sync, migrations, Markdown export, colors) |
 | CI / Packaging | GitHub Actions · electron-builder (NSIS) |
 
 ---
@@ -166,13 +168,13 @@ src/main/repos the data layer, one module per domain: notebooks, notes, tasks,
 src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
 src/renderer   React app: stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
 src/shared     types + API contract + the pure logic both processes use:
-               fsrs.ts (scheduler), grades.ts, streaks.ts, markdown.ts
+               fsrs.ts (scheduler), cloze.ts, grades.ts, streaks.ts, markdown.ts
 test           Vitest suites for everything in src/shared
 ```
 
 Data lives in a single WAL-mode SQLite file in `%APPDATA%/Inkling`, with a `backups/` folder beside it. Fully offline. Nothing leaves your machine.
 
-The schema is versioned via `PRAGMA user_version` and migrated on open (currently v10); a backup is written before each launch's migration runs.
+The schema is versioned via `PRAGMA user_version` and migrated on open (currently v11); a backup is written before each launch's migration runs.
 
 Anything that isn't I/O lives in `src/shared` and is unit-tested. The FSRS scheduler takes `now` as an argument and returns a plain object; the Markdown exporter is a pure function. That's what keeps the interesting logic testable without an Electron window.
 
