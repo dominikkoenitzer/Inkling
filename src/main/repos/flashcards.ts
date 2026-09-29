@@ -1,7 +1,8 @@
 import { getDb } from '../db'
 import { now } from './dates'
 import { ftsDelete, ftsUpsert } from './search'
-import { RATINGS, schedule } from '@shared/fsrs'
+import { getSetting } from './settings'
+import { RATINGS, parseParams, parseRetention, schedule } from '@shared/fsrs'
 import { clozeNumbers } from '@shared/cloze'
 import type { Card, Deck, NoteCardLine, ReviewGrade } from '@shared/types'
 
@@ -82,6 +83,11 @@ export function removeCard(id: number): void {
   getDb().prepare(`DELETE FROM flashcards WHERE id = ?`).run(id)
 }
 
+/** The desired retention and FSRS parameters in use: the user's settings, or the defaults. */
+export function schedulerSettings(): { retention: number; params: number[] } {
+  return { retention: parseRetention(getSetting('desired_retention')), params: parseParams(getSetting('fsrs_params')) }
+}
+
 /**
  * Review one card and append to the review log. The scheduling maths is in `@shared/fsrs`;
  * this reads the memory state, writes the new one and records what happened. The old SM-2
@@ -94,10 +100,13 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
 
   // Not the module-level now(): the schedule and the log must use the same instant.
   const reviewedAt = new Date()
+  const { retention, params } = schedulerSettings()
   const result = schedule(
     { state: card.state ?? 'new', stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review },
     RATINGS[grade],
-    reviewedAt
+    reviewedAt,
+    retention,
+    params
   )
   const reviewedAtIso = reviewedAt.toISOString()
 

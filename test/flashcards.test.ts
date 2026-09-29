@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type Database from 'better-sqlite3'
 import { openSqlite } from './sqlite'
 import type { Card, NoteCardLine } from '../src/shared/types'
+import { DEFAULT_PARAMS } from '../src/shared/fsrs'
 
 let raw: DatabaseSync
 let db: Database.Database
@@ -142,5 +143,31 @@ describe('cloze cards from the card editor', () => {
     const card = addCard(deckId, 'Front', 'Back')
     updateCard(card.id, 'Front 2', 'Back 2')
     expect(listCards(deckId)).toMatchObject([{ id: card.id, front: 'Front 2', back: 'Back 2', cloze: 0 }])
+  })
+})
+
+describe('reviewCard settings', () => {
+  const firstGood = (): Card => {
+    const deckId = sync([line('Osmosis', 'water')]).deckId
+    const card = addCard(deckId, `Card ${Math.random()}`, 'Back')
+    return reviewCard(card.id, 'good')
+  }
+
+  it('schedules for the desired retention in the settings', () => {
+    const standard = firstGood()
+    raw.exec(`INSERT INTO settings (key, value) VALUES ('desired_retention', '0.8')`)
+    const relaxed = firstGood()
+    expect(relaxed.stability).toBe(standard.stability)
+    expect(relaxed.interval_days).toBeGreaterThan(standard.interval_days)
+  })
+
+  it('uses fitted parameters from the settings, and the defaults when they are unusable', () => {
+    const standard = firstGood()
+    raw.exec(`INSERT INTO settings (key, value) VALUES ('fsrs_params', 'broken')`)
+    expect(firstGood().stability).toBe(standard.stability)
+    const w = [...DEFAULT_PARAMS]
+    w[2] = 20 // first-review stability for Good
+    raw.exec(`UPDATE settings SET value = '${JSON.stringify(w)}' WHERE key = 'fsrs_params'`)
+    expect(firstGood().stability).toBe(20)
   })
 })
