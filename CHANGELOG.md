@@ -57,7 +57,7 @@ decks, grades or review history were touched.
 - The editor is loaded when a page is opened rather than at startup. TipTap and ProseMirror
   were two thirds of the renderer bundle while the app opens on Today: 1881 kB down to
   819 kB, with the editor's 1065 kB fetched on demand.
-- 9.8k lines of source down to 6.5k, 65 IPC handlers down to 48, one renderer bundle
+- 9.8k lines of source down to 6.5k, 65 IPC handlers down to 46, one renderer bundle
   instead of two.
 
 ## [0.5.0] - 2026-08-17
