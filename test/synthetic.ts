@@ -51,5 +51,6 @@ export function syntheticLog(truth: readonly number[], cards: number, reviewsPer
   return log
 }
 
-// A learner who forgets faster early on and more steeply than the defaults assume.
-export const TRUTH = DEFAULT_PARAMS.map((v, i) => ({ 0: 0.1, 1: 0.6, 2: 1.2, 3: 4, 8: 1.4, 20: 0.45 })[i as 0] ?? v)
+/** A learner who forgets faster early on, and more steeply, than the defaults assume. */
+const LEARNER: Record<number, number> = { 0: 0.1, 1: 0.6, 2: 1.2, 3: 4, 8: 1.4, 20: 0.45 }
+export const TRUTH = DEFAULT_PARAMS.map((v, i) => LEARNER[i] ?? v)
