@@ -194,7 +194,7 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
                   {g.weight !== 1 && <span className="rounded-full bg-raised px-1.5 py-0.5 text-[11px] text-muted">×{fmt(g.weight)}</span>}
                   <IconBtn
                     title="Remove"
-                    className="opacity-0 group-hover:opacity-100"
+                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => {
                       void api.grades.remove(g.id).then(() => bumpData('grades'))
                     }}
