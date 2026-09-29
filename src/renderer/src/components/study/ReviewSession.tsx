@@ -5,6 +5,7 @@ import { Inky } from '@/components/Inky'
 import { Button, IconBtn } from '@/components/ui'
 import { ignoresShortcut } from '@/lib/keys'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
+import { renderCloze } from '@shared/cloze'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
 
 const api = window.inkling
@@ -139,12 +140,17 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               onClick={() => setShowBack(true)}
               key={`${card.id}-${index}`}
             >
-              <div className="text-lg font-semibold">{card.front}</div>
+              <div className="text-lg font-semibold">
+                {card.cloze > 0 ? <ClozeText text={card.front} n={card.cloze} reveal={showBack} /> : card.front}
+              </div>
               {showBack ? (
-                <>
-                  <div className="h-px w-24" style={{ background: 'var(--accent)' }} />
-                  <div className="text-base text-muted">{card.back}</div>
-                </>
+                // A cloze card's answer is revealed in place; the back only holds an optional extra.
+                card.back && (
+                  <>
+                    <div className="h-px w-24" style={{ background: 'var(--accent)' }} />
+                    <div className="text-base text-muted">{card.back}</div>
+                  </>
+                )
               ) : (
                 <div className="text-xs text-faint">click or press Space to reveal</div>
               )}
@@ -176,5 +182,22 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         )}
       </div>
     </div>
+  )
+}
+
+/** A cloze card's front, with the asked span blanked, or shown in the accent once revealed. */
+function ClozeText({ text, n, reveal }: { text: string; n: number; reveal: boolean }): React.JSX.Element {
+  return (
+    <>
+      {renderCloze(text, n, reveal).map((part, i) =>
+        part.kind === 'plain' ? (
+          <span key={i}>{part.text}</span>
+        ) : (
+          <span key={i} className={part.kind === 'blank' ? 'text-faint' : undefined} style={part.kind === 'answer' ? { color: 'var(--accent-text)' } : undefined}>
+            {part.text}
+          </span>
+        )
+      )}
+    </>
   )
 }
