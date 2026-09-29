@@ -40,6 +40,8 @@ export interface Deck {
   notebook_id: number
   name: string
   created_at: string
+  /** The note this deck is synced from, or null for a deck made by hand. */
+  note_id: number | null
   card_count: number
   due_count: number
 }
@@ -59,6 +61,10 @@ export interface Card {
   difficulty: number | null
   state: CardState
   last_review: string | null
+  /** The note line a synced card came from, shared by every card of that line. */
+  source_line: number | null
+  /** The cloze number this card asks, 0 for a plain front/back card. */
+  cloze: number
 }
 
 /** One row per answered card: the history SM-2 never kept, and what Stats is built on. */
@@ -139,6 +145,14 @@ export interface NoteTaskItem {
   taskId: number | null
   title: string
   checked: boolean
+}
+
+/** One `Term :: Definition` or cloze line of a note, as the flashcard sync reads it. */
+export interface NoteCardLine {
+  /** The id stamped on the line by an earlier sync, null for a line never synced. */
+  lineId: number | null
+  front: string
+  back: string
 }
 
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy'
