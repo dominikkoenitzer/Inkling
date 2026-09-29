@@ -140,6 +140,12 @@ input:focus,
 textarea:focus {
   outline: none;
 }
+/* A text field shows its caret when focused; a checkbox has no other cue. */
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: 2px solid var(--accent, #1d9e75);
+  outline-offset: 1px;
+}
 
 /* ---------------- TipTap editor ---------------- */
 .tiptap,
