@@ -42,6 +42,7 @@ export function registerIpc(): void {
   handle('decks.removeCard', repos.removeCard)
   handle('decks.review', repos.reviewCard)
   handle('decks.createFromPairs', repos.createDeckFromPairs)
+  handle('decks.optimise', repos.optimiseParams)
 
   handle('focus.start', repos.startFocus)
   handle('focus.complete', repos.completeFocus)
