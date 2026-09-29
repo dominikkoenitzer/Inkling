@@ -1,6 +1,7 @@
-import { Moon, Flame, Database, Keyboard, Percent } from 'lucide-react'
+import { Moon, Flame, Database, Keyboard, Percent, Brain } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { GRADING_SYSTEM_OPTIONS } from '@shared/grades'
+import { MAX_RETENTION, MIN_RETENTION } from '@shared/fsrs'
 import { Modal, Segmented } from '@/components/ui'
 import { LogoMark } from '@/components/Inky'
 
@@ -23,6 +24,23 @@ export function SettingsModal(): React.JSX.Element {
 
         <Row icon={<Percent size={16} />} label="Grading" hint="How Inkling shows your averages: the Swiss 1–6 scale (6 is best) or plain percentages.">
           <Segmented options={GRADING_SYSTEM_OPTIONS} value={app.gradingSystem} onChange={app.setGradingSystem} />
+        </Row>
+
+        <Row icon={<Brain size={16} />} label="Retention" hint="How sure you want to be of a card when it comes due. Higher means more reviews.">
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              aria-label="Desired retention"
+              min={MIN_RETENTION}
+              max={MAX_RETENTION}
+              step={0.01}
+              value={app.retention}
+              onChange={(e) => app.setRetention(Number(e.target.value))}
+              className="w-full"
+              style={{ accentColor: 'var(--accent)' }}
+            />
+            <span className="w-9 text-right text-sm tabular-nums">{Math.round(app.retention * 100)}%</span>
+          </div>
         </Row>
 
         <Row icon={<Keyboard size={16} />} label="Shortcuts" hint="">
