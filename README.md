@@ -81,7 +81,7 @@ Every card you answer is written to a permanent review log. Progress reads it ba
 |---|---|
 | **Command palette** | `Ctrl+K` fuzzy search across notes, tasks, and decks (SQLite FTS5) + quick actions |
 | **Undo** | Deleting a note is undoable from the toast, and the row is only cleared for good 30 days later |
-| **Themes** | Sleek Dark + warm Cozy, adjustable font size |
+| **Themes** | Sleek Dark + warm Cozy |
 | **First run** | No wizard: one notebook and a welcome page, ready to type in |
 | **Inky the mascot** | Original SVG character: idle bob, blink, cursor-tracking eyes, celebratory bounces |
 | **User bar** | Discord-style panel at the bottom of the sidebar: Inky, your streak, a live Pomodoro chip (pause/resume anywhere), settings |
@@ -105,7 +105,7 @@ Every card you answer is written to a permanent review log. Progress reads it ba
 
 ## Themes
 
-Pick the sleek Dark theme or the warm Cozy one, with adjustable font size on top.
+Pick the sleek Dark theme or the warm Cozy one.
 
 | Dark | Cozy |
 |:---:|:---:|
