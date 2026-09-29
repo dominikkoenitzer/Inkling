@@ -33,9 +33,11 @@ export function updateNote(id: number, patch: Record<string, unknown>): Note | n
   const keys = allowed.filter((k) => k in patch)
   if (keys.length > 0) {
     const sets = keys.map((k) => `${k} = @${k}`).join(', ')
-    getDb()
-      .prepare(`UPDATE notes SET ${sets}, updated_at = @ts WHERE id = @id`)
+    const info = getDb()
+      .prepare(`UPDATE notes SET ${sets}, updated_at = @ts WHERE id = @id AND deleted_at IS NULL`)
       .run({ ...patch, id, ts: now() })
+    // Trashed or gone: a debounced save landing after the delete must not revive the page in search.
+    if (info.changes === 0) return null
   }
   const note = getNote(id)
   if (!note) return null // row was deleted (e.g. a debounced save landing after the note was removed)
