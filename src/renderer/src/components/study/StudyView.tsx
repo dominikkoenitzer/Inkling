@@ -142,6 +142,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
             </Button>
             <Button
               variant="danger"
+              ariaLabel="Delete deck"
               onClick={() => {
                 void api.decks.remove(deck.id).then(() => {
                   bumpData('decks')
@@ -163,7 +164,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
             onChange={(e) => setBack(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void add()}
           />
-          <Button variant="primary" onClick={() => void add()} disabled={!front.trim() || !back.trim()}>
+          <Button variant="primary" ariaLabel="Add card" onClick={() => void add()} disabled={!front.trim() || !back.trim()}>
             <Plus size={14} />
           </Button>
         </div>

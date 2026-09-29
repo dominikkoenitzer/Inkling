@@ -10,6 +10,7 @@ export function Button({
   className = '',
   disabled,
   title,
+  ariaLabel,
   type
 }: {
   children: ReactNode
@@ -18,6 +19,8 @@ export function Button({
   className?: string
   disabled?: boolean
   title?: string
+  /** Needed when the children are only an icon. */
+  ariaLabel?: string
   type?: 'button' | 'submit'
 }): React.JSX.Element {
   const styles = {
@@ -30,6 +33,7 @@ export function Button({
     <button
       type={type ?? 'button'}
       title={title}
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
       style={variant === 'primary' ? { background: 'var(--accent)' } : undefined}
