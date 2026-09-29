@@ -174,7 +174,7 @@ Data lives in a single WAL-mode SQLite file in `%APPDATA%/Inkling`, with a `back
 
 The schema is versioned via `PRAGMA user_version` and migrated on open (currently v10); a backup is written before each launch's migration runs.
 
-Anything that isn't I/O lives in `src/shared` and is unit-tested. The FSRS scheduler takes `now` as an argument and returns a plain object; the Markdown exporter and the deck importer are pure functions. That's what keeps the interesting logic testable without an Electron window.
+Anything that isn't I/O lives in `src/shared` and is unit-tested. The FSRS scheduler takes `now` as an argument and returns a plain object; the Markdown exporter is a pure function. That's what keeps the interesting logic testable without an Electron window.
 
 ### Dev / test hooks
 
