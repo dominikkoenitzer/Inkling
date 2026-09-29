@@ -203,7 +203,11 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
         <button
           type="button"
           title="Delete card"
-          className="hidden text-faint hover:text-red-400 group-hover:block group-has-[:focus-visible]:block"
+          // Visually hidden rather than display: none, so Tab still reaches it
+          // and it shows on its own focus; the row's text fields match
+          // :focus-visible on a click too, so showing it for them put the
+          // button up while typing.
+          className="sr-only text-faint hover:text-red-400 group-hover:not-sr-only focus-visible:not-sr-only"
           onClick={() => void api.decks.removeCard(card.id).then(() => bumpData('decks'))}
         >
           <Trash2 size={14} />
