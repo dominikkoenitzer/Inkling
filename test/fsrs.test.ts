@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DECAY,
   DEFAULT_PARAMS,
-  FACTOR,
   MAX_INTERVAL_DAYS,
+  MAX_RETENTION,
+  MIN_RETENTION,
   MIN_STABILITY,
   RELEARN_MINUTES,
+  clampParams,
   daysBetween,
+  decayOf,
+  factorOf,
   formatInterval,
   fromSm2,
   initialDifficulty,
@@ -14,7 +17,11 @@ import {
   intervalForRetention,
   nextDifficulty,
   nextForgetStability,
+  nextMemoryState,
   nextRecallStability,
+  nextShortTermStability,
+  parseParams,
+  parseRetention,
   previewIntervals,
   retrievability,
   schedule,
@@ -51,7 +58,7 @@ describe('retrievability', () => {
   })
 
   it('is defined by the FSRS power curve, not an exponential', () => {
-    expect(retrievability(30, 10)).toBeCloseTo(Math.pow(1 + (FACTOR * 30) / 10, DECAY), 10)
+    expect(retrievability(30, 10)).toBeCloseTo(Math.pow(1 + (factorOf() * 30) / 10, decayOf()), 10)
   })
 
   it('treats a non-positive stability as fully forgotten', () => {
@@ -76,8 +83,8 @@ describe('intervalForRetention', () => {
   })
 
   it('clamps absurd retention targets into a sane band', () => {
-    expect(intervalForRetention(0.1, 10)).toBeCloseTo(intervalForRetention(0.7, 10), 10)
-    expect(intervalForRetention(1.5, 10)).toBeCloseTo(intervalForRetention(0.99, 10), 10)
+    expect(intervalForRetention(0.1, 10)).toBeCloseTo(intervalForRetention(MIN_RETENTION, 10), 10)
+    expect(intervalForRetention(1.5, 10)).toBeCloseTo(intervalForRetention(MAX_RETENTION, 10), 10)
   })
 })
 
@@ -309,5 +316,133 @@ describe('formatInterval', () => {
     expect(formatInterval(45)).toBe('1.5mo')
     expect(formatInterval(180)).toBe('6mo')
     expect(formatInterval(400)).toBe('1.1y')
+  })
+})
+
+// Reference values computed with ts-fsrs 5 (FSRS-6, default parameters, fuzz off).
+describe('FSRS-6 against the reference implementation', () => {
+  it('uses the 21 published default parameters', () => {
+    expect(DEFAULT_PARAMS).toHaveLength(21)
+    expect(DEFAULT_PARAMS[20]).toBe(0.1542)
+  })
+
+  it('bends the forgetting curve by the trainable decay w20', () => {
+    expect(retrievability(10, 10)).toBeCloseTo(0.9, 8)
+    expect(retrievability(30, 10)).toBeCloseTo(0.8093881, 6)
+  })
+
+  it('initialises difficulty with D0(G) = w4 - e^(w5·(G-1)) + 1, clamped to 1–10', () => {
+    expect(initialDifficulty(1)).toBeCloseTo(6.4133, 6)
+    expect(initialDifficulty(2)).toBeCloseTo(5.11217071, 6)
+    expect(initialDifficulty(3)).toBeCloseTo(2.11810397, 6)
+    expect(initialDifficulty(4)).toBe(1)
+  })
+
+  it('damps difficulty changes and reverts toward D0(Easy)', () => {
+    expect(nextDifficulty(5, 1)).toBeCloseTo(8.34176237, 6)
+    expect(nextDifficulty(5, 2)).toBeCloseTo(6.66599536, 6)
+    expect(nextDifficulty(5, 3)).toBeCloseTo(4.99022837, 6)
+    expect(nextDifficulty(5, 4)).toBeCloseTo(3.31446137, 6)
+  })
+
+  // ts-fsrs rounds R and the curve factor to 8 decimals on the way, so stabilities agree to ~1e-6.
+  it('matches the long-term stability updates', () => {
+    const at = (rating: 1 | 2 | 3 | 4): number => nextMemoryState({ stability: 10, difficulty: 5 }, 20, rating).stability
+    expect(at(1)).toBeCloseTo(1.52185584, 5)
+    expect(at(2)).toBeCloseTo(30.86751702, 5)
+    expect(at(3)).toBeCloseTo(44.69823249, 5)
+    expect(at(4)).toBeCloseTo(74.98631963, 5)
+    expect(nextMemoryState({ stability: 100, difficulty: 3 }, 100, 1)).toMatchObject({
+      stability: expect.closeTo(3.86668255, 5),
+      difficulty: expect.closeTo(7.68437596, 6)
+    })
+  })
+
+  it('uses the same-day terms for a review less than a day after the last', () => {
+    expect(nextShortTermStability(10, 1)).toBeCloseTo(3.05124894, 6)
+    expect(nextShortTermStability(10, 2)).toBe(10)
+    expect(nextShortTermStability(10, 3)).toBe(10)
+    expect(nextShortTermStability(10, 4)).toBeCloseTo(15.53430795, 6)
+    expect(nextShortTermStability(0.5, 3)).toBeCloseTo(0.54987621, 6)
+    expect(nextShortTermStability(0.5, 4)).toBeCloseTo(0.94595328, 6)
+    expect(nextMemoryState({ stability: 0.5, difficulty: 5 }, 0.01, 1).stability).toBeCloseTo(0.18580415, 6)
+  })
+
+  it('solves the interval for a retention target', () => {
+    expect(Math.round(intervalForRetention(0.9, 10))).toBe(10)
+    expect(Math.round(intervalForRetention(0.8, 10))).toBe(33)
+    expect(Math.round(intervalForRetention(0.95, 10))).toBe(4)
+  })
+
+  it('caps a lapse at the same-day Again stability', () => {
+    // Long-term forget stability of a well-known card can exceed S / e^(w17·w18); the cap wins.
+    const s = nextForgetStability(1, 2, 0.1)
+    expect(s).toBeLessThanOrEqual(2 / Math.exp(DEFAULT_PARAMS[17] * DEFAULT_PARAMS[18]) + 1e-12)
+  })
+})
+
+describe('carrying cards over from FSRS-4.5', () => {
+  // Both models define stability as the days until recall falls to 90%, on the same 1–10
+  // difficulty scale, so a stored memory state means the same thing under either one.
+  const fsrs45 = (t: number, s: number): number => Math.pow(1 + ((19 / 81) * t) / s, -0.5)
+
+  it('agrees with the old curve exactly where cards were scheduled: R(S) = 0.9', () => {
+    for (const s of [0.5, 3, 30, 400]) {
+      expect(retrievability(s, s)).toBeCloseTo(fsrs45(s, s), 10)
+    }
+  })
+
+  it('keeps the interval of every old card at the default 90% target', () => {
+    for (const s of [1, 7, 42, 365]) {
+      expect(intervalForRetention(0.9, s)).toBeCloseTo(s, 6)
+    }
+  })
+
+  it('reviews an old card from its stored state without resetting it', () => {
+    const r = schedule(reviewed(30, 5, 30), 3, NOW)
+    // Due on time with R = 0.9, as the old model scheduled it; the stored state is the input.
+    expect(r.retrievability).toBeCloseTo(0.9, 6)
+    expect(r.stability).toBeCloseTo(nextRecallStability(5, 30, 0.9, 3), 10)
+    expect(r.difficulty).toBeCloseTo(nextDifficulty(5, 3), 10)
+  })
+})
+
+describe('desired retention', () => {
+  it('schedules shorter at a higher target and longer at a lower one', () => {
+    const card = reviewed(20, 5, 20)
+    const at = (r: number): number => schedule(card, 3, NOW, r).scheduledDays
+    expect(at(0.97)).toBeLessThan(at(0.9))
+    expect(at(0.9)).toBeLessThan(at(0.8))
+    expect(at(0.8)).toBeLessThan(at(0.7))
+  })
+
+  it('does not change the memory state, only the interval', () => {
+    const card = reviewed(20, 5, 20)
+    expect(schedule(card, 3, NOW, 0.97).stability).toBe(schedule(card, 3, NOW, 0.8).stability)
+  })
+
+  it('reads a stored setting, clamped to 0.7–0.97 with 0.9 as the default', () => {
+    expect(parseRetention(null)).toBe(0.9)
+    expect(parseRetention('0.85')).toBe(0.85)
+    expect(parseRetention('0.5')).toBe(0.7)
+    expect(parseRetention('0.999')).toBe(0.97)
+    expect(parseRetention('nonsense')).toBe(0.9)
+  })
+})
+
+describe('stored parameters', () => {
+  it('falls back to the defaults for anything that is not 21 numbers', () => {
+    expect(parseParams(null)).toEqual(DEFAULT_PARAMS)
+    expect(parseParams('not json')).toEqual(DEFAULT_PARAMS)
+    expect(parseParams('[1,2,3]')).toEqual(DEFAULT_PARAMS)
+    expect(parseParams(JSON.stringify(DEFAULT_PARAMS))).toEqual(DEFAULT_PARAMS)
+  })
+
+  it('clamps each parameter into its bounds', () => {
+    const wild = DEFAULT_PARAMS.map(() => 1000)
+    const w = clampParams(wild)
+    expect(w[0]).toBe(100)
+    expect(w[7]).toBe(0.75)
+    expect(w[20]).toBe(0.8)
   })
 })
