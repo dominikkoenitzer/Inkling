@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import { Extension } from '@tiptap/core'
-import type { Node as PMNode } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
@@ -28,7 +27,7 @@ import {
   FileDown
 } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { extractNoteTaskItems, extractNoteCardLines, parseCardLine } from '@/lib/parse'
+import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { IconBtn } from '@/components/ui'
 import type { Notebook, Note, NoteTaskItem } from '@shared/types'
@@ -77,8 +76,6 @@ const CardLineId = Extension.create({
     ]
   }
 })
-
-const isCardLine = (node: PMNode): boolean => parseCardLine(node.textContent) !== null
 
 function itemsEqual(a: NoteTaskItem[], b: NoteTaskItem[]): boolean {
   if (a.length !== b.length) return false
@@ -206,9 +203,17 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       return
     }
     // The note's own deck: made on the first run, updated in place on every later one.
-    const { deck, lineIds } = await api.notes.syncCards(noteId, notebook.id, titleRef.current || 'Untitled deck', lines)
+    const { deck, lineIds } = await api.notes.syncCards(
+      noteId,
+      notebook.id,
+      titleRef.current || 'Untitled deck',
+      lines.map(({ lineId, front, back }) => ({ lineId, front, back }))
+    )
     if (editor.isDestroyed) return
-    assignNodeIds(editor, 'paragraph', 'cardLine', lineIds, syncingRef, isCardLine)
+    // Stamped by paragraph position: continuation lines and plain text get no id.
+    const perParagraph: number[] = []
+    lines.forEach((l, i) => (perParagraph[l.paragraph] = lineIds[i]))
+    assignNodeIds(editor, 'paragraph', 'cardLine', perParagraph, syncingRef)
     await doSave() // keep the stamped ids, or the next sync matches by text alone
     bumpData('decks')
     useApp.getState().celebrate()
@@ -264,15 +269,14 @@ function assignNodeIds(
   nodeType: string,
   attr: string,
   ids: number[],
-  syncingRef: { current: boolean },
-  only: (node: PMNode) => boolean = () => true
+  syncingRef: { current: boolean }
 ): void {
   const { state, view } = editor
   const tr = state.tr
   let i = 0
   let changed = false
   state.doc.descendants((node, pos) => {
-    if (node.type.name === nodeType && only(node)) {
+    if (node.type.name === nodeType) {
       const want = ids[i++]
       if (want !== undefined && want > 0 && node.attrs[attr] !== want) {
         tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: want })
