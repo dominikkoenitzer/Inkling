@@ -96,6 +96,7 @@ export function FocusTimer({ notebook, decks }: { notebook: Notebook; decks: Dec
             ))}
           </div>
           <select
+            aria-label="Link this session to a task or deck"
             value={link}
             onChange={(e) => setLink(e.target.value)}
             className="mb-2 w-full rounded-lg border border-edge bg-sunken px-2 py-1.5 text-xs text-muted"
