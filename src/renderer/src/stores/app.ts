@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
 import type { GradingSystem } from '@shared/grades'
+import { parseParams, parseRetention } from '@shared/fsrs'
 
 const api = window.inkling
 
@@ -27,6 +28,9 @@ interface AppState {
   ready: boolean
   theme: Theme
   gradingSystem: GradingSystem
+  /** Desired retention and FSRS parameters, mirrored from the settings for the interval preview. */
+  retention: number
+  fsrsParams: number[]
   notebooks: Notebook[]
   activeNotebookId: number | null
   tab: ModuleTab
@@ -44,6 +48,8 @@ interface AppState {
   refreshStreak(): Promise<void>
   setTheme(t: Theme): void
   setGradingSystem(v: GradingSystem): void
+  setRetention(v: number): void
+  setFsrsParams(v: number[]): void
   setActiveNotebook(id: number): void
   setTab(tab: ModuleTab): void
   openNote(notebookId: number, noteId: number): void
@@ -64,6 +70,8 @@ export const useApp = create<AppState>((set, get) => ({
   ready: false,
   theme: 'dark',
   gradingSystem: 'percent',
+  retention: parseRetention(null),
+  fsrsParams: parseParams(null),
   notebooks: [],
   activeNotebookId: null,
   tab: 'today',
@@ -82,6 +90,8 @@ export const useApp = create<AppState>((set, get) => ({
       ready: true,
       theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
       gradingSystem: isGradingSystem(settings['grading_system']) ? settings['grading_system'] : 'percent',
+      retention: parseRetention(settings['desired_retention']),
+      fsrsParams: parseParams(settings['fsrs_params']),
       notebooks,
       activeNotebookId: notebooks[0]?.id ?? null,
       streak
@@ -111,6 +121,12 @@ export const useApp = create<AppState>((set, get) => ({
     set({ gradingSystem })
     void api.settings.set('grading_system', gradingSystem)
   },
+  setRetention: (value) => {
+    const retention = parseRetention(String(value))
+    set({ retention })
+    void api.settings.set('desired_retention', String(retention))
+  },
+  setFsrsParams: (fsrsParams) => set({ fsrsParams }),
 
   setActiveNotebook: (id) => set({ activeNotebookId: id, selectedNoteId: null, selectedTaskId: null, selectedDeckId: null }),
   setTab: (tab) => set({ tab }),

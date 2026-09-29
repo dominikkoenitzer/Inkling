@@ -24,6 +24,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   const [reviewed, setReviewed] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const gradingRef = useRef(false)
+  const retention = useApp((s) => s.retention)
+  const fsrsParams = useApp((s) => s.fsrsParams)
 
   useEffect(() => {
     void api.decks.dueCards(deck.id).then((cards) => {
@@ -95,7 +97,12 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   // too lets each button show the interval it would buy, without a round-trip per card.
   const intervals =
     card && showBack
-      ? previewIntervals({ state: card.state, stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review }, new Date())
+      ? previewIntervals(
+          { state: card.state, stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review },
+          new Date(),
+          retention,
+          fsrsParams
+        )
       : null
 
   return (
