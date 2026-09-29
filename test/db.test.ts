@@ -1,36 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import { DatabaseSync } from 'node:sqlite'
-import type Database from 'better-sqlite3'
+import type { DatabaseSync } from 'node:sqlite'
+import { openSqlite } from './sqlite'
 
-// The migration runs in Electron against better-sqlite3; here it runs against Node's own
-// SQLite, with the two better-sqlite3 helpers it uses (`pragma`, `transaction`) shimmed.
+// The migration runs in Electron against better-sqlite3; here against Node's own SQLite.
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
 vi.mock('better-sqlite3', () => ({ default: class {} }))
 
 const { migrate } = await import('../src/main/db')
 
-function open(): { raw: DatabaseSync; db: Database.Database } {
-  const raw = new DatabaseSync(':memory:')
-  raw.exec('PRAGMA foreign_keys = ON')
-  const db = Object.assign(raw, {
-    pragma: (src: string, opts?: { simple?: boolean }) => {
-      if (src.includes('=')) return void raw.exec(`PRAGMA ${src}`)
-      const row = raw.prepare(`PRAGMA ${src}`).get() as Record<string, unknown>
-      return opts?.simple ? Object.values(row)[0] : row
-    },
-    transaction: (fn: () => void) => () => {
-      raw.exec('BEGIN')
-      try {
-        fn()
-        raw.exec('COMMIT')
-      } catch (err) {
-        raw.exec('ROLLBACK')
-        throw err
-      }
-    }
-  })
-  return { raw, db: db as unknown as Database.Database }
-}
+const open = openSqlite
 
 const columns = (raw: DatabaseSync, table: string): string[] =>
   (raw.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name)
