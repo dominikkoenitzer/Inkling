@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useApp } from '@/stores/app'
 
 export function Button({
@@ -79,6 +79,10 @@ export function Modal({
   children: ReactNode
   width?: number
 }): React.JSX.Element {
+  const titleId = useId()
+  const panelRef = useRef<HTMLDivElement>(null)
+  // Whatever had focus when the dialog opened gets it back when it closes.
+  const [opener] = useState(() => document.activeElement as HTMLElement | null)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -86,15 +90,27 @@ export function Modal({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  useEffect(() => {
+    // An autofocused field inside keeps its focus; otherwise the dialog itself takes it.
+    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus()
+    return () => {
+      if (opener?.isConnected) opener.focus()
+    }
+  }, [opener])
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6" onMouseDown={onClose}>
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="pop-in max-h-[85vh] overflow-y-auto rounded-lg border border-edge bg-panel p-5"
-        style={{ width, boxShadow: 'var(--shadow)' }}
+        style={{ width, boxShadow: 'var(--shadow)', outline: 'none' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 id={titleId} className="text-base font-semibold">{title}</h2>
           <IconBtn title="Close" onClick={onClose}>
             <X size={16} />
           </IconBtn>
