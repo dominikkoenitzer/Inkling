@@ -1,19 +1,41 @@
 import { describe, it, expect } from 'vitest'
-import { extractFlashcardPairs, extractNoteTaskItems, fuzzyScore } from '../src/renderer/src/lib/parse'
+import { extractNoteCardLines, extractNoteTaskItems, fuzzyScore, parseCardLine } from '../src/renderer/src/lib/parse'
 
 const doc = (content: unknown[]): string => JSON.stringify({ type: 'doc', content })
 const para = (text: string): unknown => ({ type: 'paragraph', content: [{ type: 'text', text }] })
 
-describe('extractFlashcardPairs', () => {
-  it('pulls "Term :: Definition" lines into pairs', () => {
-    const json = doc([para('Photosynthesis :: converts light into energy'), para('just a normal line'), para('Mitochondria :: the powerhouse of the cell')])
-    expect(extractFlashcardPairs(json)).toEqual([
-      ['Photosynthesis', 'converts light into energy'],
-      ['Mitochondria', 'the powerhouse of the cell']
+describe('extractNoteCardLines', () => {
+  const lines = (content: unknown[]): unknown => extractNoteCardLines(JSON.parse(doc(content)))
+
+  it('pulls "Term :: Definition" lines into cards', () => {
+    expect(lines([para('Photosynthesis :: converts light into energy'), para('just a normal line'), para('Mitochondria :: the powerhouse of the cell')])).toEqual([
+      { lineId: null, front: 'Photosynthesis', back: 'converts light into energy' },
+      { lineId: null, front: 'Mitochondria', back: 'the powerhouse of the cell' }
     ])
   })
   it('ignores lines without a term or definition', () => {
-    expect(extractFlashcardPairs(doc([para(':: no term'), para('no definition ::')]))).toEqual([])
+    expect(lines([para(':: no term'), para('no definition ::')])).toEqual([])
+  })
+  it('reads the line id an earlier sync stamped on the paragraph', () => {
+    const stamped = { type: 'paragraph', attrs: { cardLine: 12 }, content: [{ type: 'text', text: 'Osmosis :: water' }] }
+    expect(lines([stamped])).toEqual([{ lineId: 12, front: 'Osmosis', back: 'water' }])
+  })
+  it('takes a cloze line whole, with an optional extra after ::', () => {
+    expect(lines([para('The {{c1::cell}} wall'), para('{{c1::Bern}} is a capital :: since 1848')])).toEqual([
+      { lineId: null, front: 'The {{c1::cell}} wall', back: '' },
+      { lineId: null, front: '{{c1::Bern}} is a capital', back: 'since 1848' }
+    ])
+  })
+  it('joins text split across marks', () => {
+    const marked = { type: 'paragraph', content: [{ type: 'text', text: 'Osmo', marks: [{ type: 'bold' }] }, { type: 'text', text: 'sis :: water' }] }
+    expect(lines([marked])).toEqual([{ lineId: null, front: 'Osmosis', back: 'water' }])
+  })
+})
+
+describe('parseCardLine', () => {
+  it('rejects plain text and a :: with nothing after it', () => {
+    expect(parseCardLine('just text')).toBeNull()
+    expect(parseCardLine('Term ::')).toBeNull()
   })
 })
 
