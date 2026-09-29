@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Play, Trash2, Plus, ArrowLeft, Pencil, Layers } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { isColorKey, ramp } from '@/lib/colors'
+import { hasCloze } from '@shared/cloze'
 import { EmptyState } from '@/components/Inky'
 import { Button, IconBtn, inputCls } from '@/components/ui'
 import { FocusTimer } from './FocusTimer'
@@ -94,8 +95,11 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
     void api.decks.cards(deck.id).then(setCards)
   }, [deck.id, version])
 
+  // A cloze front is a whole card on its own; the back is then an optional extra.
+  const canAdd = !!front.trim() && (!!back.trim() || hasCloze(front))
+
   const add = async (): Promise<void> => {
-    if (!front.trim() || !back.trim()) return
+    if (!canAdd) return
     await api.decks.addCard(deck.id, front.trim(), back.trim())
     setFront('')
     setBack('')
@@ -156,7 +160,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
         </div>
 
         <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-lg border border-edge bg-sunken p-3">
-          <input className={inputCls} placeholder="Front: the question or term" value={front} onChange={(e) => setFront(e.target.value)} />
+          <input className={inputCls} placeholder="Front: a question, or {{c1::cloze}} text" value={front} onChange={(e) => setFront(e.target.value)} />
           <input
             className={inputCls}
             placeholder="Back: the answer"
@@ -164,7 +168,7 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
             onChange={(e) => setBack(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void add()}
           />
-          <Button variant="primary" ariaLabel="Add card" onClick={() => void add()} disabled={!front.trim() || !back.trim()}>
+          <Button variant="primary" ariaLabel="Add card" onClick={() => void add()} disabled={!canAdd}>
             <Plus size={14} />
           </Button>
         </div>
@@ -172,7 +176,9 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
         {cards.length === 0 && <p className="py-6 text-center text-sm text-muted">No cards yet. Add your first one above.</p>}
         <div className="space-y-1.5">
           {cards.map((c) => (
-            <CardRow key={c.id} card={c} />
+            // Keyed by text too: editing a cloze card rewrites its siblings, and a row still
+            // holding the old text would write it back on its next blur.
+            <CardRow key={`${c.id}:${c.front}:${c.back}`} card={c} />
           ))}
         </div>
       </div>
@@ -198,6 +204,7 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
       <input className="border-l border-edge bg-transparent pl-3 text-sm text-muted" value={back} onChange={(e) => setBack(e.target.value)} onBlur={save} />
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-faint" title={`ease ${card.ease_factor.toFixed(2)} · interval ${card.interval_days}d`}>
+          {card.cloze > 0 && `c${card.cloze} · `}
           {due ? 'due' : `in ${card.interval_days}d`}
         </span>
         <button
