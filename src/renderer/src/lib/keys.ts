@@ -1,3 +1,5 @@
+import type { KeyboardEvent } from 'react'
+
 const TEXT_ENTRY = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
 
 /**
@@ -8,4 +10,18 @@ export function ignoresShortcut(e: { target: EventTarget | null; defaultPrevente
   if (e.defaultPrevented || overlayOpen) return true
   const el = e.target as { tagName?: string; isContentEditable?: boolean } | null
   return !!el && (el.isContentEditable === true || TEXT_ENTRY.has(el.tagName ?? ''))
+}
+
+/**
+ * Enter and Space on a focused `role="button"` element, the way a real button behaves. Keys
+ * that start on a control nested inside it are left to that control.
+ */
+export function onActivateKey(run: () => void): (e: KeyboardEvent<HTMLElement>) => void {
+  return (e) => {
+    if (e.target !== e.currentTarget) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      run()
+    }
+  }
 }

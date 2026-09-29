@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
+import { onActivateKey } from '@/lib/keys'
 import { RAMPS, COLOR_KEYS, isColorKey, ramp } from '@/lib/colors'
 import { subjectAverage } from '@shared/grades'
 import { Modal, Field, inputCls, Button, IconBtn } from '@/components/ui'
@@ -127,10 +128,13 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
           className={`group flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors ${
             selectedNoteId === n.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
           }`}
+          role="button"
+          tabIndex={0}
           onClick={() => setSelectedNote(n.id)}
+          onKeyDown={onActivateKey(() => setSelectedNote(n.id))}
         >
           <span className="truncate">{n.title || 'Untitled'}</span>
-          <span className="ml-auto hidden shrink-0 gap-0.5 group-hover:flex">
+          <span className="ml-auto hidden shrink-0 gap-0.5 group-hover:flex group-focus-visible:flex group-has-[:focus-visible]:flex">
             <IconBtn
               title="Delete page"
               onClick={(e) => {
