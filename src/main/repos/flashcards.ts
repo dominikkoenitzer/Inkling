@@ -2,7 +2,7 @@ import { getDb } from '../db'
 import { now } from './dates'
 import { ftsDelete, ftsUpsert } from './search'
 import { getSetting } from './settings'
-import { RATINGS, parseParams, parseRetention, schedule } from '@shared/fsrs'
+import { DEFAULT_RETENTION, RATINGS, parseParams, schedule } from '@shared/fsrs'
 import { clozeNumbers } from '@shared/cloze'
 import type { Card, Deck, NoteCardLine, ReviewGrade } from '@shared/types'
 
@@ -83,9 +83,13 @@ export function removeCard(id: number): void {
   getDb().prepare(`DELETE FROM flashcards WHERE id = ?`).run(id)
 }
 
-/** The desired retention and FSRS parameters in use: the user's settings, or the defaults. */
+/**
+ * The retention and FSRS parameters in use. Retention is fixed at 90%: the setting was
+ * removed in 0.6.0, so a value stored before then is ignored. The parameters are the
+ * user's fitted ones, or the defaults.
+ */
 export function schedulerSettings(): { retention: number; params: number[] } {
-  return { retention: parseRetention(getSetting('desired_retention')), params: parseParams(getSetting('fsrs_params')) }
+  return { retention: DEFAULT_RETENTION, params: parseParams(getSetting('fsrs_params')) }
 }
 
 /**

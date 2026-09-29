@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
 import type { GradingSystem } from '@shared/grades'
-import { parseParams, parseRetention } from '@shared/fsrs'
+import { DEFAULT_RETENTION, parseParams } from '@shared/fsrs'
 
 const api = window.inkling
 
@@ -48,7 +48,6 @@ interface AppState {
   refreshStreak(): Promise<void>
   setTheme(t: Theme): void
   setGradingSystem(v: GradingSystem): void
-  setRetention(v: number): void
   setFsrsParams(v: number[]): void
   setActiveNotebook(id: number): void
   setTab(tab: ModuleTab): void
@@ -70,7 +69,7 @@ export const useApp = create<AppState>((set, get) => ({
   ready: false,
   theme: 'dark',
   gradingSystem: 'percent',
-  retention: parseRetention(null),
+  retention: DEFAULT_RETENTION,
   fsrsParams: parseParams(null),
   notebooks: [],
   activeNotebookId: null,
@@ -90,7 +89,7 @@ export const useApp = create<AppState>((set, get) => ({
       ready: true,
       theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
       gradingSystem: isGradingSystem(settings['grading_system']) ? settings['grading_system'] : 'percent',
-      retention: parseRetention(settings['desired_retention']),
+      retention: DEFAULT_RETENTION,
       fsrsParams: parseParams(settings['fsrs_params']),
       notebooks,
       activeNotebookId: notebooks[0]?.id ?? null,
@@ -120,11 +119,6 @@ export const useApp = create<AppState>((set, get) => ({
   setGradingSystem: (gradingSystem) => {
     set({ gradingSystem })
     void api.settings.set('grading_system', gradingSystem)
-  },
-  setRetention: (value) => {
-    const retention = parseRetention(String(value))
-    set({ retention })
-    void api.settings.set('desired_retention', String(retention))
   },
   setFsrsParams: (fsrsParams) => set({ fsrsParams }),
 
