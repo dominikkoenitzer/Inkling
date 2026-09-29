@@ -37,7 +37,7 @@ export function TodayView(): React.JSX.Element {
   const now = useNow()
   // A focus session is live if it's running or paused part-way through, used so the plan
   // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
-  const timerActive = useTimer((s) => s.mode === 'focus' && (s.running || s.secondsLeft < s.totalSeconds))
+  const timerActive = useTimer((s) => s.mode === 'focus' && (s.running || (s.secondsLeft > 0 && s.secondsLeft < s.totalSeconds)))
   const version = useVersion('decks') + useVersion('tasks') + useVersion('grades') + useVersion('focus')
   const [decks, setDecks] = useState<Deck[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
