@@ -3,6 +3,7 @@ import { Trash2, Plus, CalendarClock, FileText } from 'lucide-react'
 import { format, isBefore, isToday, startOfDay } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { isColorKey } from '@/lib/colors'
+import { onActivateKey } from '@/lib/keys'
 import { EmptyState } from '@/components/Inky'
 import type { Notebook, Task } from '@shared/types'
 
@@ -121,7 +122,10 @@ export function TaskRow({ task }: { task: Task }): React.JSX.Element {
       className={`group flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors ${
         selectedTaskId === task.id ? 'bg-active' : 'hover:bg-hover'
       }`}
+      role="button"
+      tabIndex={0}
       onClick={() => setSelectedTask(task.id)}
+      onKeyDown={onActivateKey(() => setSelectedTask(task.id))}
     >
       <button
         type="button"
@@ -160,7 +164,7 @@ export function TaskRow({ task }: { task: Task }): React.JSX.Element {
             if (task.note_id !== null) bumpData('notes')
           })
         }}
-        className="hidden shrink-0 text-faint hover:text-red-400 group-hover:block"
+        className="hidden shrink-0 text-faint hover:text-red-400 group-hover:block group-focus-visible:block group-has-[:focus-visible]:block"
       >
         <Trash2 size={14} />
       </button>
