@@ -1,31 +1,40 @@
-/** Small shared parsing helpers: flashcard pairs, note task extraction, quick-add dates, fuzzy match. */
-import type { NoteTaskItem } from '@shared/types'
+/** Small shared parsing helpers: note card lines, note task extraction, fuzzy match. */
+import { hasCloze, separatorIndex } from '@shared/cloze'
+import type { NoteCardLine, NoteTaskItem } from '@shared/types'
 
-/* ---- `Term :: Definition` lines inside a note → flashcard pairs (§7) ---- */
-export function extractFlashcardPairs(tiptapJson: string): Array<[string, string]> {
-  const pairs: Array<[string, string]> = []
-  try {
-    const doc = JSON.parse(tiptapJson)
-    const walk = (n: { type?: string; text?: string; content?: unknown[] }): void => {
-      if (n.type === 'paragraph' && Array.isArray(n.content)) {
-        const text = n.content
-          .map((c) => (c as { text?: string }).text ?? '')
-          .join('')
-          .trim()
-        const idx = text.indexOf('::')
-        if (idx > 0 && idx < text.length - 2) {
-          const front = text.slice(0, idx).trim()
-          const back = text.slice(idx + 2).trim()
-          if (front && back) pairs.push([front, back])
-        }
-      }
-      if (Array.isArray(n.content)) n.content.forEach((c) => walk(c as never))
+/* ---- `Term :: Definition` and cloze lines inside a note → flashcards (§7) ---- */
+
+/**
+ * Reads one paragraph as a card line: `Term :: Definition`, or text with `{{c1::cloze}}`
+ * markup, optionally followed by `:: extra` shown on the back. Null for anything else.
+ */
+export function parseCardLine(line: string): { front: string; back: string } | null {
+  const text = line.trim()
+  const idx = separatorIndex(text)
+  const front = (idx === -1 ? text : text.slice(0, idx)).trim()
+  const back = idx === -1 ? '' : text.slice(idx + 2).trim()
+  if (!front) return null
+  if (hasCloze(front)) return { front, back }
+  return back ? { front, back } : null
+}
+
+/** Plain text of a paragraph node, marks dropped. */
+export function paragraphText(n: { content?: unknown[] }): string {
+  return (n.content ?? []).map((c) => (c as { text?: string }).text ?? '').join('')
+}
+
+/** The card lines of a TipTap doc in document order, with the line id an earlier sync stamped. */
+export function extractNoteCardLines(doc: Record<string, unknown>): NoteCardLine[] {
+  const lines: NoteCardLine[] = []
+  const walk = (n: { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }): void => {
+    if (n.type === 'paragraph') {
+      const card = parseCardLine(paragraphText(n))
+      if (card) lines.push({ lineId: typeof n.attrs?.cardLine === 'number' ? n.attrs.cardLine : null, ...card })
     }
-    walk(doc)
-  } catch {
-    /* ignore malformed docs */
+    if (Array.isArray(n.content)) n.content.forEach((c) => walk(c as never))
   }
-  return pairs
+  walk(doc as never)
+  return lines
 }
 
 /* ---- Task items inside a note's TipTap JSON (checkbox → real task, §7) ---- */

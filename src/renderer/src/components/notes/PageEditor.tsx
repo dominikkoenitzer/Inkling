@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
+import { Extension } from '@tiptap/core'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
@@ -26,7 +28,7 @@ import {
   FileDown
 } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { extractNoteTaskItems, extractFlashcardPairs } from '@/lib/parse'
+import { extractNoteTaskItems, extractNoteCardLines, parseCardLine } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { IconBtn } from '@/components/ui'
 import type { Notebook, Note, NoteTaskItem } from '@shared/types'
@@ -49,6 +51,34 @@ const LinkedTaskItem = TaskItem.extend({
     }
   }
 })
+
+/**
+ * Paragraphs carry the id of the card line an earlier sync made them, so a reworded line
+ * updates its own cards. Not copied onto the next paragraph when Enter splits one.
+ */
+const CardLineId = Extension.create({
+  name: 'cardLineId',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph'],
+        attributes: {
+          cardLine: {
+            default: null,
+            keepOnSplit: false,
+            parseHTML: (el) => {
+              const v = el.getAttribute('data-card-line')
+              return v ? Number(v) : null
+            },
+            renderHTML: (attrs) => (attrs.cardLine ? { 'data-card-line': String(attrs.cardLine) } : {})
+          }
+        }
+      }
+    ]
+  }
+})
+
+const isCardLine = (node: PMNode): boolean => parseCardLine(node.textContent) !== null
 
 function itemsEqual(a: NoteTaskItem[], b: NoteTaskItem[]): boolean {
   if (a.length !== b.length) return false
@@ -74,7 +104,8 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       Highlight,
       Placeholder.configure({ placeholder: 'Write anything… try “# ” for a heading, “[] ” for a task' }),
       TaskList,
-      LinkedTaskItem.configure({ nested: true })
+      LinkedTaskItem.configure({ nested: true }),
+      CardLineId
     ],
     onUpdate: () => {
       if (syncingRef.current) return
@@ -168,13 +199,17 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
 
   const makeFlashcards = async (): Promise<void> => {
     if (!editor) return
-    const pairs = extractFlashcardPairs(JSON.stringify(editor.getJSON()))
-    if (pairs.length === 0) {
+    const lines = extractNoteCardLines(editor.getJSON() as Record<string, unknown>)
+    if (lines.length === 0) {
       setFlashMsg('No “Term :: Definition” lines found in this note yet.')
       setTimeout(() => setFlashMsg(null), 3500)
       return
     }
-    const deck = await api.decks.createFromPairs(notebook.id, titleRef.current || 'Untitled deck', pairs)
+    // The note's own deck: made on the first run, updated in place on every later one.
+    const { deck, lineIds } = await api.notes.syncCards(noteId, notebook.id, titleRef.current || 'Untitled deck', lines)
+    if (editor.isDestroyed) return
+    assignNodeIds(editor, 'paragraph', 'cardLine', lineIds, syncingRef, isCardLine)
+    await doSave() // keep the stamped ids, or the next sync matches by text alone
     bumpData('decks')
     useApp.getState().celebrate()
     useApp.getState().openDeck(notebook.id, deck.id)
@@ -229,14 +264,15 @@ function assignNodeIds(
   nodeType: string,
   attr: string,
   ids: number[],
-  syncingRef: { current: boolean }
+  syncingRef: { current: boolean },
+  only: (node: PMNode) => boolean = () => true
 ): void {
   const { state, view } = editor
   const tr = state.tr
   let i = 0
   let changed = false
   state.doc.descendants((node, pos) => {
-    if (node.type.name === nodeType) {
+    if (node.type.name === nodeType && only(node)) {
       const want = ids[i++]
       if (want !== undefined && want > 0 && node.attrs[attr] !== want) {
         tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: want })
@@ -359,7 +395,7 @@ function Toolbar({
       <ToolbarButton icon={<Undo2 size={16} />} title="Undo (Ctrl+Z)" action={() => c.undo().run()} />
       <ToolbarButton icon={<Redo2 size={16} />} title="Redo (Ctrl+Y)" action={() => c.redo().run()} />
       <Divider />
-      <IconBtn title="Make flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1 px-2 text-xs font-medium">
+      <IconBtn title="Make or update flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1 px-2 text-xs font-medium">
         <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
         Flashcards
       </IconBtn>
