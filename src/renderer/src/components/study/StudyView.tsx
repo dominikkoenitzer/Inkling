@@ -122,8 +122,17 @@ function DeckDetail({ deck, onBack, onReview }: { deck: Deck; onBack: () => void
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
             />
           ) : (
-            <h2 className="cursor-text text-lg font-bold" onDoubleClick={() => setRenaming(true)} title="Double-click to rename">
-              {deck.name}
+            <h2 className="text-lg font-bold">
+              {/* A double-click renames; from the keyboard, Enter or Space does (a click with no pointer has detail 0). */}
+              <button
+                type="button"
+                className="cursor-text"
+                onClick={(e) => e.detail === 0 && setRenaming(true)}
+                onDoubleClick={() => setRenaming(true)}
+                title="Double-click to rename"
+              >
+                {deck.name}
+              </button>
             </h2>
           )}
           <span className="text-sm text-muted">· {cards.length} cards</span>
@@ -193,7 +202,7 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
         <button
           type="button"
           title="Delete card"
-          className="hidden text-faint hover:text-red-400 group-hover:block"
+          className="hidden text-faint hover:text-red-400 group-hover:block group-has-[:focus-visible]:block"
           onClick={() => void api.decks.removeCard(card.id).then(() => bumpData('decks'))}
         >
           <Trash2 size={14} />
