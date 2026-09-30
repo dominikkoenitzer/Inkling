@@ -88,9 +88,14 @@ export function weightedSwissGrade(items: GradeItem[]): number | null {
   return num / den
 }
 
-/** Round a Swiss grade to one decimal, clamped to the 1–6 band. */
+/**
+ * Round a Swiss grade to one decimal, half up, clamped to the 1–6 band. An average of
+ * tenths carries binary error (1.1 and 4.6 average to 2.8499999999999996), so the scaled
+ * value is cut to 12 significant digits first and a true 2.85 rounds to 2.9.
+ */
 export function swissRound(grade: number): number {
-  return Math.min(6, Math.max(1, Math.round(grade * 10) / 10))
+  const tenths = Math.round(Number((grade * 10).toPrecision(12)))
+  return Math.min(6, Math.max(1, tenths / 10))
 }
 
 export function swissPass(grade: number): boolean {

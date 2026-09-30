@@ -79,6 +79,33 @@ describe('swissRound / swissPass', () => {
     expect(swissRound(7)).toBe(6)
     expect(swissRound(0.5)).toBe(1)
   })
+  it('rounds a .x5 average half up despite binary error', () => {
+    const swiss = (score: number, weight: number) => ({ score, max: 6, weight, system: 'swiss' as const })
+    expect(swissRound(weightedSwissGrade([swiss(1.1, 1), swiss(4.6, 1)])!)).toBe(2.9)
+    expect(swissRound(weightedSwissGrade([swiss(5.6, 3), swiss(1.0, 1)])!)).toBe(4.5)
+    expect(swissRound(3.95)).toBe(4)
+    expect(swissPass(swissRound(3.95))).toBe(true)
+    expect(swissPass(swissRound(weightedSwissGrade([swiss(3.9, 1), swiss(4.0, 1)])!))).toBe(true)
+  })
+  it('matches exact rational rounding for every pair of tenth grades at 1:1, 1:3 and 3:1', () => {
+    const misses: string[] = []
+    for (const [wa, wb] of [[1, 1], [1, 3], [3, 1]]) {
+      for (let a = 10; a <= 60; a++) {
+        for (let b = 10; b <= 60; b++) {
+          // average in tenths is (wa·a + wb·b) / (wa + wb); half up on integers is floor((2n + d) / 2d)
+          const n = wa * a + wb * b
+          const d = wa + wb
+          const expected = Math.floor((2 * n + d) / (2 * d)) / 10
+          const avg = weightedSwissGrade([
+            { score: a / 10, max: 6, weight: wa, system: 'swiss' },
+            { score: b / 10, max: 6, weight: wb, system: 'swiss' }
+          ])!
+          if (swissRound(avg) !== expected) misses.push(`${a / 10}x${wa} + ${b / 10}x${wb}`)
+        }
+      }
+    }
+    expect(misses).toEqual([])
+  })
   it('passes at 4.0 and above', () => {
     expect(swissPass(4)).toBe(true)
     expect(swissPass(3.9)).toBe(false)
