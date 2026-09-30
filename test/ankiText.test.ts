@@ -28,6 +28,13 @@ describe('ankiHtmlToText', () => {
     expect(ankiHtmlToText('{{c1::<b>Paris</b>::capital}} is in {{c2::France}}').text).toBe('{{c1::Paris::capital}} is in {{c2::France}}')
   })
 
+  it('gives list items and blocks one break each, whatever whitespace sits between them', () => {
+    expect(ankiHtmlToText("<ol><li>of</li> <li>~'s</li></ol>").text).toBe("of\n~'s")
+    expect(ankiHtmlToText('<div>a</div>\n<div>b</div>').text).toBe('a\nb')
+    // A <br> between two blocks is a real blank line and stays.
+    expect(ankiHtmlToText('<div>a</div><br><div>b</div>').text).toBe('a\n\nb')
+  })
+
   it('ignores source newlines and collapses blank runs', () => {
     expect(ankiHtmlToText('one\ntwo<br><br><br><br>three').text).toBe('one two\n\nthree')
   })
