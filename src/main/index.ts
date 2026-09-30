@@ -12,6 +12,11 @@ if (process.env['INKLING_USERDATA']) {
   app.setPath('userData', process.env['INKLING_USERDATA'])
 }
 
+// Two copies on one database overwrite each other's notes. Electron keys this lock to the
+// userData path, so it is taken after the hook above: a separate profile gets its own.
+const isPrimary = app.requestSingleInstanceLock()
+if (!isPrimary) app.quit()
+
 let mainWindow: BrowserWindow | null = null
 
 const isDev = !!process.env['ELECTRON_RENDERER_URL']
@@ -215,7 +220,14 @@ function seedHistory(deckId: number): void {
   tx()
 }
 
+app.on('second-instance', () => {
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
+})
+
 app.whenReady().then(() => {
+  if (!isPrimary) return // quitting: the copy already running owns the database
   openDb()
   // Clear anything that has sat in the trash past the retention window.
   try {
