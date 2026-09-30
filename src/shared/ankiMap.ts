@@ -347,7 +347,11 @@ export function planImport(rows: AnkiRows, now: Date, params: readonly number[] 
   const dayToIso = (day: number): string => new Date(crtMs + day * DAY_MS).toISOString()
 
   const revlog = new Map<number, AnkiRevlogRow[]>()
-  for (const r of rows.revlog) revlog.set(r.cid, [...(revlog.get(r.cid) ?? []), r])
+  for (const r of rows.revlog) {
+    const list = revlog.get(r.cid)
+    if (list) list.push(r)
+    else revlog.set(r.cid, [r])
+  }
 
   const skipped: ImportSkipped = { media: 0, suspended: 0, imageOcclusion: 0, unusable: 0 }
   const mediaCounted = new Set<number>()
