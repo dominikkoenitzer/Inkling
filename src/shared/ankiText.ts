@@ -71,6 +71,8 @@ export function ankiHtmlToText(html: string): AnkiText {
     // A block starts and ends a line; back-to-back blocks share one break, and a <br>
     // that ends a block adds no line of its own, as when Anki renders the field.
     .replace(/<\/?(div|p|li)\b[^>]*>/gi, '\0')
+    // Whitespace between two blocks is source formatting, not a line of its own.
+    .replace(/\0[ \t]+(?=\0)/g, '\0')
     .replace(/\n?\0+/g, '\n')
     .replace(/<[^>]*>/g, '')
   const decoded = decodeEntities(text)
