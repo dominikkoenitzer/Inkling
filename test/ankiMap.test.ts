@@ -141,6 +141,19 @@ describe.each([11, 18] as const)('planImport, schema %i', (schema) => {
     expect(byGuid.get('a')!.lastReview).toBe(new Date(CRT * 1000 + 268 * DAY).toISOString())
   })
 
+  it('reads an old-scheduler relearning card, due at a timestamp, without aborting', () => {
+    const at = 1516980699
+    const p = plan(
+      toRows(
+        base(schema, {
+          notes: [{ id: 10, guid: 'a', mid: BASIC.id, fields: ['a', '1'] }],
+          cards: [card({ id: 100, nid: 10, type: 2, queue: 1, due: at, ivl: 2, factor: 2500, reps: 5, lapses: 1 })]
+        })
+      )
+    )
+    expect(p.cards[0]).toMatchObject({ state: 'relearning', due: new Date(at * 1000).toISOString() })
+  })
+
   it('takes the FSRS memory state Anki stored on the card', () => {
     const lrt = Math.floor(Date.UTC(2026, 8, 20, 12) / 1000)
     const p = plan(
