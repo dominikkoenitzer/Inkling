@@ -64,7 +64,8 @@ export function TodayView(): React.JSX.Element {
     return () => {
       stale = true
     }
-  }, [version])
+    // app.today: "due today" and today's focus minutes are a new list after midnight
+  }, [version, app.today])
 
   useEffect(() => {
     if (app.activeNotebookId === null) return
