@@ -93,4 +93,23 @@ export function registerIpc(): void {
       return { saved: false, path: null, error: String(err) }
     }
   })
+
+  // Native "open" for an Anki package, imported into the notebook the sidebar shows.
+  ipcMain.handle('app.importDeck', async (event, notebookId: number) => {
+    const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
+    const result = await dialog.showOpenDialog(win!, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'Anki decks', extensions: ['apkg', 'colpkg'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    try {
+      return await repos.importAnkiFile(notebookId, result.filePaths[0])
+    } catch (err) {
+      console.error('importDeck failed', err)
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 }
