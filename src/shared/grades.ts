@@ -64,6 +64,15 @@ export function swissItemGrade(g: GradeItem): number | null {
   return Math.min(6, Math.max(1, 1 + 5 * (g.score / g.max)))
 }
 
+/**
+ * One row's Swiss grade rounded to what is shown. Pass/fail is judged on this, like the
+ * header's average, so a 3.975 never shows as a red "4.0".
+ */
+export function swissRowGrade(g: GradeItem): number | null {
+  const grade = swissItemGrade(g)
+  return grade === null ? null : swissRound(grade)
+}
+
 /** Weighted average on the Swiss scale. Returns null when nothing valid to average. */
 export function weightedSwissGrade(items: GradeItem[]): number | null {
   let num = 0

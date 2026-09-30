@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, subjectAverage, parseDecimal } from '../src/shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, subjectAverage, parseDecimal, swissRowGrade } from '../src/shared/grades'
 
 describe('weightedPercentage', () => {
   it('averages equally-weighted items', () => {
@@ -99,6 +99,21 @@ describe('subjectAverage', () => {
   it('returns null with nothing to average', () => {
     expect(subjectAverage([], 'swiss')).toBeNull()
     expect(subjectAverage([], 'percent')).toBeNull()
+  })
+})
+
+describe('swissRowGrade', () => {
+  it('passes a 59.5/100 row, which shows as 4.0, the same as the header would', () => {
+    const row = { score: 59.5, max: 100, weight: 1, system: 'percent' as const }
+    const g = swissRowGrade(row)
+    expect(g).toBe(4)
+    expect(g!.toFixed(1)).toBe('4.0')
+    expect(swissPass(g!)).toBe(true)
+    expect(swissPass(swissRound(weightedSwissGrade([row])!))).toBe(swissPass(g!))
+  })
+  it('rounds native Swiss rows and keeps null for unusable ones', () => {
+    expect(swissRowGrade({ score: 4.46, max: 6, weight: 1, system: 'swiss' })).toBe(4.5)
+    expect(swissRowGrade({ score: 5, max: 0, weight: 1, system: 'percent' })).toBeNull()
   })
 })
 

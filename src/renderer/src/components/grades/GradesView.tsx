@@ -4,7 +4,7 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { isColorKey } from '@/lib/colors'
 import { EmptyState } from '@/components/Inky'
 import { Button, IconBtn, Segmented } from '@/components/ui'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, parseDecimal, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissRowGrade, itemPercent, swissRound, swissPass, parseDecimal, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
 import type { Notebook, Grade } from '@shared/types'
 
 const api = window.inkling
@@ -165,7 +165,7 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
           <div className="stagger mx-auto max-w-2xl">
             {grades.map((g) => {
               const p = itemPercent(g) ?? 0
-              const sg = swissItemGrade(g)
+              const sg = swissRowGrade(g)
               return (
                 <div key={g.id} className="group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-hover">
                   <span className="min-w-0 flex-1 truncate text-sm">{g.title}</span>
@@ -180,7 +180,7 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
                         className="w-12 text-right text-sm font-semibold tabular-nums"
                         style={{ color: sg !== null && swissPass(sg) ? 'var(--accent-text)' : '#e5484d' }}
                       >
-                        {sg === null ? '·' : swissRound(sg).toFixed(1)}
+                        {sg === null ? '·' : sg.toFixed(1)}
                       </span>
                     </>
                   ) : (
