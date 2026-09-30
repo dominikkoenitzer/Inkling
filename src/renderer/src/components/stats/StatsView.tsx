@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Flame, Target, Timer, Layers } from 'lucide-react'
-import { useVersion, localDayKey } from '@/stores/app'
+import { useApp, useVersion } from '@/stores/app'
 import { heatmapColumns } from '@/lib/heatmap'
 import { EmptyState } from '@/components/Inky'
 import type { ActivityDay, StatsOverview } from '@shared/types'
@@ -14,6 +14,7 @@ const WINDOW_DAYS = 30
 
 export function StatsView(): React.JSX.Element {
   const version = useVersion('decks') + useVersion('focus')
+  const today = useApp((s) => s.today)
   const [overview, setOverview] = useState<StatsOverview | null>(null)
   const [days, setDays] = useState<ActivityDay[]>([])
 
@@ -27,7 +28,8 @@ export function StatsView(): React.JSX.Element {
     return () => {
       alive = false
     }
-  }, [version])
+    // today: the windows are counted back from today, so they move at midnight
+  }, [version, today])
 
   if (!overview) return <div className="p-6 text-sm text-muted">Reading your history…</div>
 
@@ -134,7 +136,7 @@ function Tile({
  * counts one focus minute as one review, so a long block still shows on a no-review day.
  */
 function Heatmap({ days, weeks }: { days: ActivityDay[]; weeks: number }): React.JSX.Element {
-  const today = localDayKey()
+  const today = useApp((s) => s.today)
   const { columns, max, monthLabels } = useMemo(() => {
     const byDay = new Map(days.map((d) => [d.day, d]))
     const grid = heatmapColumns(weeks, new Date(`${today}T12:00:00`))
