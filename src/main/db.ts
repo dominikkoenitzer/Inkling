@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
+import { tiptapToText } from './repos/text'
 
 let db: Database.Database | null = null
 
@@ -146,7 +147,7 @@ CREATE INDEX IF NOT EXISTS idx_review_log_deck ON review_log(deck_id);
 `
 
 /** The schema version the code in this build expects. */
-const CURRENT_VERSION = 12
+const CURRENT_VERSION = 13
 
 /** Exported for the migration tests; `openDb` is the only caller in the app. */
 export function migrate(d: Database.Database): void {
@@ -283,6 +284,25 @@ export function migrate(d: Database.Database): void {
     d.transaction(() => {
       if (!has('flashcards', 'external_id')) d.exec(`ALTER TABLE flashcards ADD COLUMN external_id TEXT`)
       d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_external ON flashcards(external_id) WHERE external_id IS NOT NULL`)
+      d.pragma('user_version = 12')
+    })()
+  }
+  if (version < 13) {
+    // Note search text used to put a space between text nodes, so a word with part of it
+    // formatted (**Photo**synthesis) was indexed as two. Re-index every live note with
+    // `tiptapToText` as it is now; trashed notes stay out of search.
+    d.transaction(() => {
+      const notes = d.prepare(`SELECT id, title, content FROM notes WHERE deleted_at IS NULL`).all() as Array<{
+        id: number
+        title: string | null
+        content: string
+      }>
+      const drop = d.prepare(`DELETE FROM search_index WHERE source_type = 'note' AND source_id = ?`)
+      const add = d.prepare(`INSERT INTO search_index (title, content_text, source_type, source_id) VALUES (?, ?, 'note', ?)`)
+      for (const n of notes) {
+        drop.run(String(n.id))
+        add.run(n.title ?? 'Untitled', tiptapToText(n.content), String(n.id))
+      }
       d.pragma(`user_version = ${CURRENT_VERSION}`)
     })()
   }

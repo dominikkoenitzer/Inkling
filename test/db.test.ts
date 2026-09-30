@@ -19,6 +19,7 @@ const version = (raw: DatabaseSync): number => (raw.prepare('PRAGMA user_version
 const V10 = `
 CREATE TABLE notebooks (id INTEGER PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL);
 CREATE TABLE notes (id INTEGER PRIMARY KEY, notebook_id INTEGER, title TEXT, content TEXT NOT NULL, deleted_at DATETIME);
+CREATE VIRTUAL TABLE search_index USING fts5(title, content_text, source_type UNINDEXED, source_id UNINDEXED);
 CREATE TABLE tasks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT);
 CREATE TABLE grades (id INTEGER PRIMARY KEY, title TEXT NOT NULL, system TEXT NOT NULL DEFAULT 'percent');
 CREATE TABLE flashcard_decks (
@@ -67,7 +68,7 @@ describe('migrate to v11', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(12)
+    expect(version(raw)).toBe(13)
     expect(columns(raw, 'flashcard_decks')).toContain('note_id')
     expect(columns(raw, 'flashcards')).toEqual(expect.arrayContaining(['source_line', 'cloze']))
     expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
@@ -100,7 +101,7 @@ describe('migrate to v11', () => {
     const fresh = open()
     migrate(fresh.db)
 
-    expect(version(fresh.raw)).toBe(12)
+    expect(version(fresh.raw)).toBe(13)
     for (const table of ['flashcard_decks', 'flashcards']) {
       expect(columns(fresh.raw, table)).toEqual(columns(upgraded.raw, table))
     }
@@ -110,7 +111,7 @@ describe('migrate to v11', () => {
     const { raw, db } = open()
     migrate(db)
     migrate(db)
-    expect(version(raw)).toBe(12)
+    expect(version(raw)).toBe(13)
   })
 })
 
@@ -131,7 +132,7 @@ describe('migrate to v12', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(12)
+    expect(version(raw)).toBe(13)
     expect(columns(raw, 'flashcards')).toContain('external_id')
     expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
       front: 'Osmosis',
@@ -150,5 +151,52 @@ describe('migrate to v12', () => {
     raw.exec(`INSERT INTO flashcards (deck_id, front, back) VALUES (1, 'a', 'b'), (1, 'c', 'd')`)
     raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'e', 'f', 'anki:x:0')`)
     expect(() => raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'g', 'h', 'anki:x:0')`)).toThrow()
+  })
+})
+
+describe('migrate to v13', () => {
+  const photosynthesis = JSON.stringify({
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Photo', marks: [{ type: 'bold' }] }, { type: 'text', text: 'synthesis' }] }]
+  })
+  const indexed = (raw: DatabaseSync): unknown[] =>
+    raw.prepare(`SELECT title, content_text, source_type, source_id FROM search_index ORDER BY source_type, source_id`).all()
+
+  /** A v12 database whose search rows were written with a space between text nodes. */
+  function v12(): ReturnType<typeof open> {
+    const opened = open()
+    opened.raw.exec(V10)
+    migrate(opened.db)
+    opened.raw.exec(`PRAGMA user_version = 12`)
+    opened.raw.exec(`INSERT INTO notes (id, notebook_id, title, content) VALUES (1, 1, 'Plants', '${photosynthesis}')`)
+    opened.raw.exec(`INSERT INTO notes (id, notebook_id, title, content, deleted_at) VALUES (2, 1, 'Old', '${photosynthesis}', '2026-09-01')`)
+    opened.raw.exec(`INSERT INTO search_index (title, content_text, source_type, source_id) VALUES
+                     ('Plants', 'Photo synthesis', 'note', '1'), ('Water the plants', '', 'task', '5')`)
+    return opened
+  }
+
+  it('re-indexes live notes so a partly formatted word is found', () => {
+    const { raw, db } = v12()
+
+    migrate(db)
+
+    expect(version(raw)).toBe(13)
+    expect(raw.prepare(`SELECT source_id FROM search_index WHERE search_index MATCH '"photosynthesis"*'`).all()).toEqual([{ source_id: '1' }])
+    expect(indexed(raw)).toEqual([
+      { title: 'Plants', content_text: 'Photosynthesis', source_type: 'note', source_id: '1' },
+      { title: 'Water the plants', content_text: '', source_type: 'task', source_id: '5' }
+    ])
+  })
+
+  it('gives the same index when it runs again', () => {
+    const { raw, db } = v12()
+    migrate(db)
+    const once = indexed(raw)
+
+    raw.exec(`PRAGMA user_version = 12`)
+    migrate(db)
+
+    expect(version(raw)).toBe(13)
+    expect(indexed(raw)).toEqual(once)
   })
 })

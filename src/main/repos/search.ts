@@ -3,22 +3,7 @@ import type { SearchResult } from '@shared/types'
 
 /** One `search_index` table for notes, tasks and decks, keyed by (source_type, source_id). */
 
-export function tiptapToText(json: string): string {
-  try {
-    const doc = JSON.parse(json)
-    const out: string[] = []
-    const walk = (n: unknown): void => {
-      if (!n || typeof n !== 'object') return
-      const node = n as { text?: string; content?: unknown[] }
-      if (typeof node.text === 'string') out.push(node.text)
-      if (Array.isArray(node.content)) node.content.forEach(walk)
-    }
-    walk(doc)
-    return out.join(' ')
-  } catch {
-    return ''
-  }
-}
+export { tiptapToText } from './text'
 
 export function ftsDelete(sourceType: string, sourceId: number): void {
   getDb().prepare(`DELETE FROM search_index WHERE source_type = ? AND source_id = ?`).run(sourceType, String(sourceId))
