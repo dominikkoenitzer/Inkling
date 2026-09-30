@@ -82,4 +82,42 @@ describe('tiptapDocToMarkdown', () => {
     expect(tiptapDocToMarkdown(doc([para([text('# not a heading')])]))).toBe('\\# not a heading\n')
     expect(tiptapDocToMarkdown(doc([para([text('use *args and _kw_')])]))).toBe('use \\*args and \\_kw\\_\n')
   })
+
+  it('keeps a paragraph of dashes as text, not a rule', () => {
+    expect(tiptapDocToMarkdown(doc([para([text('---')])]))).toBe('\\---\n')
+    expect(tiptapDocToMarkdown(doc([para([text('-- -')])]))).toBe('\\-- -\n')
+    expect(tiptapDocToMarkdown(doc([para([text('***')])]))).toBe('\\*\\*\\*\n')
+    expect(tiptapDocToMarkdown(doc([para([text('___')])]))).toBe('\\_\\_\\_\n')
+    expect(tiptapDocToMarkdown(doc([para([text('-')])]))).toBe('\\-\n')
+    expect(tiptapDocToMarkdown(doc([para([text('1.')])]))).toBe('1\\.\n')
+  })
+
+  it('escapes block markers on every line of a paragraph, not just the first', () => {
+    const br = { type: 'hardBreak' }
+    const after = (line: string): string => tiptapDocToMarkdown(doc([para([text('intro'), br, text(line)])]))
+    expect(after('# text')).toBe('intro  \n\\# text\n')
+    expect(after('> quote')).toBe('intro  \n\\> quote\n')
+    expect(after('- item')).toBe('intro  \n\\- item\n')
+    expect(after('+ item')).toBe('intro  \n\\+ item\n')
+    expect(after('* item')).toBe('intro  \n\\* item\n')
+    expect(after('1. one')).toBe('intro  \n1\\. one\n')
+    expect(after('2) two')).toBe('intro  \n2\\) two\n')
+    // a dash or equals line under text would make the line above a heading
+    expect(after('---')).toBe('intro  \n\\---\n')
+    expect(after('===')).toBe('intro  \n\\===\n')
+  })
+
+  it('escapes block markers at the start of a list item', () => {
+    const bullet = { type: 'bulletList', content: [{ type: 'listItem', content: [para([text('# not a heading')])] }] }
+    expect(tiptapDocToMarkdown(doc([bullet]))).toBe('- \\# not a heading\n')
+  })
+
+  it('fences inline code with more backticks than it contains', () => {
+    const code = (t: string): string => tiptapDocToMarkdown(doc([para([text(t, [{ type: 'code' }])])]))
+    expect(code('a`b')).toBe('``a`b``\n')
+    expect(code('``x``')).toBe('``` ``x`` ```\n')
+    expect(code('`tick')).toBe('`` `tick ``\n')
+    expect(code(' padded ')).toBe('`  padded  `\n')
+    expect(code('plain')).toBe('`plain`\n')
+  })
 })
