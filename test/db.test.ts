@@ -67,7 +67,7 @@ describe('migrate to v11', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(11)
+    expect(version(raw)).toBe(12)
     expect(columns(raw, 'flashcard_decks')).toContain('note_id')
     expect(columns(raw, 'flashcards')).toEqual(expect.arrayContaining(['source_line', 'cloze']))
     expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
@@ -100,7 +100,7 @@ describe('migrate to v11', () => {
     const fresh = open()
     migrate(fresh.db)
 
-    expect(version(fresh.raw)).toBe(11)
+    expect(version(fresh.raw)).toBe(12)
     for (const table of ['flashcard_decks', 'flashcards']) {
       expect(columns(fresh.raw, table)).toEqual(columns(upgraded.raw, table))
     }
@@ -110,6 +110,45 @@ describe('migrate to v11', () => {
     const { raw, db } = open()
     migrate(db)
     migrate(db)
-    expect(version(raw)).toBe(11)
+    expect(version(raw)).toBe(12)
+  })
+})
+
+describe('migrate to v12', () => {
+  it('adds the import key to cards and keeps their data', () => {
+    const { raw, db } = open()
+    raw.exec(V10)
+    raw.exec(`INSERT INTO notebooks (id, name, color) VALUES (1, 'Biology', 'teal')`)
+    raw.exec(`INSERT INTO flashcard_decks (id, notebook_id, name) VALUES (1, 1, 'Cells')`)
+    raw.exec(`INSERT INTO flashcards (id, deck_id, front, back, stability, difficulty, state, last_review)
+              VALUES (1, 1, 'Osmosis', 'water across a membrane', 12.5, 4.2, 'review', '2026-09-01T10:00:00.000Z')`)
+    raw.exec(`INSERT INTO review_log (card_id, deck_id, rating, state, stability, difficulty, reviewed_at)
+              VALUES (1, 1, 3, 'review', 12.5, 4.2, '2026-09-01T10:00:00.000Z')`)
+    migrate(db)
+    raw.exec(`PRAGMA user_version = 11`)
+    raw.exec(`DROP INDEX idx_cards_external`)
+    raw.exec(`ALTER TABLE flashcards DROP COLUMN external_id`)
+
+    migrate(db)
+
+    expect(version(raw)).toBe(12)
+    expect(columns(raw, 'flashcards')).toContain('external_id')
+    expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
+      front: 'Osmosis',
+      stability: 12.5,
+      difficulty: 4.2,
+      state: 'review',
+      external_id: null
+    })
+    expect(raw.prepare(`SELECT COUNT(*) AS n FROM review_log WHERE card_id = 1`).get()).toEqual({ n: 1 })
+  })
+
+  it('lets many cards have no import key but never two cards the same one', () => {
+    const { raw, db } = open()
+    migrate(db)
+    raw.exec(`INSERT INTO flashcard_decks (id, name) VALUES (1, 'Cells')`)
+    raw.exec(`INSERT INTO flashcards (deck_id, front, back) VALUES (1, 'a', 'b'), (1, 'c', 'd')`)
+    raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'e', 'f', 'anki:x:0')`)
+    expect(() => raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'g', 'h', 'anki:x:0')`)).toThrow()
   })
 })

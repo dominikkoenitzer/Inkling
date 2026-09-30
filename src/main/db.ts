@@ -57,7 +57,8 @@ CREATE TABLE flashcards (
   state TEXT NOT NULL DEFAULT 'new',
   last_review DATETIME,
   source_line INTEGER,
-  cloze INTEGER NOT NULL DEFAULT 0
+  cloze INTEGER NOT NULL DEFAULT 0,
+  external_id TEXT
 );
 
 CREATE TABLE focus_sessions (
@@ -84,6 +85,7 @@ CREATE INDEX idx_tasks_due ON tasks(due_date);
 CREATE INDEX idx_tasks_note ON tasks(note_id);
 CREATE INDEX idx_cards_deck ON flashcards(deck_id);
 CREATE INDEX idx_decks_note ON flashcard_decks(note_id);
+CREATE UNIQUE INDEX idx_cards_external ON flashcards(external_id) WHERE external_id IS NOT NULL;
 `
 // The calendar module's `events` table is not created any more. Existing databases keep
 // their rows; fresh ones have no reason to carry it.
@@ -144,7 +146,7 @@ CREATE INDEX IF NOT EXISTS idx_review_log_deck ON review_log(deck_id);
 `
 
 /** The schema version the code in this build expects. */
-const CURRENT_VERSION = 11
+const CURRENT_VERSION = 12
 
 /** Exported for the migration tests; `openDb` is the only caller in the app. */
 export function migrate(d: Database.Database): void {
@@ -269,6 +271,18 @@ export function migrate(d: Database.Database): void {
       if (!has('flashcards', 'source_line')) d.exec(`ALTER TABLE flashcards ADD COLUMN source_line INTEGER`)
       if (!has('flashcards', 'cloze')) d.exec(`ALTER TABLE flashcards ADD COLUMN cloze INTEGER NOT NULL DEFAULT 0`)
       d.exec(`CREATE INDEX IF NOT EXISTS idx_decks_note ON flashcard_decks(note_id)`)
+      d.pragma('user_version = 11')
+    })()
+  }
+  if (version < 12) {
+    // Imported cards remember where they came from: `external_id` is `anki:<note guid>:<ord>`
+    // for a card read from an Anki package, null for everything else. The unique index lets
+    // a second import of the same package skip the cards it already brought in. Additive.
+    const has = (table: string, column: string): boolean =>
+      (d.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).some((c) => c.name === column)
+    d.transaction(() => {
+      if (!has('flashcards', 'external_id')) d.exec(`ALTER TABLE flashcards ADD COLUMN external_id TEXT`)
+      d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_external ON flashcards(external_id) WHERE external_id IS NOT NULL`)
       d.pragma(`user_version = ${CURRENT_VERSION}`)
     })()
   }
