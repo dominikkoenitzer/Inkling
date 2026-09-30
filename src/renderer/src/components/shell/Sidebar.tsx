@@ -146,12 +146,7 @@ function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
                   useApp.getState().showToast({
                     message: `Deleted “${n.title?.trim() || 'Untitled'}”`,
                     actionLabel: 'Undo',
-                    onAction: () => {
-                      void api.notes.restore(n.id).then(() => {
-                        bumpData('notes')
-                        useApp.getState().setSelectedNote(n.id)
-                      })
-                    }
+                    onAction: () => void useApp.getState().restoreNote(n.notebook_id, n.id)
                   })
                 })
               }}
