@@ -27,6 +27,10 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   const retention = useApp((s) => s.retention)
   const fsrsParams = useApp((s) => s.fsrsParams)
 
+  // However the session is left (finished, a tab switch, the rail), re-read the streak the
+  // reviews earned so the sidebar, Today and Settings do not keep yesterday's count.
+  useEffect(() => () => void useApp.getState().refreshStreak(), [])
+
   useEffect(() => {
     void api.decks.dueCards(deck.id).then((cards) => {
       setQueue(cards)

@@ -24,8 +24,15 @@ export function localDayKey(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** Milliseconds from `now` to the next local midnight, by the calendar (23 or 25 h across DST). */
+export function msUntilNextLocalDay(now: Date = new Date()): number {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime()
+}
+
 interface AppState {
   ready: boolean
+  /** localDayKey() of the day the UI is showing; moves at local midnight and on focus. */
+  today: string
   theme: Theme
   gradingSystem: GradingSystem
   /** Desired retention and FSRS parameters, mirrored from the settings for the interval preview. */
@@ -46,6 +53,8 @@ interface AppState {
   init(): Promise<void>
   refreshNotebooks(): Promise<void>
   refreshStreak(): Promise<void>
+  /** Re-read the calendar day and the streak, e.g. after midnight or when the window returns. */
+  syncDay(): void
   setTheme(t: Theme): void
   setGradingSystem(v: GradingSystem): void
   setFsrsParams(v: number[]): void
@@ -74,6 +83,7 @@ interface AppState {
 
 export const useApp = create<AppState>((set, get) => ({
   ready: false,
+  today: localDayKey(),
   theme: 'dark',
   gradingSystem: 'percent',
   retention: DEFAULT_RETENTION,
@@ -119,6 +129,11 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   refreshStreak: async () => set({ streak: await api.streak.get() }),
+  syncDay: () => {
+    const today = localDayKey()
+    if (today !== get().today) set({ today })
+    void get().refreshStreak()
+  },
 
   setTheme: (theme) => {
     set({ theme })
@@ -187,6 +202,25 @@ export const useData = create<DataState>((set) => ({
   versions: {},
   bump: (domain) => set((s) => ({ versions: { ...s.versions, [domain]: (s.versions[domain] ?? 0) + 1 } }))
 }))
+
+/** Keeps `today` and the streak current: at each local midnight and whenever the window regains focus. */
+export function watchDay(target: EventTarget = window): () => void {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const arm = (): void => {
+    // A second past midnight, so the new day has surely begun when the timer lands.
+    timer = setTimeout(() => {
+      useApp.getState().syncDay()
+      arm()
+    }, msUntilNextLocalDay() + 1000)
+  }
+  const onFocus = (): void => useApp.getState().syncDay()
+  arm()
+  target.addEventListener('focus', onFocus)
+  return () => {
+    if (timer) clearTimeout(timer)
+    target.removeEventListener('focus', onFocus)
+  }
+}
 
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
