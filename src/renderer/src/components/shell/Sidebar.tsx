@@ -5,6 +5,7 @@ import {
   GraduationCap,
   Search,
   Plus,
+  Download,
   Trash2,
   MoreHorizontal,
   Sun,
@@ -18,7 +19,7 @@ import { RAMPS, COLOR_KEYS, isColorKey, ramp } from '@/lib/colors'
 import { subjectAverage } from '@shared/grades'
 import { Modal, Field, inputCls, Button, IconBtn } from '@/components/ui'
 import { UserBar } from '@/components/shell/UserBar'
-import type { Note, Deck, Grade, Task, ModuleTab, ColorKey } from '@shared/types'
+import type { Note, Deck, Grade, Task, ModuleTab, ColorKey, ImportSummary } from '@shared/types'
 
 const api = window.inkling
 
@@ -202,6 +203,7 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
   const [decks, setDecks] = useState<Deck[]>([])
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => {
     void api.decks.list(notebookId).then(setDecks)
@@ -214,6 +216,23 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
     setSelectedDeck(deck.id)
     setAdding(false)
     setName('')
+  }
+
+  const importDeck = async (): Promise<void> => {
+    setImporting(true)
+    try {
+      const result = await api.app.importDeck(notebookId)
+      if (!result) return
+      if ('error' in result) {
+        useApp.getState().showToast({ message: `Could not import that file. ${result.error}` })
+        return
+      }
+      bumpData('decks')
+      if (result.deckId !== null) useApp.getState().openDeck(notebookId, result.deckId)
+      useApp.getState().showToast({ message: importMessage(result), durationMs: 8000 })
+    } finally {
+      setImporting(false)
+    }
   }
 
   return (
@@ -267,8 +286,36 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
           <Plus size={16} /> New deck
         </button>
       )}
+      <button
+        type="button"
+        onClick={() => void importDeck()}
+        disabled={importing}
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-faint transition-colors hover:bg-hover hover:text-ink disabled:opacity-60"
+      >
+        <Download size={16} /> {importing ? 'Importing…' : 'Import deck…'}
+      </button>
     </div>
   )
+}
+
+const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
+
+/** The toast after an Anki import: what came in, then what stayed out. */
+function importMessage(r: ImportSummary): string {
+  const s = r.skipped
+  if (r.cards === 0) return s.duplicates > 0 ? 'Nothing new. Every card in that file is here already.' : 'That file has no cards to import.'
+  const parts = [
+    `Imported ${plural(r.cards, 'card')}${r.reviews > 0 ? ` with ${plural(r.reviews, 'review')}` : ''}.`
+  ]
+  const left = [
+    s.suspended > 0 && `${s.suspended} suspended`,
+    s.imageOcclusion > 0 && `${s.imageOcclusion} image occlusion`,
+    s.duplicates > 0 && `${s.duplicates} already here`,
+    s.unusable > 0 && `${s.unusable} empty`
+  ].filter(Boolean)
+  if (left.length > 0) parts.push(`Skipped ${left.join(', ')}.`)
+  if (s.media > 0) parts.push(`${plural(s.media, 'image or sound', 'images and sounds')} left out.`)
+  return parts.join(' ')
 }
 
 /* ------------------------------ Grades sidebar ----------------------------- */
