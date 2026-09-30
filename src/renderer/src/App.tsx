@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useApp } from '@/stores/app'
+import { useApp, watchDay } from '@/stores/app'
 import { accentVars, isColorKey } from '@/lib/colors'
 import { IconRail } from '@/components/shell/IconRail'
 import { Sidebar } from '@/components/shell/Sidebar'
@@ -20,6 +20,9 @@ export default function App(): React.JSX.Element {
     ;(window as unknown as Record<string, unknown>).__app = useApp // test hook for headless verification
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Roll "today" and the streak over at midnight and when the window comes back.
+  useEffect(() => watchDay(), [])
 
   // Theme on the root element; keep the native titlebar overlay in sync.
   useEffect(() => {
