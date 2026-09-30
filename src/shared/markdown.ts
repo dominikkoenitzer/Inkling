@@ -19,12 +19,29 @@ interface PMNode {
 function escapeInline(t: string): string {
   return t.replace(/([\\`*_[\]])/g, '\\$1')
 }
-// escape a leading block marker so a plain paragraph isn't reparsed as a list/heading/quote
+// escape a leading block marker so a line of plain text isn't reparsed as a heading, quote,
+// list item, rule, or the dash/equals underline that turns the line above into a heading
 function escapeLeadingBlock(line: string): string {
   return line
     .replace(/^(\s*)([#>])/, '$1\\$2')
-    .replace(/^(\s*)([-+])(\s)/, '$1\\$2$3')
-    .replace(/^(\s*)(\d+)([.)])(\s)/, '$1$2\\$3$4')
+    .replace(/^(\s*)([-+])(?=\s|$)/, '$1\\$2')
+    .replace(/^(\s*)(-)(?=[-\s]*$)/, '$1\\$2')
+    .replace(/^(\s*)(=)(?=[=\s]*$)/, '$1\\$2')
+    .replace(/^(\s*)(\d+)([.)])(?=\s|$)/, '$1$2\\$3')
+}
+
+// a hard break starts a new line, and every line can start a block
+function escapeBlockLines(text: string): string {
+  return text.split('\n').map(escapeLeadingBlock).join('\n')
+}
+
+// fence inline code with one more backtick than its longest run, padded when the code
+// starts or ends with a backtick, or with a space on both sides that a parser would strip
+function codeSpan(code: string): string {
+  const longest = Math.max(0, ...(code.match(/`+/g) ?? []).map((run) => run.length))
+  const fence = '`'.repeat(longest + 1)
+  const pad = /^`|`$/.test(code) || (code.startsWith(' ') && code.endsWith(' ') && code.trim() !== '') ? ' ' : ''
+  return fence + pad + code + pad + fence
 }
 
 function renderInline(nodes: PMNode[] | undefined): string {
@@ -38,7 +55,7 @@ function renderInline(nodes: PMNode[] | undefined): string {
       const marks = n.marks ?? []
       const has = (m: string): boolean => marks.some((x) => x.type === m)
       // inline code can't contain other markdown, so keep it raw and return early
-      if (has('code')) return '`' + (n.text ?? '') + '`'
+      if (has('code')) return codeSpan(n.text ?? '')
       let t = escapeInline(n.text ?? '')
       if (has('bold')) t = `**${t}**`
       if (has('italic')) t = `*${t}*`
@@ -60,7 +77,7 @@ function renderList(node: PMNode, indent: string, marker: (index: number, item: 
     // the leading paragraph sits on the marker line; every OTHER block child (a second
     // paragraph, code block, blockquote, nested list) is emitted indented so nothing is lost
     const firstParaIdx = kids.findIndex((k) => k.type === 'paragraph')
-    const firstText = firstParaIdx >= 0 ? renderInline(kids[firstParaIdx].content) : renderInline(item.content)
+    const firstText = escapeBlockLines(firstParaIdx >= 0 ? renderInline(kids[firstParaIdx].content) : renderInline(item.content))
     out += `${indent}${marker(i, item)}${firstText}\n`
     kids.forEach((k, ki) => {
       if (ki === firstParaIdx) return
@@ -73,7 +90,7 @@ function renderList(node: PMNode, indent: string, marker: (index: number, item: 
 function renderBlock(node: PMNode, indent = ''): string {
   switch (node.type) {
     case 'paragraph':
-      return `${indent}${escapeLeadingBlock(renderInline(node.content))}\n\n`
+      return `${indent}${escapeBlockLines(renderInline(node.content))}\n\n`
     case 'heading': {
       const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 6)
       return `${'#'.repeat(level)} ${renderInline(node.content)}\n\n`
