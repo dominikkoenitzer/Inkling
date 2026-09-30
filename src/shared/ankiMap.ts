@@ -344,7 +344,13 @@ export function planImport(rows: AnkiRows, now: Date, params: readonly number[] 
   const deckNames = readDecks(rows)
   const notes = new Map(rows.notes.map((n) => [n.id, n]))
   const crtMs = rows.col.crt * 1000
-  const dayToIso = (day: number): string => new Date(crtMs + day * DAY_MS).toISOString()
+  // A date that can't be represented falls back to now: one odd card must not
+  // abort a whole import.
+  const safeIso = (ms: number): string => {
+    const d = new Date(ms)
+    return Number.isNaN(d.getTime()) ? now.toISOString() : d.toISOString()
+  }
+  const dayToIso = (day: number): string => safeIso(crtMs + day * DAY_MS)
 
   const revlog = new Map<number, AnkiRevlogRow[]>()
   for (const r of rows.revlog) {
@@ -402,7 +408,9 @@ export function planImport(rows: AnkiRows, now: Date, params: readonly number[] 
     // A card in a filtered deck belongs to its home deck and keeps its home due date.
     const deck = card.odid ? card.odid : card.did
     const dueNumber = card.odid && card.odue ? card.odue : card.due
-    const state = STATES[card.type] ?? 'new'
+    // The old (v1) scheduler kept a lapsed card as type 2 in the learning queue
+    // while it relearned, with its due date as a timestamp in seconds.
+    const state = card.type === 2 && card.queue === 1 ? 'relearning' : (STATES[card.type] ?? 'new')
     const due =
       state === 'new'
         ? now.toISOString()
@@ -410,7 +418,7 @@ export function planImport(rows: AnkiRows, now: Date, params: readonly number[] 
           ? dayToIso(dueNumber)
           : // Learning steps are due at a timestamp in seconds, day-long steps on a day number.
             dueNumber > 1_000_000_000
-            ? new Date(dueNumber * 1000).toISOString()
+            ? safeIso(dueNumber * 1000)
             : dayToIso(dueNumber)
 
     const history = [...(revlog.get(card.id) ?? [])].sort((a, b) => a.id - b.id)
