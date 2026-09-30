@@ -185,6 +185,8 @@ export interface ImportSummary {
     imageOcclusion: number
     /** Cards an earlier import brought in already. */
     duplicates: number
+    /** Cards whose question is only an image or a sound. */
+    mediaOnly: number
     /** Cards with no usable text, or whose note or note type is missing. */
     unusable: number
   }

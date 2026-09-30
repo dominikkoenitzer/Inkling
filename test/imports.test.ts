@@ -66,7 +66,7 @@ describe('writeImport', () => {
       decks: 2,
       cards: 4,
       reviews: 5,
-      skipped: { media: 0, suspended: 0, imageOcclusion: 0, duplicates: 0, unusable: 0 }
+      skipped: { media: 0, suspended: 0, imageOcclusion: 0, mediaOnly: 0, duplicates: 0, unusable: 0 }
     })
     const decks = listDecks(1)
     expect(decks.map((d) => [d.name, d.card_count])).toEqual([
