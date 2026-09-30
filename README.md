@@ -165,14 +165,16 @@ Prefer a prebuilt binary? Grab the latest installer for Windows (`.exe`), macOS 
 ## Project layout
 
 ```
-src/main       Electron main: db.ts (schema/migrations/backups), ipc.ts, index.ts
+src/main       Electron main: db.ts (schema/migrations/backups), ipc.ts, index.ts,
+               import/anki.ts (reads the collection out of an Anki package)
 src/main/repos the data layer, one module per domain: notebooks, notes, tasks,
-               flashcards, scheduler, focus, streak, grades, stats, search, onboarding;
+               flashcards, scheduler, imports, focus, streak, grades, stats, search, onboarding;
                index.ts re-exports them, so callers still just `import * as repos`
 src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
 src/renderer   React app: stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
 src/shared     types + API contract + the pure logic both processes use:
-               fsrs.ts (scheduler), fsrs-optimise.ts, cloze.ts, grades.ts, streaks.ts, markdown.ts
+               fsrs.ts (scheduler), fsrs-optimise.ts, cloze.ts, ankiMap.ts, ankiText.ts,
+               grades.ts, streaks.ts, markdown.ts
 test           Vitest suites for src/shared, the repositories and the renderer's lib helpers
 ```
 
