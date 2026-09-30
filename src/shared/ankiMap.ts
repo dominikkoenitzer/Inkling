@@ -297,6 +297,8 @@ export interface ImportSkipped {
   media: number
   suspended: number
   imageOcclusion: number
+  /** Cards whose question is only an image or a sound. */
+  mediaOnly: number
   /** Cards whose note or note type is missing, or that come out empty. */
   unusable: number
 }
@@ -359,7 +361,7 @@ export function planImport(rows: AnkiRows, now: Date, params: readonly number[] 
     else revlog.set(r.cid, [r])
   }
 
-  const skipped: ImportSkipped = { media: 0, suspended: 0, imageOcclusion: 0, unusable: 0 }
+  const skipped: ImportSkipped = { media: 0, suspended: 0, imageOcclusion: 0, mediaOnly: 0, unusable: 0 }
   const mediaCounted = new Set<number>()
   const cards: ImportCard[] = []
   const usedDecks = new Set<number>()
@@ -396,6 +398,11 @@ export function planImport(rows: AnkiRows, now: Date, params: readonly number[] 
     const front = join(sides.front, '\n')
     const back = join(sides.back, '\n\n')
     const cloze = type.cloze ? card.ord + 1 : 0
+    if (!front && sides.front.some((i) => (texts[i]?.media ?? 0) > 0)) {
+      // The question is a picture or a sound, which Inkling can't show yet.
+      skipped.mediaOnly++
+      continue
+    }
     if (!front || (cloze > 0 && !new RegExp(`\\{\\{c${cloze}::`).test(front))) {
       skipped.unusable++
       continue

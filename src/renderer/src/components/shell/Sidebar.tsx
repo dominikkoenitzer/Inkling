@@ -311,6 +311,7 @@ function importMessage(r: ImportSummary): string {
     s.suspended > 0 && `${s.suspended} suspended`,
     s.imageOcclusion > 0 && `${s.imageOcclusion} image occlusion`,
     s.duplicates > 0 && `${s.duplicates} already here`,
+    s.mediaOnly > 0 && `${s.mediaOnly} with only a picture or sound as the question`,
     s.unusable > 0 && `${s.unusable} empty`
   ].filter(Boolean)
   if (left.length > 0) parts.push(`Skipped ${left.join(', ')}.`)

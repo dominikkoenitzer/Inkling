@@ -101,7 +101,23 @@ describe.each([11, 18] as const)('planImport, schema %i', (schema) => {
       )
     )
     expect(p.cards.map((c) => [c.front, c.back])).toEqual([['Heart', 'pumps']])
-    expect(p.skipped).toEqual({ media: 2, suspended: 1, imageOcclusion: 1, unusable: 1 })
+    expect(p.skipped).toEqual({ media: 2, suspended: 1, imageOcclusion: 1, mediaOnly: 0, unusable: 1 })
+  })
+
+  it('counts a card whose question is only a picture apart from empty ones', () => {
+    const p = plan(
+      toRows(
+        base(schema, {
+          notes: [
+            { id: 10, guid: 'sign', mid: BASIC.id, fields: ['<img src="stop.png">', 'Stop sign'] },
+            { id: 11, guid: 'blank', mid: BASIC.id, fields: ['', 'nothing asked'] }
+          ],
+          cards: [card({ id: 100, nid: 10 }), card({ id: 101, nid: 11 })]
+        })
+      )
+    )
+    expect(p.cards).toHaveLength(0)
+    expect(p.skipped).toMatchObject({ mediaOnly: 1, unusable: 1 })
   })
 
   it('keeps due dates: review days from crt, learning timestamps, filtered decks at home', () => {
