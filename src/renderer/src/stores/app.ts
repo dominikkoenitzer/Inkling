@@ -224,3 +224,13 @@ export function watchDay(target: EventTarget = window): () => void {
 
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
+
+/**
+ * Change a task and refresh what shows it. The main process writes a renamed or ticked
+ * checkbox task back into its note, so an open page reloads too, once that write is done.
+ */
+export async function updateTask(task: { id: number; note_id: number | null }, patch: Record<string, unknown>): Promise<void> {
+  await api.tasks.update(task.id, patch)
+  bumpData('tasks')
+  if (task.note_id !== null) bumpData('notes')
+}

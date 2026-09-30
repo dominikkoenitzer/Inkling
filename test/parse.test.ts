@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractNoteCardLines, extractNoteTaskItems, fuzzyScore, parseCardLine } from '../src/renderer/src/lib/parse'
+import { extractNoteCardLines, extractNoteTaskItems, fuzzyScore, mergeTaskWriteBacks, parseCardLine } from '../src/renderer/src/lib/parse'
 
 const doc = (content: unknown[]): string => JSON.stringify({ type: 'doc', content })
 const para = (text: string): unknown => ({ type: 'paragraph', content: [{ type: 'text', text }] })
@@ -100,5 +100,49 @@ describe('fuzzyScore', () => {
   })
   it('an empty query matches anything', () => {
     expect(fuzzyScore('', 'anything')).toBe(1)
+  })
+})
+
+describe('mergeTaskWriteBacks', () => {
+  const item = (taskId: number, title: string, checked = false, sub?: unknown[]): Record<string, unknown> => ({
+    type: 'taskItem',
+    attrs: { taskId, checked },
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: title }] }, ...(sub ? [{ type: 'taskList', content: sub }] : [])]
+  })
+  const list = (...items: unknown[]): unknown => ({ type: 'taskList', content: items })
+  const note = (...content: unknown[]): Record<string, unknown> => ({ type: 'doc', content })
+  const base = [
+    { taskId: 1, title: 'Buy milk', checked: false },
+    { taskId: 2, title: 'Call Anna', checked: false }
+  ]
+
+  it('takes a rename and a tick made elsewhere into a page with unsaved typing', () => {
+    const local = note(para('typed but not saved yet'), list(item(1, 'Buy milk'), item(2, 'Call Anna')))
+    const stored = note(list(item(1, 'Buy oat milk'), item(2, 'Call Anna', true)))
+    const merged = mergeTaskWriteBacks(local, stored, base)
+    expect(merged).toEqual(note(para('typed but not saved yet'), list(item(1, 'Buy oat milk'), item(2, 'Call Anna', true))))
+  })
+
+  it('drops a task deleted elsewhere and moves its sub-items up, like the write-back does', () => {
+    const local = note(para('draft'), list(item(1, 'Buy milk', false, [item(3, 'Oat')]), item(2, 'Call Anna')))
+    const stored = note(list(item(3, 'Oat'), item(2, 'Call Anna')))
+    const merged = mergeTaskWriteBacks(local, stored, [...base, { taskId: 3, title: 'Oat', checked: false }])
+    expect(merged).toEqual(note(para('draft'), list(item(3, 'Oat'), item(2, 'Call Anna'))))
+    const lastOne = mergeTaskWriteBacks(note(para('draft'), list(item(2, 'Call Anna'))), note(para('draft')), base)
+    expect(lastOne).toEqual(note(para('draft')))
+  })
+
+  it('keeps local edits to a task that was not changed elsewhere, and tasks not yet synced', () => {
+    const newItem = { type: 'taskItem', attrs: { taskId: null, checked: false }, content: [para('new one')] }
+    const local = note(list(item(1, 'Buy milk and bread', true), item(2, 'Call Anna'), newItem))
+    const stored = note(list(item(1, 'Buy milk'), item(2, 'Call Anna')))
+    expect(mergeTaskWriteBacks(local, stored, base)).toEqual(local)
+  })
+
+  it('does not change the document it was given', () => {
+    const local = note(list(item(1, 'Buy milk'), item(2, 'Call Anna')))
+    const copy = JSON.parse(JSON.stringify(local))
+    mergeTaskWriteBacks(local, note(list(item(2, 'Call Anna', true))), base)
+    expect(local).toEqual(copy)
   })
 })
