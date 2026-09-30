@@ -60,7 +60,7 @@ One list, grouped by when things are due: overdue, today, upcoming, someday, don
 ### Study
 <img src="docs/study.png" width="880" alt="Inkling: study view with a flashcard deck and Pomodoro timer" />
 
-FSRS-6 spaced-repetition flashcards (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card, stability (how long until your recall chance falls to 90%) and difficulty, instead of SM-2's single "ease factor", so it schedules for a real recall target rather than an arbitrary multiplier. Pick the target in Settings (70–97%, default 90%).
+FSRS-6 spaced-repetition flashcards (Again / Hard / Good / Easy, keys 1–4), each button showing the interval it would buy. FSRS models two things per card, stability (how long until your recall chance falls to 90%) and difficulty, instead of SM-2's single "ease factor", so it schedules for a real recall target rather than an arbitrary multiplier. It schedules for a fixed 90% recall target.
 
 Once you have 400 reviews spaced a day or more apart, *Optimise from my reviews* in Settings fits all 21 FSRS parameters to your own review log, and keeps them only if they predict your recall better than the ones in use.
 
