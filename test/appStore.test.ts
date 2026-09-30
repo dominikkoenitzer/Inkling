@@ -16,6 +16,28 @@ beforeEach(() => {
   inkling.notes.restore.mockClear()
 })
 
+describe('reviewDeck', () => {
+  it("starts the due deck's review session, not its editor", () => {
+    useApp.setState({ tab: 'today', reviewingDeckId: null })
+    useApp.getState().reviewDeck(1, 9)
+    const s = useApp.getState()
+    expect(s.tab).toBe('study')
+    expect(s.activeNotebookId).toBe(1)
+    expect(s.reviewingDeckId).toBe(9)
+  })
+  it('leaves the session on any navigation', () => {
+    useApp.getState().reviewDeck(1, 9)
+    useApp.getState().setTab('notes')
+    expect(useApp.getState().reviewingDeckId).toBeNull()
+    useApp.getState().reviewDeck(1, 9)
+    useApp.getState().setActiveNotebook(2)
+    expect(useApp.getState().reviewingDeckId).toBeNull()
+    useApp.getState().reviewDeck(1, 9)
+    useApp.getState().openNote(1, 4)
+    expect(useApp.getState().reviewingDeckId).toBeNull()
+  })
+})
+
 describe('restoreNote', () => {
   it('reopens an undone page in its own notebook after the user switched notebooks', async () => {
     await useApp.getState().restoreNote(1, 42)

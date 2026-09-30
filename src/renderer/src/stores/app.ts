@@ -59,6 +59,11 @@ interface AppState {
   setSelectedTask(id: number | null): void
   setSelectedDeck(id: number | null): void
   openDeck(notebookId: number, deckId: number): void
+  /** The deck whose review session Study is showing. Any navigation leaves the session. */
+  reviewingDeckId: number | null
+  setReviewingDeck(id: number | null): void
+  /** Go straight into a deck's review session, from anywhere. */
+  reviewDeck(notebookId: number, deckId: number): void
   setPaletteOpen(v: boolean): void
   setSettingsOpen(v: boolean): void
   celebrate(): void
@@ -79,6 +84,7 @@ export const useApp = create<AppState>((set, get) => ({
   selectedNoteId: null,
   selectedTaskId: null,
   selectedDeckId: null,
+  reviewingDeckId: null,
   paletteOpen: false,
   settingsOpen: false,
   streak: { count: 0, last_day: null },
@@ -108,7 +114,7 @@ export const useApp = create<AppState>((set, get) => ({
     set({
       notebooks,
       activeNotebookId: stillThere ? activeNotebookId : (notebooks[0]?.id ?? null),
-      ...(stillThere ? {} : { selectedNoteId: null, selectedTaskId: null, selectedDeckId: null })
+      ...(stillThere ? {} : { selectedNoteId: null, selectedTaskId: null, selectedDeckId: null, reviewingDeckId: null })
     })
   },
 
@@ -124,10 +130,13 @@ export const useApp = create<AppState>((set, get) => ({
   },
   setFsrsParams: (fsrsParams) => set({ fsrsParams }),
 
-  setActiveNotebook: (id) => set({ activeNotebookId: id, selectedNoteId: null, selectedTaskId: null, selectedDeckId: null }),
-  setTab: (tab) => set({ tab }),
-  openNote: (notebookId, noteId) => set({ activeNotebookId: notebookId, tab: 'notes', selectedNoteId: noteId, paletteOpen: false }),
-  openTask: (notebookId, taskId) => set({ activeNotebookId: notebookId, tab: 'tasks', selectedTaskId: taskId, paletteOpen: false }),
+  setActiveNotebook: (id) =>
+    set({ activeNotebookId: id, selectedNoteId: null, selectedTaskId: null, selectedDeckId: null, reviewingDeckId: null }),
+  setTab: (tab) => set((s) => ({ tab, reviewingDeckId: tab === s.tab ? s.reviewingDeckId : null })),
+  openNote: (notebookId, noteId) =>
+    set({ activeNotebookId: notebookId, tab: 'notes', selectedNoteId: noteId, reviewingDeckId: null, paletteOpen: false }),
+  openTask: (notebookId, taskId) =>
+    set({ activeNotebookId: notebookId, tab: 'tasks', selectedTaskId: taskId, reviewingDeckId: null, paletteOpen: false }),
   setSelectedNote: (selectedNoteId) => set({ selectedNoteId }),
   restoreNote: async (notebookId, noteId) => {
     await api.notes.restore(noteId)
@@ -138,7 +147,11 @@ export const useApp = create<AppState>((set, get) => ({
   },
   setSelectedTask: (selectedTaskId) => set({ selectedTaskId }),
   setSelectedDeck: (selectedDeckId) => set({ selectedDeckId }),
-  openDeck: (notebookId, deckId) => set({ activeNotebookId: notebookId, tab: 'study', selectedDeckId: deckId, paletteOpen: false }),
+  openDeck: (notebookId, deckId) =>
+    set({ activeNotebookId: notebookId, tab: 'study', selectedDeckId: deckId, reviewingDeckId: null, paletteOpen: false }),
+  setReviewingDeck: (reviewingDeckId) => set({ reviewingDeckId }),
+  reviewDeck: (notebookId, deckId) =>
+    set({ activeNotebookId: notebookId, tab: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
 

@@ -9,7 +9,8 @@ const inkling = vi.hoisted(() => {
   return api
 })
 
-import { useTimer } from '../src/renderer/src/stores/timer'
+import { useTimer, startFocusSession } from '../src/renderer/src/stores/timer'
+import { useApp } from '../src/renderer/src/stores/app'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -57,6 +58,23 @@ describe('focus timer', () => {
     useTimer.getState().resume()
     throttle(20_000)
     expect(useTimer.getState().secondsLeft).toBe(30)
+  })
+
+  it('starts a 25-minute block from the palette or Today, and resumes a live one', async () => {
+    useApp.setState({ tab: 'notes', selectedDeckId: 3 })
+    startFocusSession()
+    await vi.waitFor(() => expect(useTimer.getState().running).toBe(true))
+    expect(useTimer.getState().totalSeconds).toBe(25 * 60)
+    expect(useApp.getState().tab).toBe('study')
+    expect(useApp.getState().selectedDeckId).toBeNull()
+
+    vi.advanceTimersByTime(60_000)
+    inkling.focus.start.mockClear()
+    useApp.setState({ tab: 'today' })
+    startFocusSession()
+    expect(inkling.focus.start).not.toHaveBeenCalled()
+    expect(useTimer.getState().secondsLeft).toBe(24 * 60)
+    expect(useApp.getState().tab).toBe('study')
   })
 
   it('keeps breaks on the wall clock too', () => {

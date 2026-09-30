@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Layers, TrendingUp, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { useTimer } from '@/stores/timer'
+import { useTimer, isFocusLive, startFocusSession } from '@/stores/timer'
 import { subjectAverage } from '@shared/grades'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
 import { onActivateKey } from '@/lib/keys'
@@ -38,7 +38,7 @@ export function TodayView(): React.JSX.Element {
   const now = useNow()
   // A focus session is live if it's running or paused part-way through, used so the plan
   // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
-  const timerActive = useTimer((s) => s.mode === 'focus' && (s.running || (s.secondsLeft > 0 && s.secondsLeft < s.totalSeconds)))
+  const timerActive = useTimer(isFocusLive)
   const version = useVersion('decks') + useVersion('tasks') + useVersion('grades') + useVersion('focus')
   const [decks, setDecks] = useState<Deck[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -106,12 +106,7 @@ export function TodayView(): React.JSX.Element {
     return { text: hm === '00:00' ? 'today' : `due ${hm}`, overdue: false }
   }
 
-  const startFocus = (): void => {
-    // Never clobber a live session: if one is already running, just jump to it.
-    if (!timerActive) void useTimer.getState().start(25)
-    app.setSelectedDeck(null)
-    app.setTab('study')
-  }
+  const startFocus = startFocusSession
 
   const newPage = async (): Promise<void> => {
     if (app.activeNotebookId === null) return
@@ -177,7 +172,7 @@ export function TodayView(): React.JSX.Element {
                 title={`Review ${d.name}`}
                 sub={`${d.due_count} card${d.due_count === 1 ? '' : 's'} due · ${nb?.name ?? 'notebook'}`}
                 actionLabel="Review"
-                onAction={() => app.openDeck(d.notebook_id, d.id)}
+                onAction={() => app.reviewDeck(d.notebook_id, d.id)}
               />
             )
           })}
