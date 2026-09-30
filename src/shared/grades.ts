@@ -88,6 +88,18 @@ export function swissPass(grade: number): boolean {
   return grade >= 4
 }
 
+/**
+ * A typed number as the grade fields read it. A comma and a dot are both decimal
+ * separators, so a Swiss "4,5" is 4.5, not 4. Null when the text is not a single number,
+ * rather than reading "4,5,1" or "4abc" as its first digits.
+ */
+export function parseDecimal(text: string): number | null {
+  const t = text.trim()
+  if (!/^\d*[.,]?\d+$/.test(t) && !/^\d+[.,]$/.test(t)) return null
+  const n = Number(t.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
 /** One comparable number per subject. `value` ascends with performance, so min() is the weakest. */
 export function subjectAverage(items: GradeItem[], system: GradingSystem): { value: number; display: string } | null {
   if (system === 'swiss') {

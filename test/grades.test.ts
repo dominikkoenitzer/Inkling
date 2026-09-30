@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, subjectAverage } from '../src/shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, subjectAverage, parseDecimal } from '../src/shared/grades'
 
 describe('weightedPercentage', () => {
   it('averages equally-weighted items', () => {
@@ -99,5 +99,22 @@ describe('subjectAverage', () => {
   it('returns null with nothing to average', () => {
     expect(subjectAverage([], 'swiss')).toBeNull()
     expect(subjectAverage([], 'percent')).toBeNull()
+  })
+})
+
+describe('parseDecimal', () => {
+  it('reads a Swiss decimal comma the same as a dot', () => {
+    expect(parseDecimal('4,5')).toBe(4.5)
+    expect(parseDecimal('3,75')).toBe(3.75)
+    expect(parseDecimal('0,5')).toBe(0.5)
+    expect(parseDecimal('4.5')).toBe(4.5)
+    expect(parseDecimal(' 5 ')).toBe(5)
+  })
+  it('rejects garbage instead of reading its first number', () => {
+    expect(parseDecimal('4,5,1')).toBeNull()
+    expect(parseDecimal('4.5.1')).toBeNull()
+    expect(parseDecimal('abc')).toBeNull()
+    expect(parseDecimal('4abc')).toBeNull()
+    expect(parseDecimal('')).toBeNull()
   })
 })
