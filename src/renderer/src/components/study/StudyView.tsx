@@ -12,10 +12,12 @@ import type { Notebook, Deck, Card } from '@shared/types'
 const api = window.inkling
 
 export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Element {
-  const { selectedDeckId, setSelectedDeck } = useApp()
+  const { selectedDeckId, setSelectedDeck, reviewingDeckId } = useApp()
   const version = useVersion('decks')
   const [decks, setDecks] = useState<Deck[]>([])
-  const [reviewingDeck, setReviewingDeck] = useState<Deck | null>(null)
+  // In the store, not local state, so Today can open a due deck straight into its session.
+  const reviewingDeck = decks.find((d) => d.id === reviewingDeckId) ?? null
+  const setReviewingDeck = (d: Deck | null): void => useApp.getState().setReviewingDeck(d?.id ?? null)
 
   useEffect(() => {
     void api.decks.list(notebook.id).then(setDecks)

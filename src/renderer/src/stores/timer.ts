@@ -10,6 +10,23 @@ export function fmtClock(secs: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+/** A focus session is live if it's running or paused part-way through. */
+export function isFocusLive(s: Pick<TimerState, 'mode' | 'running' | 'secondsLeft' | 'totalSeconds'>): boolean {
+  return s.mode === 'focus' && (s.running || (s.secondsLeft > 0 && s.secondsLeft < s.totalSeconds))
+}
+
+/**
+ * "Start focus" from Today or the palette: a fresh 25-minute block, or, when one is
+ * already live, just the way back to it, so a second start never orphans the first.
+ */
+export function startFocusSession(): void {
+  const timer = useTimer.getState()
+  if (!isFocusLive(timer)) void timer.start(25)
+  const app = useApp.getState()
+  app.setSelectedDeck(null)
+  app.setTab('study')
+}
+
 interface TimerState {
   running: boolean
   mode: 'focus' | 'break'
