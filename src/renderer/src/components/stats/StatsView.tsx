@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Flame, Target, Timer, Layers } from 'lucide-react'
-import { useVersion } from '@/stores/app'
+import { useVersion, localDayKey } from '@/stores/app'
+import { heatmapColumns } from '@/lib/heatmap'
 import { EmptyState } from '@/components/Inky'
 import type { ActivityDay, StatsOverview } from '@shared/types'
 
@@ -128,46 +129,27 @@ function Tile({
 
 /* --------------------------------- Heatmap -------------------------------- */
 
-const dayKey = (d: Date): string =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-
 /**
  * Contribution graph of study effort, one column per week, Monday at the top. Intensity
  * counts one focus minute as one review, so a long block still shows on a no-review day.
  */
 function Heatmap({ days, weeks }: { days: ActivityDay[]; weeks: number }): React.JSX.Element {
+  const today = localDayKey()
   const { columns, max, monthLabels } = useMemo(() => {
     const byDay = new Map(days.map((d) => [d.day, d]))
-
-    // Start on the Monday of the week containing (today - weeks + 1 weeks).
-    const end = new Date()
-    end.setHours(0, 0, 0, 0)
-    const start = new Date(end)
-    start.setDate(start.getDate() - (weeks * 7 - 1))
-    const weekday = (start.getDay() + 6) % 7 // 0 = Monday
-    start.setDate(start.getDate() - weekday)
-
-    const cols: Array<Array<{ key: string; score: number; entry: ActivityDay | undefined; future: boolean }>> = []
-    const labels: Array<{ col: number; text: string }> = []
-    let peak = 0
-    const cursor = new Date(start)
-    for (let c = 0; c < weeks; c++) {
-      const col: Array<{ key: string; score: number; entry: ActivityDay | undefined; future: boolean }> = []
-      for (let r = 0; r < 7; r++) {
-        const key = dayKey(cursor)
+    const grid = heatmapColumns(weeks, new Date(`${today}T12:00:00`))
+    const cols = grid.map((week) =>
+      week.map(({ key, future }) => {
         const entry = byDay.get(key)
-        const score = entry ? entry.reviews + entry.focus_minutes : 0
-        if (score > peak) peak = score
-        col.push({ key, score, entry, future: cursor > end })
-        if (r === 0 && cursor.getDate() <= 7) {
-          labels.push({ col: c, text: cursor.toLocaleString(undefined, { month: 'short' }) })
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-      cols.push(col)
-    }
+        return { key, score: entry ? entry.reviews + entry.focus_minutes : 0, entry, future }
+      })
+    )
+    const labels = grid.flatMap((week, col) =>
+      week[0].date.getDate() <= 7 ? [{ col, text: week[0].date.toLocaleString(undefined, { month: 'short' }) }] : []
+    )
+    const peak = Math.max(0, ...cols.flat().map((c) => c.score))
     return { columns: cols, max: peak, monthLabels: labels }
-  }, [days, weeks])
+  }, [days, weeks, today])
 
   const accent = 'var(--accent)'
   const level = (score: number): { background: string; opacity?: number } => {
