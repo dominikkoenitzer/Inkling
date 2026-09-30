@@ -5,7 +5,7 @@
 <br />
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-176%20passing-10A37F)](test)
+[![tests](https://img.shields.io/badge/tests-209%20passing-10A37F)](test)
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -65,6 +65,8 @@ FSRS-6 spaced-repetition flashcards (Again / Hard / Good / Easy, keys 1–4), ea
 Once you have 400 reviews spaced a day or more apart, *Optimise from my reviews* in Settings fits all 21 FSRS parameters to your own review log, and keeps them only if they predict your recall better than the ones in use.
 
 Write `Term :: Definition` lines in a note and hit Flashcards: the note gets its own deck, and it stays linked. Hit it again after editing and changed lines update their cards in place, keeping their schedule; new lines are added, deleted ones removed. Cloze works too: `{{c1::Bern}} is the capital of {{c2::Switzerland}}` makes one card per number and reveals the answer in place, in notes and in the deck editor. Indent the lines under a `::` line to give a card a longer answer.
+
+Coming from Anki? *Import deck…* under the deck list reads an `.apkg` or `.colpkg` export: Basic, reversed and cloze cards arrive with their due dates, FSRS memory state and review history. Media, suspended cards and image occlusion stay behind, and importing the same file again adds only what is new.
 
 Also here: a Pomodoro focus timer linked to a task or deck, and a gentle, non-punishing study streak. The timer stays visible in the Discord-style user bar at the bottom of the sidebar, wherever you are in the app.
 
@@ -130,7 +132,7 @@ Pick the sleek Dark theme or the warm Cozy one.
 | Dates | date-fns |
 | Spaced repetition | Custom FSRS-6 implementation (`src/shared/fsrs.ts`) with a parameter optimiser (`src/shared/fsrs-optimise.ts`) |
 | Icons | lucide-react |
-| Tests | Vitest, 176 tests (FSRS, the optimiser, grade math, streaks, parsing, cloze, note-to-deck sync, migrations, Markdown export, colors) |
+| Tests | Vitest, 209 tests (FSRS, the optimiser, grade math, streaks, parsing, cloze, note-to-deck sync, Anki import, migrations, Markdown export, colors) |
 | CI / Packaging | GitHub Actions · electron-builder (NSIS) |
 
 ---
