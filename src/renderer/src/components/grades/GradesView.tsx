@@ -4,7 +4,7 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { isColorKey } from '@/lib/colors'
 import { EmptyState } from '@/components/Inky'
 import { Button, IconBtn, Segmented } from '@/components/ui'
-import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
+import { weightedPercentage, weightedSwissGrade, swissItemGrade, itemPercent, swissRound, swissPass, parseDecimal, GRADING_SYSTEM_OPTIONS } from '@shared/grades'
 import type { Notebook, Grade } from '@shared/types'
 
 const api = window.inkling
@@ -47,9 +47,10 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
   const shownSwiss = avgGrade === null ? null : swissRound(avgGrade)
 
   const add = async (): Promise<void> => {
-    const s = parseFloat(score)
-    const w = parseFloat(weight)
-    if (!title.trim() || !Number.isFinite(s)) return
+    const s = parseDecimal(score)
+    // An empty weight means the default 1; anything typed must be a number.
+    const w = weight.trim() === '' ? 1 : parseDecimal(weight)
+    if (!title.trim() || s === null || w === null) return
     if (swiss) {
       // Swiss entries ARE grades. Out-of-band input is a typo, not a grade: refuse it
       // rather than silently clamping a mistyped 45 into a perfect 6.
@@ -60,17 +61,18 @@ export function GradesView({ notebook }: { notebook: Notebook }): React.JSX.Elem
         title: title.trim(),
         score: s,
         max: 6,
-        weight: Number.isFinite(w) && w > 0 ? w : 1,
+        weight: w > 0 ? w : 1,
         system: 'swiss'
       })
     } else {
-      const m = parseFloat(max)
+      const m = max.trim() === '' ? 100 : parseDecimal(max)
+      if (m === null) return
       await api.grades.create({
         notebook_id: notebook.id,
         title: title.trim(),
         score: s,
-        max: Number.isFinite(m) && m > 0 ? m : 100,
-        weight: Number.isFinite(w) && w > 0 ? w : 1,
+        max: m > 0 ? m : 100,
+        weight: w > 0 ? w : 1,
         system: gradingSystem
       })
     }
