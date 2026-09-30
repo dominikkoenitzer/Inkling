@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PanelRightClose, PanelRightOpen, FileText } from 'lucide-react'
 import { format } from 'date-fns'
-import { useApp, useVersion, bumpData } from '@/stores/app'
+import { useApp, useVersion, updateTask } from '@/stores/app'
 import { inputCls } from '@/components/ui'
 import type { Task } from '@shared/types'
 
@@ -60,7 +60,7 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
   if (!task) return <p className="text-xs text-faint">Select a task to see its details.</p>
 
   const patch = (p: Record<string, unknown>): void => {
-    void api.tasks.update(taskId, p).then(() => bumpData('tasks'))
+    void updateTask(task, p)
   }
 
   return (
@@ -96,7 +96,6 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
               onClick={() => {
                 if (s === 'done' && task.status !== 'done') useApp.getState().celebrate()
                 patch({ status: s })
-                if (task.note_id !== null) bumpData('notes')
               }}
               className={`flex-1 rounded-lg border py-1 text-xs font-medium ${task.status === s ? 'border-transparent text-white' : 'border-edge text-muted'}`}
               style={task.status === s ? { background: 'var(--accent)' } : undefined}

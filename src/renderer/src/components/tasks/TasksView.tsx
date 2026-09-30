@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Trash2, Plus, CalendarClock, FileText } from 'lucide-react'
 import { format, isBefore, isToday, startOfDay } from 'date-fns'
-import { useApp, useVersion, bumpData } from '@/stores/app'
+import { useApp, useVersion, bumpData, updateTask } from '@/stores/app'
 import { isColorKey } from '@/lib/colors'
 import { onActivateKey } from '@/lib/keys'
 import { EmptyState } from '@/components/Inky'
@@ -111,10 +111,8 @@ export function TaskRow({ task }: { task: Task }): React.JSX.Element {
   const overdue = !done && task.due_date && isBefore(new Date(task.due_date), startOfDay(new Date()))
 
   const toggle = async (): Promise<void> => {
-    await api.tasks.update(task.id, { status: done ? 'todo' : 'done' })
+    await updateTask(task, { status: done ? 'todo' : 'done' })
     if (!done) celebrate()
-    bumpData('tasks')
-    if (task.note_id !== null) bumpData('notes')
   }
 
   return (

@@ -27,7 +27,7 @@ import {
   FileDown
 } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
+import { extractNoteTaskItems, extractNoteCardLines, mergeTaskWriteBacks } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { IconBtn } from '@/components/ui'
 import type { Notebook, Note, NoteTaskItem } from '@shared/types'
@@ -170,13 +170,19 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     void api.notes.get(noteId).then((note) => {
       if (!note || editor.isDestroyed || editor.isFocused) return
       if (note.updated_at !== loadedUpdatedAtRef.current) {
+        const stored = safeParse(note.content)
+        // Edits still waiting for their save stay: only the checkbox tasks changed elsewhere
+        // are carried in, and the pending save then writes both.
+        const dirty = timerRef.current !== null
         syncingRef.current = true
-        editor.commands.setContent(safeParse(note.content))
+        editor.commands.setContent(dirty ? mergeTaskWriteBacks(editor.getJSON(), stored, lastItemsRef.current) : stored)
         syncingRef.current = false
-        setTitle(note.title ?? '')
-        titleRef.current = note.title ?? ''
+        if (!dirty) {
+          setTitle(note.title ?? '')
+          titleRef.current = note.title ?? ''
+        }
         loadedUpdatedAtRef.current = note.updated_at
-        lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
+        lastItemsRef.current = extractNoteTaskItems(stored as Record<string, unknown>)
       }
     })
   }, [notesVersion, editor, noteId])
