@@ -169,3 +169,23 @@ export interface OptimiseOutcome {
   /** The new parameters, when they were saved. */
   params?: number[]
 }
+
+/** What an Anki import brought in, and what it left out and why. */
+export interface ImportSummary {
+  /** Decks created; cards landing in a deck of the same name that exists already add none. */
+  decks: number
+  cards: number
+  reviews: number
+  /** The first deck that got cards, to open after the import; null when nothing was new. */
+  deckId: number | null
+  skipped: {
+    /** Images, sounds and videos removed from the imported notes. */
+    media: number
+    suspended: number
+    imageOcclusion: number
+    /** Cards an earlier import brought in already. */
+    duplicates: number
+    /** Cards with no usable text, or whose note or note type is missing. */
+    unusable: number
+  }
+}
