@@ -75,7 +75,8 @@ const api: InklingApi = {
   },
   app: {
     setTitlebar: invoke('app.setTitlebar'),
-    saveFile: invoke('app.saveFile')
+    saveFile: invoke('app.saveFile'),
+    importDeck: invoke('app.importDeck')
   }
 }
 
