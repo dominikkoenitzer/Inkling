@@ -54,6 +54,8 @@ interface AppState {
   openNote(notebookId: number, noteId: number): void
   openTask(notebookId: number, taskId: number): void
   setSelectedNote(id: number | null): void
+  /** Undo a page delete and open the page again in its own notebook. */
+  restoreNote(notebookId: number, noteId: number): Promise<void>
   setSelectedTask(id: number | null): void
   setSelectedDeck(id: number | null): void
   openDeck(notebookId: number, deckId: number): void
@@ -127,6 +129,13 @@ export const useApp = create<AppState>((set, get) => ({
   openNote: (notebookId, noteId) => set({ activeNotebookId: notebookId, tab: 'notes', selectedNoteId: noteId, paletteOpen: false }),
   openTask: (notebookId, taskId) => set({ activeNotebookId: notebookId, tab: 'tasks', selectedTaskId: taskId, paletteOpen: false }),
   setSelectedNote: (selectedNoteId) => set({ selectedNoteId }),
+  restoreNote: async (notebookId, noteId) => {
+    await api.notes.restore(noteId)
+    bumpData('notes')
+    // By now the user may be in another notebook: a bare selection would point at a page
+    // that list does not hold.
+    get().openNote(notebookId, noteId)
+  },
   setSelectedTask: (selectedTaskId) => set({ selectedTaskId }),
   setSelectedDeck: (selectedDeckId) => set({ selectedDeckId }),
   openDeck: (notebookId, deckId) => set({ activeNotebookId: notebookId, tab: 'study', selectedDeckId: deckId, paletteOpen: false }),
