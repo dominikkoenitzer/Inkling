@@ -25,7 +25,7 @@ bun run test
 bun run build
 ```
 
-Tests are Vitest over the pure logic: the FSRS scheduler, grades, streaks, colours and the markdown export. The repositories are covered end to end by `bun run smoke`. Anything scheduling-related needs a test: the spaced-repetition engine is the part of this app a user cannot check by eye.
+Tests are Vitest over the pure logic and the repositories (on an in-memory SQLite): FSRS and its optimiser, grades, streaks, cloze, parsing, colours, note-to-deck sync, migrations and the markdown export. `bun run smoke` covers the IPC wiring end to end. Anything scheduling-related needs a test: the spaced-repetition engine is the part of this app a user cannot check by eye.
 
 ## Code style
 
