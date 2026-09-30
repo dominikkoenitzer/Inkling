@@ -1,7 +1,15 @@
 import { getDb } from '../db'
 import { getSetting, setSetting } from './settings'
-import { isLiveDay, streaksFrom } from '@shared/streaks'
+import { isLiveDay, localDay, streaksFrom } from '@shared/streaks'
 import type { StreakInfo } from '@shared/types'
+
+const noon = (day: string): Date => new Date(`${day}T12:00:00`)
+
+const addDays = (day: string, n: number): string => {
+  const d = noon(day)
+  d.setDate(d.getDate() + n)
+  return localDay(d)
+}
 
 /**
  * The streak is computed from the review and focus history, not from a counter, so it is
@@ -14,8 +22,19 @@ export function getStreak(): StreakInfo {
   const legacyCount = Number(getSetting('streak_count') ?? '0')
   const legacyDay = getSetting('streak_last_day')
 
-  if (derived.current === 0 && legacyCount > 0 && legacyDay && isLiveDay(legacyDay)) {
-    return { count: legacyCount, last_day: legacyDay }
+  if (legacyCount > 0 && legacyDay && isLiveDay(legacyDay)) {
+    // Both runs end today or yesterday, so they touch or overlap and the streak is the days
+    // they cover together. A counter ahead of the history keeps growing with it that way.
+    const historyEnd = derived.current > 0 ? [...days].reverse().find((d) => isLiveDay(d)) : undefined
+    let start = addDays(legacyDay, 1 - legacyCount)
+    let end = legacyDay
+    if (historyEnd) {
+      const historyStart = addDays(historyEnd, 1 - derived.current)
+      if (historyStart < start) start = historyStart
+      if (historyEnd > end) end = historyEnd
+    }
+    const count = Math.round((noon(end).getTime() - noon(start).getTime()) / 86_400_000) + 1
+    return { count, last_day: end }
   }
   return { count: derived.current, last_day: days.at(-1) ?? legacyDay }
 }
