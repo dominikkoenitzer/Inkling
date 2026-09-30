@@ -1,7 +1,7 @@
 import { getDb } from '../db'
 import { now } from './dates'
 import { getNote } from './notes'
-import { ftsDelete, ftsUpsert } from './search'
+import { ftsDelete, ftsUpsert, tiptapToText } from './search'
 import type { NoteTaskItem, Task } from '@shared/types'
 
 export function listTasks(notebookId: number): Task[] {
@@ -60,26 +60,41 @@ export function createTask(input: {
 }
 
 export function updateTask(id: number, patch: Record<string, unknown>): Task {
+  const db = getDb()
   const before = getTask(id)
   const allowed = ['title', 'status', 'due_date', 'notebook_id'] as const
   const keys = allowed.filter((k) => k in patch)
-  if (keys.length > 0) {
-    const sets = keys.map((k) => `${k} = @${k}`).join(', ')
-    getDb().prepare(`UPDATE tasks SET ${sets} WHERE id = @id`).run({ ...patch, id })
-  }
-  if ('status' in patch && before) {
-    const done = patch.status === 'done'
-    getDb().prepare(`UPDATE tasks SET completed_at = ? WHERE id = ?`).run(done ? now() : null, id)
-    if (before.note_id !== null) updateNoteCheckbox(before.note_id, id, done)
-  }
-  const task = getTask(id)!
-  if ('title' in patch) ftsUpsert('task', id, task.title, '')
-  return task
+  db.transaction(() => {
+    if (keys.length > 0) {
+      const sets = keys.map((k) => `${k} = @${k}`).join(', ')
+      db.prepare(`UPDATE tasks SET ${sets} WHERE id = @id`).run({ ...patch, id })
+    }
+    if ('status' in patch && before) {
+      db.prepare(`UPDATE tasks SET completed_at = ? WHERE id = ?`).run(patch.status === 'done' ? now() : null, id)
+    }
+    const task = getTask(id)
+    if (task && 'title' in patch) ftsUpsert('task', id, task.title, '')
+    // The note owns its checklist: the next sync reads every item's title and state back from it.
+    if (task && before?.note_id != null && ('title' in patch || 'status' in patch)) {
+      editNoteItem(before.note_id, id, (item) => {
+        let changed = false
+        if ('status' in patch) changed = setChecked(item, task.status === 'done')
+        if ('title' in patch) changed = setItemTitle(item, task.title) || changed
+        return changed
+      })
+    }
+  })()
+  return getTask(id)!
 }
 
 export function removeTask(id: number): void {
-  getDb().prepare(`DELETE FROM tasks WHERE id = ?`).run(id)
-  ftsDelete('task', id)
+  const db = getDb()
+  const before = getTask(id)
+  db.transaction(() => {
+    db.prepare(`DELETE FROM tasks WHERE id = ?`).run(id)
+    ftsDelete('task', id)
+    if (before?.note_id != null) editNoteItem(before.note_id, id, () => 'remove')
+  })()
 }
 
 /* ----------------------------- Note ↔ task bridge ------------------------- */
@@ -131,27 +146,74 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
   return ids
 }
 
-/** Reflect a task status change back into its source note's checkbox (if linked). */
-function updateNoteCheckbox(noteId: number, taskId: number, checked: boolean): void {
+/* ------------------------ Writing back into the note ----------------------- */
+
+type DocNode = { type?: string; attrs?: Record<string, unknown>; content?: DocNode[]; text?: string }
+
+/**
+ * Apply `edit` to the checklist item linked to `taskId` in a note's TipTap document and
+ * save the note, search row included. `edit` says whether it changed the item, or 'remove'.
+ */
+function editNoteItem(noteId: number, taskId: number, edit: (item: DocNode) => boolean | 'remove'): void {
   const note = getNote(noteId)
   if (!note) return
+  let doc: DocNode
   try {
-    const doc = JSON.parse(note.content)
-    let changed = false
-    const walk = (n: { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }): void => {
-      if (n.type === 'taskItem' && n.attrs && Number(n.attrs.taskId) === taskId) {
-        if (n.attrs.checked !== checked) {
-          n.attrs.checked = checked
-          changed = true
-        }
-      }
-      if (Array.isArray(n.content)) n.content.forEach((c) => walk(c as never))
-    }
-    walk(doc)
-    if (changed) {
-      getDb().prepare(`UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`).run(JSON.stringify(doc), now(), noteId)
-    }
+    doc = JSON.parse(note.content) as DocNode
   } catch {
-    /* malformed content, skip */
+    return // malformed content, skip
   }
+  let changed = false
+  const walk = (n: DocNode): void => {
+    if (!Array.isArray(n.content)) return
+    const next: DocNode[] = []
+    let removed = false
+    for (const child of n.content) {
+      const result = child.type === 'taskItem' && Number(child.attrs?.taskId) === taskId ? edit(child) : false
+      if (result === 'remove') {
+        // Its sub-items are tasks of their own, so they move up into its place.
+        for (const c of child.content ?? []) if (c.type === 'taskList') next.push(...(c.content ?? []))
+        changed = removed = true
+        continue
+      }
+      if (result) changed = true
+      walk(child)
+      // A taskList must hold at least one item; one left empty goes too.
+      if (child.type === 'taskList' && (child.content ?? []).length === 0) {
+        removed = true
+        continue
+      }
+      next.push(child)
+    }
+    if (!removed) return
+    // Any other block must hold something: a doc left without its only list gets a paragraph.
+    n.content = next.length > 0 || n.type === 'taskList' ? next : [{ type: 'paragraph' }]
+  }
+  walk(doc)
+  if (!changed) return
+  const content = JSON.stringify(doc)
+  getDb().prepare(`UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`).run(content, now(), noteId)
+  if (note.deleted_at === null) ftsUpsert('note', noteId, note.title ?? 'Untitled', tiptapToText(content))
+}
+
+function setChecked(item: DocNode, checked: boolean): boolean {
+  if (!item.attrs || item.attrs.checked === checked) return false
+  item.attrs.checked = checked
+  return true
+}
+
+/**
+ * Write `title` into the item so `syncNoteTasks` reads it back unchanged: the text of the
+ * item's own paragraphs, nested checklists excluded. A title that already matches keeps its marks.
+ */
+function setItemTitle(item: DocNode, title: string): boolean {
+  const textOf = (n: DocNode): string =>
+    (n.text ?? '') + (n.content ?? []).filter((c) => c.type !== 'taskList' && c.type !== 'taskItem').map(textOf).join('')
+  if ((textOf(item).trim() || 'Untitled task') === title) return false
+  const own = item.content ?? []
+  const paragraph: DocNode = { ...(own.find((c) => c.type === 'paragraph') ?? { type: 'paragraph' }) }
+  if (title) paragraph.content = [{ type: 'text', text: title }]
+  else delete paragraph.content
+  item.content = [paragraph, ...own.filter((c) => c.type === 'taskList')]
+  return true
 }
