@@ -30,17 +30,29 @@ interface TimerState {
 }
 
 let interval: ReturnType<typeof setInterval> | null = null
+/**
+ * Wall-clock moment the running countdown reaches zero. Ticks only re-read it: a hidden or
+ * minimised window gets its timers throttled, and counting ticks would stretch the session.
+ */
+let endsAt: number | null = null
 
 function stopTicking(): void {
   if (interval) clearInterval(interval)
   interval = null
+  endsAt = null
+}
+
+/** Whole seconds until `endsAt`, rounded up so the display never skips its last second. */
+function secondsUntilEnd(): number {
+  return endsAt === null ? 0 : Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
 }
 
 export const useTimer = create<TimerState>((set, get) => {
   const tick = (): void => {
     const s = get()
     if (!s.running) return
-    if (s.secondsLeft <= 1) {
+    const left = secondsUntilEnd()
+    if (left <= 0) {
       stopTicking()
       if (s.mode === 'focus') {
         const minutes = Math.round(s.totalSeconds / 60)
@@ -54,11 +66,12 @@ export const useTimer = create<TimerState>((set, get) => {
       }
       return
     }
-    set({ secondsLeft: s.secondsLeft - 1 })
+    set({ secondsLeft: left })
   }
 
   const startTicking = (): void => {
     stopTicking()
+    endsAt = Date.now() + get().secondsLeft * 1000
     interval = setInterval(tick, 1000)
   }
 
@@ -101,8 +114,13 @@ export const useTimer = create<TimerState>((set, get) => {
       startTicking()
     },
     pause: () => {
+      // Bank the exact time left before dropping the end moment, in case no tick ran lately.
+      const running = get().running && endsAt !== null
+      const left = running ? secondsUntilEnd() : get().secondsLeft
+      // The end already passed while no tick ran: finish the session rather than strand it at 0.
+      if (running && left <= 0) return tick()
       stopTicking()
-      set({ running: false })
+      set({ running: false, secondsLeft: left })
     },
     resume: () => {
       if (get().secondsLeft > 0) {
