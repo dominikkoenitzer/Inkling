@@ -171,7 +171,7 @@ src/preload    contextBridge → window.inkling (typed via src/shared/api.ts)
 src/renderer   React app: stores/ (zustand), components/{shell,today,notes,tasks,study,grades,stats}, lib/
 src/shared     types + API contract + the pure logic both processes use:
                fsrs.ts (scheduler), fsrs-optimise.ts, cloze.ts, grades.ts, streaks.ts, markdown.ts
-test           Vitest suites for everything in src/shared
+test           Vitest suites for src/shared, the repositories and the renderer's lib helpers
 ```
 
 Data lives in a single WAL-mode SQLite file in `%APPDATA%/Inkling`, with a `backups/` folder beside it. Fully offline. Nothing leaves your machine.
