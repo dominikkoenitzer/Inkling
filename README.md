@@ -5,7 +5,7 @@
 <br />
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-209%20passing-10A37F)](test)
+[![tests](https://img.shields.io/badge/tests-284%20passing-10A37F)](test)
 [![Electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -132,7 +132,7 @@ Pick the sleek Dark theme or the warm Cozy one.
 | Dates | date-fns |
 | Spaced repetition | Custom FSRS-6 implementation (`src/shared/fsrs.ts`) with a parameter optimiser (`src/shared/fsrs-optimise.ts`) |
 | Icons | lucide-react |
-| Tests | Vitest, 209 tests (FSRS, the optimiser, grade math, streaks, parsing, cloze, note-to-deck sync, Anki import, migrations, Markdown export, colors) |
+| Tests | Vitest, 284 tests (FSRS, the optimiser, grade math, streaks, parsing, cloze, note-to-deck sync, Anki import, migrations, Markdown export, colors) |
 | CI / Packaging | GitHub Actions · electron-builder (NSIS) |
 
 ---
