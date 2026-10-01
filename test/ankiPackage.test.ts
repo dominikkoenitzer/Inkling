@@ -18,7 +18,7 @@ const { extractCollection, readAnkiPackage, readCollection } = await import('../
  * refuses a schema that still names `unicase`, as the app's would.
  */
 const open = (file: string, writable: boolean): DatabaseSync => {
-  const db = new DatabaseSync(file, { readOnly: !writable })
+  const db = new DatabaseSync(file, { readOnly: !writable, defensive: false })
   try {
     if (!writable && db.prepare(`SELECT 1 FROM sqlite_master WHERE sql LIKE '%unicase%'`).all().length > 0) {
       throw new Error('no such collation sequence: unicase')

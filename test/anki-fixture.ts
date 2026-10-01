@@ -172,7 +172,8 @@ let counter = 0
 /** Writes the collection to an SQLite file and returns its bytes. */
 export function collectionBytes(c: Collection, opts: { dummy?: boolean } = {}): Uint8Array {
   const file = path.join(os.tmpdir(), `inkling96c-fixture-${process.pid}-${counter++}.db`)
-  const db = new DatabaseSync(file)
+  // Node 26 turns on SQLite's defensive flag by default, which locks sqlite_master.
+  const db = new DatabaseSync(file, { defensive: false })
   try {
     const rows = toRows(c)
     db.exec(SCHEMA_11)
