@@ -159,8 +159,10 @@ const SCHEMA_18 = `
 CREATE TABLE notetypes (id integer NOT NULL PRIMARY KEY, name text NOT NULL, mtime_secs integer NOT NULL, usn integer NOT NULL, config blob NOT NULL);
 CREATE UNIQUE INDEX idx_notetypes_name ON notetypes (name);
 CREATE TABLE fields (ntid integer NOT NULL, ord integer NOT NULL, name text NOT NULL, config blob NOT NULL, PRIMARY KEY (ntid, ord)) without rowid;
+CREATE UNIQUE INDEX idx_fields_name_ntid ON fields (name, ntid);
 CREATE TABLE templates (ntid integer NOT NULL, ord integer NOT NULL, name text NOT NULL, mtime_secs integer NOT NULL, usn integer NOT NULL,
   config blob NOT NULL, PRIMARY KEY (ntid, ord)) without rowid;
+CREATE UNIQUE INDEX idx_templates_name_ntid ON templates (name, ntid);
 CREATE TABLE decks (id integer PRIMARY KEY NOT NULL, name text NOT NULL, mtime_secs integer NOT NULL, usn integer NOT NULL, common blob NOT NULL, kind blob NOT NULL);
 CREATE UNIQUE INDEX idx_decks_name ON decks (name);
 `
@@ -187,7 +189,7 @@ export function collectionBytes(c: Collection, opts: { dummy?: boolean } = {}): 
     }
     for (const nt of rows.notetypes) db.prepare(`INSERT INTO notetypes VALUES (?, ?, 0, 0, ?)`).run(nt.id, nt.name, nt.config)
     for (const f of rows.fields) db.prepare(`INSERT INTO fields VALUES (?, ?, ?, ?)`).run(f.ntid, f.ord, f.name, new Uint8Array())
-    for (const t of rows.templates) db.prepare(`INSERT INTO templates VALUES (?, ?, 'Card', 0, 0, ?)`).run(t.ntid, t.ord, t.config)
+    for (const t of rows.templates) db.prepare(`INSERT INTO templates VALUES (?, ?, ?, 0, 0, ?)`).run(t.ntid, t.ord, `Card ${t.ord + 1}`, t.config)
     for (const d of rows.decks) db.prepare(`INSERT INTO decks VALUES (?, ?, 0, 0, ?, ?)`).run(d.id, d.name, new Uint8Array(), new Uint8Array())
     for (const n of rows.notes) db.prepare(`INSERT INTO notes VALUES (?, ?, ?, 0, 0, '', ?, 0, 0, 0, '')`).run(n.id, n.guid, n.mid, n.flds)
     for (const k of rows.cards) {
@@ -201,7 +203,7 @@ export function collectionBytes(c: Collection, opts: { dummy?: boolean } = {}): 
       // never need it.
       db.exec('PRAGMA writable_schema = ON')
       db.exec(`UPDATE sqlite_master SET sql = replace(sql, 'name text NOT NULL', 'name text NOT NULL COLLATE unicase')
-                WHERE type = 'table' AND tbl_name IN ('notetypes', 'decks')`)
+                WHERE type = 'table' AND tbl_name IN ('notetypes', 'decks', 'fields', 'templates')`)
       db.exec('PRAGMA writable_schema = OFF')
     }
     return finish()

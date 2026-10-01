@@ -12,8 +12,23 @@ vi.mock('better-sqlite3', () => ({ default: class {} }))
 
 const { extractCollection, readAnkiPackage, readCollection } = await import('../src/main/import/anki')
 
-/** better-sqlite3 is built for Electron; the tests read through Node's own SQLite. */
-const open = (file: string): DatabaseSync => new DatabaseSync(file, { readOnly: true })
+/**
+ * better-sqlite3 is built for Electron; the tests read through Node's own SQLite. That one
+ * reads past a collation it lacks where the app's SQLite stops, so a read-only open here
+ * refuses a schema that still names `unicase`, as the app's would.
+ */
+const open = (file: string, writable: boolean): DatabaseSync => {
+  const db = new DatabaseSync(file, { readOnly: !writable })
+  try {
+    if (!writable && db.prepare(`SELECT 1 FROM sqlite_master WHERE sql LIKE '%unicase%'`).all().length > 0) {
+      throw new Error('no such collation sequence: unicase')
+    }
+  } catch (err) {
+    db.close()
+    throw err
+  }
+  return db
+}
 
 const COLLECTION: Collection = {
   schema: 11,
@@ -75,6 +90,14 @@ describe('reading an Anki package', () => {
     expect(plan.cards.map((c) => c.front)).toEqual(['hablar', '{{c1::Yo}} hablo'])
     expect(plan.decks.map((d) => d.name)).toEqual(['Spanish::Verbs'])
     fs.rmSync(file)
+  })
+
+  it('reads the note type tables of a modern collection, whose names use Anki collation', () => {
+    const rows = readCollection(collectionBytes({ ...COLLECTION, schema: 18 }), open)
+    const basic = rows.fields.filter((f) => f.ntid === BASIC.id).sort((a, b) => a.ord - b.ord)
+    expect(basic.map((f) => f.name)).toEqual(['Front', 'Back'])
+    expect(rows.templates).toHaveLength(2)
+    expect(rows.decks).toHaveLength(2)
   })
 
   it('reads a placeholder-only package as the placeholder it is', async () => {

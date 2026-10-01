@@ -20,14 +20,41 @@ import type { AnkiRows } from '@shared/ankiMap'
 export const COLLECTION_ENTRIES = ['collection.anki21b', 'collection.anki21', 'collection.anki2'] as const
 export type CollectionEntry = (typeof COLLECTION_ENTRIES)[number]
 
-/** The part of a read-only SQLite handle the reader uses: better-sqlite3 and node:sqlite both fit. */
-export interface ReadOnlyDb {
-  prepare(sql: string): { all(...params: unknown[]): unknown[] }
+/** The part of an SQLite handle the reader uses: better-sqlite3 and node:sqlite both fit. */
+export interface CollectionDb {
+  prepare(sql: string): { all(...params: unknown[]): unknown[]; run(...params: unknown[]): unknown }
+  exec(sql: string): unknown
   close(): void
 }
-export type Opener = (file: string) => ReadOnlyDb
+/** Opens the temp copy of a collection; writable only to fix up its schema. */
+export type Opener = (file: string, writable: boolean) => CollectionDb
 
-const openReadOnly: Opener = (file) => new Database(file, { readonly: true, fileMustExist: true })
+const openCollection: Opener = (file, writable) => {
+  const db = new Database(file, { readonly: !writable, fileMustExist: true })
+  // Defensive mode refuses any change to sqlite_master, writable_schema or not.
+  if (writable) db.unsafeMode(true)
+  return db
+}
+
+/**
+ * Schema 18 declares its name columns with Anki's own `unicase` collation. SQLite cannot
+ * read a table keyed on such a column without it (`fields` and `templates` are WITHOUT
+ * ROWID), and better-sqlite3 cannot register one. The copy is ours, so the collation is
+ * taken out of its schema; nothing here compares or sorts names.
+ */
+function dropUnicase(file: string, open: Opener): void {
+  const db = open(file, true)
+  try {
+    const entries = db.prepare(`SELECT name, sql FROM sqlite_master WHERE sql LIKE '%unicase%'`).all() as Array<{ name: string; sql: string }>
+    if (entries.length === 0) return
+    db.exec('PRAGMA writable_schema = ON')
+    const update = db.prepare(`UPDATE sqlite_master SET sql = ? WHERE name = ?`)
+    for (const e of entries) update.run(e.sql.replace(/\s+COLLATE\s+["'`]?unicase["'`]?/gi, ''), e.name)
+    db.exec('PRAGMA writable_schema = OFF')
+  } finally {
+    db.close()
+  }
+}
 
 /** Streams the zip and returns the newest collection entry in it, decompressed from the zip. */
 export async function extractCollection(zipPath: string): Promise<{ name: CollectionEntry; data: Uint8Array }> {
@@ -103,10 +130,9 @@ function zstd(data: Uint8Array): Uint8Array {
 
 /**
  * Opens a collection's bytes read-only through a temp file and reads the raw rows. No
- * ORDER BY and no comparison touches a name column: schema 18 declares those with Anki's
- * `unicase` collation, which plain SQLite does not have. Sorting happens in the mapper.
+ * ORDER BY and no comparison touches a name column; sorting happens in the mapper.
  */
-export function readCollection(data: Uint8Array, open: Opener = openReadOnly): AnkiRows {
+export function readCollection(data: Uint8Array, open: Opener = openCollection): AnkiRows {
   const file = path.join(os.tmpdir(), `inkling-import-${randomUUID()}.db`)
   const bytes = Buffer.from(data.buffer, data.byteOffset, data.byteLength)
   // A copy saved in WAL mode would need -wal/-shm files to open; the copy holds every page
@@ -115,10 +141,11 @@ export function readCollection(data: Uint8Array, open: Opener = openReadOnly): A
     bytes[18] = 1
     bytes[19] = 1
   }
-  let db: ReadOnlyDb | null = null
+  let db: CollectionDb | null = null
   try {
     fs.writeFileSync(file, bytes)
-    db = open(file)
+    dropUnicase(file, open)
+    db = open(file, false)
     const d = db
     const tables = new Set((d.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{ name: string }>).map((t) => t.name))
     for (const t of ['col', 'notes', 'cards', 'revlog']) {
@@ -145,7 +172,7 @@ export function readCollection(data: Uint8Array, open: Opener = openReadOnly): A
 }
 
 /** Reads an .apkg or .colpkg into the rows `planImport` maps. */
-export async function readAnkiPackage(zipPath: string, open: Opener = openReadOnly): Promise<AnkiRows> {
+export async function readAnkiPackage(zipPath: string, open: Opener = openCollection): Promise<AnkiRows> {
   const { data } = await extractCollection(zipPath)
   return readCollection(data, open)
 }
