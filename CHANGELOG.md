@@ -4,6 +4,65 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-10-01
+
+Decks from Anki, a scheduler fitted to your own reviews, and note cards that stay linked to
+the lines they came from.
+
+### Added
+- Import deck, under the deck list. Reads an Anki `.apkg` or `.colpkg`, current exports
+  and the older format alike. Basic, reversed, type-in and cloze cards arrive with their
+  due dates, FSRS memory state and review history. Media, suspended cards and image
+  occlusion stay behind, and the summary counts them. Importing the same file again adds
+  only what is new.
+- Optimise from my reviews, in Settings. With 400 or more reviews spaced a day or more
+  apart it fits all 21 FSRS parameters to your review log, and keeps the fit only if it
+  predicts your recall better than the parameters in use.
+- Cloze cards. `{{c1::Bern}} is the capital of {{c2::Switzerland}}` makes one card per
+  number and reveals the answer in place, in notes and in the deck editor.
+- Longer answers. Lines indented under a `Term :: Definition` line become that card's
+  answer, shown on their own lines.
+
+### Changed
+- A note's card lines build one linked deck. Making flashcards again after an edit updates
+  the changed cards in place and keeps their schedule; new lines are added, deleted ones
+  removed. No more duplicate decks.
+- The scheduler moves from FSRS-4.5 to FSRS-6. Cards carry over as they are and come due
+  when they did. The recall target stays at 90%.
+- "Start focus session" in the palette starts the timer, or resumes the one running, and
+  Today's Review opens the deck straight into its session.
+- Keyboard support: open and delete sidebar pages and tasks, open Today's plan cards,
+  rename decks and delete cards. Dialogs have a role and a label and give focus back when
+  they close. Icon-only buttons and the focus timer's link picker are named, checkboxes
+  show a focus ring, and a grade's Remove button appears on keyboard focus.
+- The launch backup is written before the schema migration runs, not after it.
+- The renderer runs sandboxed.
+- Schema `user_version` 11 links decks to notes and cards to note lines and stores the cloze
+  number, 12 adds an import key to cards, 13 re-indexes note search.
+- Bun 1.4.2, and dependencies refreshed within their ranges (Electron 44.5). Each release
+  tag is built once, from the frozen lockfile.
+
+### Fixed
+- Two copies of the app on one profile overwrote each other's notes. A second launch now
+  brings the running window forward.
+- The focus timer runs on the wall clock, so a throttled or hidden window keeps time.
+  Resume is no longer offered for a session that already ended.
+- The streak refreshes when you leave a review, at midnight and when the window gets focus,
+  and Today and Progress refetch when the day changes. A streak carried over from the old
+  counters keeps counting once new reviews come in.
+- The activity heatmap always shows the current week.
+- Renaming or deleting a task is written back into the note it came from. An open note
+  reloads after its task is renamed or ticked and keeps unsaved edits.
+- Undoing a page delete reopens the page in its own notebook.
+- Search leaves trashed pages out, also when a late save lands after the delete, and
+  indexes a partly formatted word as one word.
+- Grades read a decimal comma (`4,5`) and refuse text that is not a number. A Swiss row
+  passes or fails on the grade it shows, and averages ending in 5 round up.
+- Review shortcuts no longer fire inside text fields or under an open overlay. A card's
+  delete button shows on its own focus, not while you type in the card.
+- Markdown export escapes lines that would read back as rules, headings or list items, and
+  fences inline code that contains backticks.
+
 ## [0.6.0] - 2026-09-22
 
 Inkling had grown a second way to do most things. This keeps one of each. No notes, tasks,
