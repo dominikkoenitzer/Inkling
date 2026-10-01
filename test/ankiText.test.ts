@@ -16,6 +16,16 @@ describe('ankiHtmlToText', () => {
     )
   })
 
+  it('decodes the named accented letters and Greek letters, keeping their case', () => {
+    expect(ankiHtmlToText('Gr&uuml;&szlig;e, &Auml;rger, espa&ntilde;ol, &Eacute;t&eacute;, 1&frac12;, &yuml;').text).toBe(
+      'Grüße, Ärger, español, Été, 1½, ÿ'
+    )
+    expect(ankiHtmlToText('&Delta;G = &Delta;H - T&Delta;S, &alpha;&beta;&omega;&sigmaf;&Sigma;&Omega;').text).toBe(
+      'ΔG = ΔH - TΔS, αβωςΣΩ'
+    )
+    expect(ankiHtmlToText('soft&shy;hyphen, &NBSP;x&AMP;y').text).toBe('softhyphen, x&y')
+  })
+
   it('removes images, sounds and videos and counts them', () => {
     const out = ankiHtmlToText('Heart <img src="heart.jpg"> [sound:beat.mp3]<video src="x.mp4"></video><img src=\'b.png\'/>')
     expect(out.text).toBe('Heart')

@@ -14,33 +14,39 @@ export interface AnkiText {
 }
 
 const NAMED: Record<string, string> = {
-  nbsp: ' ',
+  quot: '"',
   amp: '&',
+  apos: "'",
   lt: '<',
   gt: '>',
-  quot: '"',
-  apos: "'",
   ndash: '–',
   mdash: '—',
   hellip: '…',
-  laquo: '«',
-  raquo: '»',
   lsquo: '‘',
   rsquo: '’',
   ldquo: '“',
   rdquo: '”',
-  shy: '',
-  zwj: '\u200d',
-  zwnj: '\u200c',
-  times: '×',
-  divide: '÷',
-  deg: '°',
-  middot: '·',
+  zwj: '‍',
+  zwnj: '‌',
   bull: '•',
-  copy: '©',
-  reg: '®',
   euro: '€'
 }
+
+// HTML's names for U+00A0 to U+00FF in order, then the Greek letters.
+const LATIN_1 =
+  'nbsp iexcl cent pound curren yen brvbar sect uml copy ordf laquo not shy reg macr deg plusmn sup2 sup3 acute micro para ' +
+  'middot cedil sup1 ordm raquo frac14 frac12 frac34 iquest Agrave Aacute Acirc Atilde Auml Aring AElig Ccedil Egrave ' +
+  'Eacute Ecirc Euml Igrave Iacute Icirc Iuml ETH Ntilde Ograve Oacute Ocirc Otilde Ouml times Oslash Ugrave Uacute Ucirc ' +
+  'Uuml Yacute THORN szlig agrave aacute acirc atilde auml aring aelig ccedil egrave eacute ecirc euml igrave iacute icirc ' +
+  'iuml eth ntilde ograve oacute ocirc otilde ouml divide oslash ugrave uacute ucirc uuml yacute thorn yuml'
+const GREEK = 'Alpha Beta Gamma Delta Epsilon Zeta Eta Theta Iota Kappa Lambda Mu Nu Xi Omicron Pi Rho Sigmaf Sigma Tau Upsilon Phi Chi Psi Omega'
+LATIN_1.split(' ').forEach((name, i) => (NAMED[name] = String.fromCharCode(0xa0 + i)))
+NAMED.shy = ''
+GREEK.split(' ').forEach((name, i) => {
+  // There is no capital final sigma; U+03A2 is unassigned.
+  if (name !== 'Sigmaf') NAMED[name] = String.fromCharCode(0x391 + i)
+  NAMED[name.toLowerCase()] = String.fromCharCode(0x3b1 + i)
+})
 
 function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]*);/gi, (whole, body: string) => {
@@ -49,7 +55,7 @@ function decodeEntities(s: string): string {
       if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff) return whole
       return String.fromCodePoint(code)
     }
-    return NAMED[body.toLowerCase()] ?? whole
+    return NAMED[body] ?? NAMED[body.toLowerCase()] ?? whole
   })
 }
 
