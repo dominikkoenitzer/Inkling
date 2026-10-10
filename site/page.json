@@ -1,48 +1,128 @@
 {
   "slug": "inkling",
   "name": "Inkling",
+  "url": "https://get-inkling.vercel.app/",
   "description": "A calm place for your notes, to-dos and flashcards. It works offline and you never sign up for anything.",
   "colours": {
-    "light": { "accent": "#4155b9", "accent-hover": "#36489f", "accent-ink": "#4155b9", "band": "#e6e8f5", "tile": "#eef0fa", "stage": "#edeff8" },
-    "dark": { "accent": "#4d61c6", "accent-hover": "#5b6fd3", "accent-ink": "#a4b1f0", "band": "#171a2b", "tile": "#1c2034", "stage": "#191c2c" }
+    "light": {
+      "accent": "#4155b9",
+      "accent-hover": "#36489f",
+      "accent-ink": "#4155b9",
+      "band": "#e6e8f5",
+      "tile": "#eef0fa",
+      "stage": "#edeff8"
+    },
+    "dark": {
+      "accent": "#4d61c6",
+      "accent-hover": "#5b6fd3",
+      "accent-ink": "#a4b1f0",
+      "band": "#171a2b",
+      "tile": "#1c2034",
+      "stage": "#191c2c"
+    }
   },
-  "platforms": { "windows": "Windows", "mac": "macOS", "linux": "Linux" },
+  "platforms": {
+    "windows": "Windows",
+    "mac": "macOS",
+    "linux": "Linux"
+  },
   "hero": {
     "lede": "A calm place for your notes, to-dos and flashcards. It works offline and you never sign up for anything.",
     "also": "Also for <a href=\"/download/mac\">macOS</a> and <a href=\"/download/linux\">Linux</a>.",
-    "notes": ["If Windows says it protected your PC, click More info, then Run anyway."],
+    "notes": [
+      "If Windows says it protected your PC, click More info, then Run anyway."
+    ],
     "away": "Inkling runs on Windows, macOS and Linux. Open this page on your computer to download it.",
-    "image": { "name": "note", "w": 2880, "h": 1800, "alt": "A biology note in Inkling with five terms, two bullet points and a short to-do list" }
+    "image": {
+      "name": "note",
+      "w": 2880,
+      "h": 1800,
+      "alt": "A biology note in Inkling with five terms, two bullet points and a short to-do list"
+    }
   },
   "features": [
     {
       "label": "Today",
       "title": "Every to-do on one page",
-      "body": ["Every open checkbox, from every note, shows up on one page called Today. Tick it there and it is ticked in the note too.", "The decks with cards due wait on the same page."],
-      "main": { "name": "today", "w": 2880, "h": 1800, "pos": "52% 0", "alt": "The Today page with nine open to-dos from six notes and three decks with cards due" },
-      "detail": { "name": "todo", "w": 1260, "h": 505 }
+      "body": [
+        "Every open checkbox, from every note, shows up on one page called Today. Tick it there and it is ticked in the note too.",
+        "The decks with cards due wait on the same page."
+      ],
+      "main": {
+        "name": "today",
+        "w": 2880,
+        "h": 1800,
+        "pos": "52% 0",
+        "alt": "The Today page with nine open to-dos from six notes and three decks with cards due"
+      },
+      "detail": {
+        "name": "todo",
+        "w": 1260,
+        "h": 505
+      }
     },
     {
       "label": "Study",
       "title": "Flashcards from your notes",
-      "body": ["Write <kbd>Term :: Definition</kbd> in any note and that line becomes a flashcard. Each card comes back right before you would forget it.", "Rate a card with the keys <kbd>1</kbd> to <kbd>4</kbd> and keep going."],
-      "main": { "name": "study", "w": 2880, "h": 1800, "pos": "59% 52%", "zoom": 1.75, "alt": "A flashcard for osmosis with its answer and the Again, Hard, Good and Easy buttons" },
-      "detail": { "name": "terms", "w": 1030, "h": 410, "style": "top: 12%; bottom: auto" }
+      "body": [
+        "Write <kbd>Term :: Definition</kbd> in any note and that line becomes a flashcard. Each card comes back right before you would forget it.",
+        "Rate a card with the keys <kbd>1</kbd> to <kbd>4</kbd> and keep going."
+      ],
+      "main": {
+        "name": "study",
+        "w": 2880,
+        "h": 1800,
+        "pos": "59% 52%",
+        "zoom": 1.75,
+        "alt": "A flashcard for osmosis with its answer and the Again, Hard, Good and Easy buttons"
+      },
+      "detail": {
+        "name": "terms",
+        "w": 1030,
+        "h": 410,
+        "style": "top: 12%; bottom: auto"
+      }
     },
     {
       "label": "Search",
       "title": "Find anything with <kbd>Ctrl+K</kbd>",
-      "body": ["<kbd>Ctrl+K</kbd> finds any note, to-do or deck, and <kbd>Ctrl+N</kbd> starts a new note. Your hands stay on the keyboard."],
-      "main": { "name": "search", "w": 2880, "h": 1800, "pos": "45% 0", "alt": "The search window over Today with results for the word cell" },
-      "detail": { "name": "palette", "w": 1160, "h": 515 }
+      "body": [
+        "<kbd>Ctrl+K</kbd> finds any note, to-do or deck, and <kbd>Ctrl+N</kbd> starts a new note. Your hands stay on the keyboard."
+      ],
+      "main": {
+        "name": "search",
+        "w": 2880,
+        "h": 1800,
+        "pos": "45% 0",
+        "alt": "The search window over Today with results for the word cell"
+      },
+      "detail": {
+        "name": "palette",
+        "w": 1160,
+        "h": 515
+      }
     }
   ],
   "pair": {
     "label": "Themes",
     "title": "A light and a dark theme",
-    "body": ["Pick one in Settings. The window opens in your theme from the very first frame."],
-    "one": { "name": "note-light", "w": 2880, "h": 1800, "dark": false, "alt": "Inkling in its light theme" },
-    "two": { "name": "today-dark", "w": 2880, "h": 1800, "dark": false, "alt": "Inkling in its dark theme" }
+    "body": [
+      "Pick one in Settings. The window opens in your theme from the very first frame."
+    ],
+    "one": {
+      "name": "note-light",
+      "w": 2880,
+      "h": 1800,
+      "dark": false,
+      "alt": "Inkling in its light theme"
+    },
+    "two": {
+      "name": "today-dark",
+      "w": 2880,
+      "h": 1800,
+      "dark": false,
+      "alt": "Inkling in its dark theme"
+    }
   },
   "assistant": {
     "label": "AI assistant",
@@ -74,32 +154,104 @@
   ],
   "privacy": {
     "title": "Nothing leaves your computer",
-    "body": ["Inkling has no account and no analytics. It goes online for one thing: at start, it checks for a new version."]
+    "body": [
+      "Inkling has no account and no analytics. It goes online for one thing: at start, it checks for a new version."
+    ]
   },
   "data": {
     "title": "One file you own",
-    "body": ["Your notes, to-dos and cards live in one file, <code>inkling.db</code>, in your user folder. Each start puts a backup next to it, and the last five are kept.", "The export button above a note saves it as Markdown."]
+    "body": [
+      "Your notes, to-dos and cards live in one file, <code>inkling.db</code>, in your user folder. Each start puts a backup next to it, and the last five are kept.",
+      "The export button above a note saves it as Markdown."
+    ]
   },
   "keys": [
-    ["Ctrl+K", "Search"],
-    ["Ctrl+N", "New note"],
-    ["Ctrl+,", "Settings"],
-    ["Space", "Show the answer in a review"],
-    ["1 2 3 4", "Again, Hard, Good or Easy"]
+    [
+      "Ctrl+K",
+      "Search"
+    ],
+    [
+      "Ctrl+N",
+      "New note"
+    ],
+    [
+      "Ctrl+,",
+      "Settings"
+    ],
+    [
+      "Space",
+      "Show the answer in a review"
+    ],
+    [
+      "1 2 3 4",
+      "Again, Hard, Good or Easy"
+    ]
   ],
   "basics": [
-    { "title": "Get started", "steps": ["Download the installer.", "Open it. Inkling installs itself and opens.", "Write your first note."] },
-    { "title": "Updates", "body": ["On Windows and Linux, Inkling downloads new versions by itself and installs them when you close it. On a Mac, download the new version from this page."] },
-    { "title": "Removing it", "body": ["On Windows, uninstall it under Settings, Apps, Installed apps. Your notes stay in <code>%APPDATA%\\Inkling</code> until you delete that folder."] }
+    {
+      "title": "Get started",
+      "steps": [
+        "Download the installer.",
+        "Open it. Inkling installs itself and opens.",
+        "Write your first note."
+      ]
+    },
+    {
+      "title": "Updates",
+      "body": [
+        "On Windows and Linux, Inkling downloads new versions by itself and installs them when you close it. On a Mac, download the new version from this page."
+      ]
+    },
+    {
+      "title": "Removing it",
+      "body": [
+        "On Windows, uninstall it under Settings, Apps, Installed apps. Your notes stay in <code>%APPDATA%\\Inkling</code> until you delete that folder."
+      ]
+    }
   ],
   "faq": [
-    { "q": "Is Inkling free?", "a": ["Yes. There is no account, no subscription and nothing to unlock."] },
-    { "q": "Why does Windows say it protected my PC?", "a": ["Inkling is not signed with a paid certificate, so Windows warns about it the first time. Click More info, then Run anyway."] },
-    { "q": "Where are my notes?", "a": ["In one file, <code>inkling.db</code>: in <code>%APPDATA%\\Inkling</code> on Windows, <code>~/Library/Application Support/Inkling</code> on macOS and <code>~/.config/Inkling</code> on Linux. The last five backups sit next to it."] },
-    { "q": "Does it work offline?", "a": ["Yes, all of it. Inkling only goes online at start, to look for a new version."] },
-    { "q": "Can I take my notes with me?", "a": ["Yes. The export button above a note saves it as Markdown, and everything else is one SQLite file you can copy."] },
-    { "q": "How do the flashcards know when to come back?", "a": ["Each time you rate a card, Inkling works out when you are about to forget it and schedules it for then. Cards you know well come back less often."] }
+    {
+      "q": "Is Inkling free?",
+      "a": [
+        "Yes. There is no account, no subscription and nothing to unlock."
+      ]
+    },
+    {
+      "q": "Why does Windows say it protected my PC?",
+      "a": [
+        "Inkling is not signed with a paid certificate, so Windows warns about it the first time. Click More info, then Run anyway."
+      ]
+    },
+    {
+      "q": "Where are my notes?",
+      "a": [
+        "In one file, <code>inkling.db</code>: in <code>%APPDATA%\\Inkling</code> on Windows, <code>~/Library/Application Support/Inkling</code> on macOS and <code>~/.config/Inkling</code> on Linux. The last five backups sit next to it."
+      ]
+    },
+    {
+      "q": "Does it work offline?",
+      "a": [
+        "Yes, all of it. Inkling only goes online at start, to look for a new version."
+      ]
+    },
+    {
+      "q": "Can I take my notes with me?",
+      "a": [
+        "Yes. The export button above a note saves it as Markdown, and everything else is one SQLite file you can copy."
+      ]
+    },
+    {
+      "q": "How do the flashcards know when to come back?",
+      "a": [
+        "Each time you rate a card, Inkling works out when you are about to forget it and schedules it for then. Cards you know well come back less often."
+      ]
+    }
   ],
-  "closing": { "title": "Get Inkling", "sub": "Free for Windows, macOS and Linux." },
-  "footer": ["For AI assistants: <a href=\"/skill/inkling.zip\">the Inkling skill</a> and <a href=\"/llms.txt\">llms.txt</a>."]
+  "closing": {
+    "title": "Get Inkling",
+    "sub": "Free for Windows, macOS and Linux."
+  },
+  "footer": [
+    "For AI assistants: <a href=\"/skill/inkling.zip\">the Inkling skill</a> and <a href=\"/llms.txt\">llms.txt</a>."
+  ]
 }
