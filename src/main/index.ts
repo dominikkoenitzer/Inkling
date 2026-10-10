@@ -12,6 +12,9 @@ if (process.env['INKLING_USERDATA']) {
   app.setPath('userData', process.env['INKLING_USERDATA'])
 }
 
+// The seed, screenshot and eval hooks below work in unpackaged builds only.
+const devHooks = !app.isPackaged
+
 // Two copies on one database overwrite each other's notes. Electron keys this lock to the
 // userData path, so it is taken after the hook above: a separate profile gets its own.
 const isPrimary = app.requestSingleInstanceLock()
@@ -94,7 +97,7 @@ function createMainWindow(): void {
   }
 
   // Headless visual verification: INKLING_SCREENSHOT=<path> captures the window then quits.
-  const shotPath = process.env['INKLING_SCREENSHOT']
+  const shotPath = devHooks ? process.env['INKLING_SCREENSHOT'] : undefined
   if (shotPath) {
     mainWindow.webContents.on('did-finish-load', () => {
       const evalJs = process.env['INKLING_EVAL']
@@ -231,14 +234,14 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('trash purge failed', err)
   }
-  if (process.env['INKLING_SEED']) seedDemo()
+  if (devHooks && process.env['INKLING_SEED']) seedDemo()
   // First run: one notebook and a welcome page, rather than a wizard asking for both.
   repos.bootstrapFirstRun()
   registerIpc()
   createMainWindow()
 
   // Packaged builds only, never in dev or during a headless capture.
-  if (app.isPackaged && !process.env['INKLING_SCREENSHOT']) {
+  if (app.isPackaged) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
   }
 
