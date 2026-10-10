@@ -10,7 +10,7 @@ let db: Database.Database
 vi.mock('../src/main/db', () => ({ getDb: () => db }))
 
 const { createNote } = await import('../src/main/repos/notes')
-const { removeTask, syncNoteTasks, updateTask } = await import('../src/main/repos/tasks')
+const { adoptLooseTasks, openTasks, setTaskDone, syncNoteTasks } = await import('../src/main/repos/tasks')
 const { searchQuery } = await import('../src/main/repos/search')
 
 const tasksForNote = (noteId: number): Task[] => db.prepare(`SELECT * FROM tasks WHERE note_id = ? ORDER BY id`).all(noteId) as Task[]
@@ -65,57 +65,21 @@ beforeEach(() => {
   `)
 })
 
-describe('a note-linked task edited in Tasks', () => {
-  it('keeps its new title through the next note sync', () => {
+describe('ticking a task outside the editor', () => {
+  it('writes the tick into the note and keeps it through the next sync', () => {
     const { noteId, ids } = linkedNote()
 
-    updateTask(ids[0], { title: 'Buy nutrient agar' })
+    setTaskDone(ids[0], true)
     syncNoteTasks(noteId, 1, itemsOf(content(noteId)))
 
-    expect(tasksForNote(noteId).map((t) => t.title)).toEqual(['Buy nutrient agar', 'Book the lab'])
-    expect(searchQuery('nutrient').map((r) => [r.source_type, r.source_id])).toEqual(
-      expect.arrayContaining([
-        ['task', ids[0]],
-        ['note', noteId]
-      ])
-    )
+    expect(tasksForNote(noteId).map((t) => [t.title, t.status])).toEqual([
+      ['Buy agar', 'done'],
+      ['Book the lab', 'todo']
+    ])
+    expect(JSON.parse(content(noteId)).content[0].content[0].attrs.checked).toBe(true)
   })
 
-  it('stays deleted through the next note sync', () => {
-    const { noteId, ids } = linkedNote()
-
-    removeTask(ids[0])
-    syncNoteTasks(noteId, 1, itemsOf(content(noteId)))
-
-    expect(tasksForNote(noteId).map((t) => t.title)).toEqual(['Book the lab'])
-    expect(JSON.parse(content(noteId))).toEqual({ type: 'doc', content: [list(item(ids[1], 'Book the lab'))] })
-    expect(searchQuery('agar')).toEqual([])
-  })
-
-  it('leaves a valid document when the last item of the only list goes', () => {
-    const note = createNote({ notebook_id: 1, title: 'Lab', content: docOf(list(item(null, 'Buy agar'))) })
-    const [id] = syncNoteTasks(note.id, 1, itemsOf(note.content))
-    raw.prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(docOf(list(item(id, 'Buy agar'))), note.id)
-
-    removeTask(id)
-
-    expect(JSON.parse(content(note.id))).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] })
-    expect(tasksForNote(note.id)).toEqual([])
-  })
-
-  it('keeps the sub-items of a deleted item as tasks of their own', () => {
-    const note = createNote({ notebook_id: 1, title: 'Lab', content: docOf(list(item(null, 'Prepare', list(item(null, 'Buy agar'))))) })
-    const [parent, child] = syncNoteTasks(note.id, 1, itemsOf(note.content))
-    raw.prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(docOf(list(item(parent, 'Prepare', list(item(child, 'Buy agar'))))), note.id)
-
-    removeTask(parent)
-    syncNoteTasks(note.id, 1, itemsOf(content(note.id)))
-
-    expect(JSON.parse(content(note.id))).toEqual({ type: 'doc', content: [list(item(child, 'Buy agar'))] })
-    expect(tasksForNote(note.id).map((t) => t.id)).toEqual([child])
-  })
-
-  it('does not rewrite the item when only the status changes', () => {
+  it('leaves the item text and its marks alone', () => {
     const { noteId, ids } = linkedNote()
     const bold = docOf(
       list(
@@ -125,10 +89,56 @@ describe('a note-linked task edited in Tasks', () => {
     )
     raw.prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(bold, noteId)
 
-    updateTask(ids[0], { title: 'Buy agar', status: 'done' })
+    setTaskDone(ids[0], true)
 
     const after = JSON.parse(content(noteId))
     expect(after.content[0].content[0].content[0].content).toEqual(JSON.parse(bold).content[0].content[0].content[0].content)
     expect(after.content[0].content[0].attrs.checked).toBe(true)
+    expect(searchQuery('agar').map((r) => r.source_type)).toEqual(expect.arrayContaining(['task', 'note']))
+  })
+})
+
+describe('openTasks', () => {
+  it('lists open checkboxes of live notes with the note title', () => {
+    const { noteId, ids } = linkedNote()
+    setTaskDone(ids[1], true)
+
+    expect(openTasks().map((t) => [t.title, t.note_title])).toEqual([['Buy agar', 'Lab']])
+
+    raw.prepare(`UPDATE notes SET deleted_at = '2026-01-01' WHERE id = ?`).run(noteId)
+    expect(openTasks()).toEqual([])
+  })
+})
+
+describe('adoptLooseTasks', () => {
+  it('gives tasks without a note a "Tasks" note per notebook', () => {
+    raw.exec(`INSERT INTO tasks (notebook_id, note_id, title, status) VALUES (1, NULL, 'Call Anna', 'todo'), (1, NULL, 'Pay rent', 'done'), (2, NULL, 'Read', 'todo')`)
+
+    expect(adoptLooseTasks()).toBe(3)
+
+    const notes = raw.prepare(`SELECT id, notebook_id, title, content FROM notes ORDER BY id`).all() as Array<{ id: number; notebook_id: number; title: string; content: string }>
+    expect(notes.map((n) => [n.notebook_id, n.title])).toEqual([
+      [1, 'Tasks'],
+      [2, 'Tasks']
+    ])
+    expect(itemsOf(notes[0].content).map((i) => [i.title, i.checked])).toEqual([
+      ['Call Anna', false],
+      ['Pay rent', true]
+    ])
+    // The next editor sync matches the same rows instead of making new ones.
+    const ids = tasksForNote(notes[0].id).map((t) => t.id)
+    expect(syncNoteTasks(notes[0].id, 1, itemsOf(notes[0].content))).toEqual(ids)
+    expect(adoptLooseTasks()).toBe(0)
+  })
+
+  it('drops the tasks of a note that was deleted for good', () => {
+    const { noteId } = linkedNote()
+    raw.exec(`PRAGMA foreign_keys = OFF`)
+    raw.prepare(`DELETE FROM notes WHERE id = ?`).run(noteId)
+
+    adoptLooseTasks()
+
+    expect(tasksForNote(noteId)).toEqual([])
+    expect(raw.prepare(`SELECT COUNT(*) AS n FROM notes`).get()).toEqual({ n: 0 })
   })
 })

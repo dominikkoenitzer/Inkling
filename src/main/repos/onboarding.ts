@@ -1,56 +1,37 @@
+import { getDb } from '../db'
 import { createNote } from './notes'
 import { createNotebook, listNotebooks } from './notebooks'
+import { syncNoteTasks } from './tasks'
 
-function welcomeDoc(): string {
+const text = (t: string): object => ({ type: 'text', text: t })
+const p = (...parts: object[]): object => ({ type: 'paragraph', content: parts })
+const h2 = (t: string): object => ({ type: 'heading', attrs: { level: 2 }, content: [text(t)] })
+
+function welcomeDoc(taskId: number | null): string {
   return JSON.stringify({
     type: 'doc',
     content: [
-      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Welcome to Inkling' }] },
-      {
-        type: 'paragraph',
-        content: [
-          { type: 'text', text: 'This is your first page. Type anywhere. Everything saves automatically. Wrap a word in asterisks for ' },
-          { type: 'text', marks: [{ type: 'bold' }], text: 'bold' },
-          { type: 'text', text: ' or ' },
-          { type: 'text', marks: [{ type: 'italic' }], text: 'italic' },
-          { type: 'text', text: ', or start a line with # for a heading.' }
-        ]
-      },
-      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Checkboxes become real tasks' }] },
-      {
-        type: 'paragraph',
-        content: [{ type: 'text', text: 'Type [] at the start of a line. The item also shows up in your Tasks tab, fully linked both ways.' }]
-      },
+      p(text('This is a note. Type anywhere, it saves as you go.')),
+      h2('To-dos'),
+      p(text('Start a line with [] to make a checkbox. Open ones show up on Today.')),
       {
         type: 'taskList',
-        content: [
-          {
-            type: 'taskItem',
-            attrs: { checked: false, taskId: null },
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Check me off, then watch the Tasks tab' }] }]
-          }
-        ]
+        content: [{ type: 'taskItem', attrs: { checked: false, taskId }, content: [p(text('Tick me off'))] }]
       },
-      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Lines like these become flashcards' }] },
-      { type: 'paragraph', content: [{ type: 'text', text: 'Photosynthesis :: The process plants use to convert light into energy' }] },
-      { type: 'paragraph', content: [{ type: 'text', text: 'Mitochondria :: The powerhouse of the cell' }] },
-      {
-        type: 'paragraph',
-        content: [{ type: 'text', text: 'Hit the Flashcards button in the editor toolbar to turn them into a deck.' }]
-      }
+      h2('Flashcards'),
+      p(text('Write a term, two colons, then what it means:')),
+      p(text('Photosynthesis :: How plants turn light into energy')),
+      p(text('Mitochondria :: Makes the energy the cell runs on')),
+      p(text('Then press Flashcards above the note. Study shows you each card when it is due.'))
     ]
   })
 }
 
-/**
- * First run: one notebook and one page explaining the app, created on the spot.
- *
- * This replaced a three-step wizard that asked for a notebook name, a "purpose" that only
- * changed which empty notebooks got made, and whether you wanted a journal. Renaming a
- * notebook takes one click, so asking first was ceremony.
- */
-export function bootstrapFirstRun(name = 'My Notebook'): void {
+/** First run: one welcome note, made on the spot. */
+export function bootstrapFirstRun(): void {
   if (listNotebooks().length > 0) return
-  const first = createNotebook({ name, color: 'teal' })
-  createNote({ notebook_id: first.id, title: 'Welcome to Inkling', content: welcomeDoc() })
+  const home = createNotebook({ name: 'Notes', color: 'teal' })
+  const note = createNote({ notebook_id: home.id, title: 'Welcome to Inkling', content: welcomeDoc(null) })
+  const [taskId] = syncNoteTasks(note.id, home.id, [{ taskId: null, title: 'Tick me off', checked: false }])
+  getDb().prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(welcomeDoc(taskId), note.id)
 }

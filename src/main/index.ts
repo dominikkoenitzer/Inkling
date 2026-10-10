@@ -3,9 +3,11 @@ import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
 import { pathToFileURL } from 'url'
-import { openDb, getDb } from './db'
+import { openDb } from './db'
 import { registerIpc } from './ipc'
 import * as repos from './repos'
+import { seedDemo } from './seed'
+import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
 if (process.env['INKLING_USERDATA']) {
@@ -66,15 +68,20 @@ function blockOffAppNavigation(contents: Electron.WebContents): void {
 }
 
 function createMainWindow(): void {
+  // Built in the saved theme from the first frame, so a light setup never flashes dark.
+  const chrome = CHROME[themeOf(repos.getSetting('theme'))]
+  const shotPath = devHooks ? process.env['INKLING_SCREENSHOT'] : undefined
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 860,
-    minWidth: 960,
-    minHeight: 600,
+    minWidth: 860,
+    minHeight: 560,
     show: false,
-    backgroundColor: '#191a1d',
+    // A capture renders off screen and never takes focus or a taskbar slot.
+    ...(shotPath ? { x: -32000, y: -32000, skipTaskbar: true, focusable: false } : {}),
+    backgroundColor: chrome.color,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#191a1d', symbolColor: '#b9bbc2', height: 36 },
+    titleBarOverlay: { ...chrome, height: TITLEBAR_HEIGHT },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -83,7 +90,7 @@ function createMainWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => mainWindow?.show())
+  mainWindow.on('ready-to-show', () => (shotPath ? mainWindow?.showInactive() : mainWindow?.show()))
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     openExternalLink(url)
     return { action: 'deny' }
@@ -97,7 +104,6 @@ function createMainWindow(): void {
   }
 
   // Headless visual verification: INKLING_SCREENSHOT=<path> captures the window then quits.
-  const shotPath = devHooks ? process.env['INKLING_SCREENSHOT'] : undefined
   if (shotPath) {
     mainWindow.webContents.on('did-finish-load', () => {
       const evalJs = process.env['INKLING_EVAL']
@@ -137,80 +143,6 @@ function createMainWindow(): void {
   })
 }
 
-function seedDemo(): void {
-  if (repos.listNotebooks().length > 0) return
-  repos.bootstrapFirstRun('Biology 101')
-  const nb = repos.listNotebooks()[0]
-  const today = new Date()
-  today.setHours(17, 0, 0, 0)
-  const tomorrow = new Date(today.getTime() + 24 * 3600 * 1000)
-  repos.createTask({ notebook_id: nb.id, title: 'Finish reading Ch. 4', due_date: today.toISOString() })
-  repos.createTask({ notebook_id: nb.id, title: 'Lab report draft', due_date: tomorrow.toISOString() })
-  repos.createTask({ notebook_id: nb.id, title: 'Email study group' })
-  const deck = repos.createDeck(nb.id, 'Cell biology')
-  repos.addCard(deck.id, 'Photosynthesis', 'The process plants use to convert light into energy')
-  repos.addCard(deck.id, 'Mitochondria', 'The powerhouse of the cell')
-  repos.addCard(deck.id, 'Osmosis', 'Diffusion of water across a semipermeable membrane')
-  seedHistory(deck.id)
-
-  // A couple of neighbours so the notebook rail and the subject list are not a single item.
-  const maths = repos.createNotebook({ name: 'Maths', color: 'coral' })
-  repos.createNote({ notebook_id: maths.id, title: 'Integration by parts', content: page('Integration by parts', 'u dv = uv minus the integral of v du. Pick u so that du is simpler.') })
-  repos.createTask({ notebook_id: maths.id, title: 'Problem set 7', due_date: tomorrow.toISOString() })
-  const history = repos.createNotebook({ name: 'History', color: 'amber' })
-  repos.createNote({ notebook_id: history.id, title: 'Cold War timeline', content: page('Cold War timeline', '1947 Truman Doctrine. 1961 Berlin Wall. 1989 it comes down.') })
-}
-
-/** A one-heading, one-paragraph TipTap document, for demo pages. */
-function page(title: string, body: string): string {
-  return JSON.stringify({
-    type: 'doc',
-    content: [
-      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: title }] },
-      { type: 'paragraph', content: [{ type: 'text', text: body }] }
-    ]
-  })
-}
-
-/** Demo study history for screenshots. Deterministic, and only behind INKLING_SEED. */
-function seedHistory(deckId: number): void {
-  const db = getDb()
-  const cardIds = (db.prepare(`SELECT id FROM flashcards WHERE deck_id = ?`).all(deckId) as Array<{ id: number }>).map((c) => c.id)
-  if (cardIds.length === 0) return
-
-  const tx = db.transaction(() => {
-    for (let daysAgo = 120; daysAgo >= 0; daysAgo--) {
-      // A believable pattern: mostly-studied weekdays with occasional gaps.
-      const day = new Date()
-      day.setHours(19, 30, 0, 0)
-      day.setDate(day.getDate() - daysAgo)
-      const weekday = day.getDay()
-      if (weekday === 0 && daysAgo % 3 !== 0) continue
-      if ((daysAgo * 7) % 11 === 0) continue
-
-      const count = 4 + ((daysAgo * 13) % 17)
-      for (let i = 0; i < count; i++) {
-        const at = new Date(day.getTime() + i * 45_000)
-        const roll = (daysAgo * 31 + i * 7) % 100
-        const rating = roll < 11 ? 1 : roll < 26 ? 2 : roll < 86 ? 3 : 4
-        const stability = 2 + ((120 - daysAgo) / 120) * 40
-        repos.logReview({
-          cardId: cardIds[i % cardIds.length],
-          deckId,
-          rating,
-          state: 'review',
-          stability,
-          difficulty: 5.5,
-          elapsedDays: Math.max(0, stability * 0.9),
-          scheduledDays: stability,
-          reviewedAt: at.toISOString()
-        })
-      }
-    }
-  })
-  tx()
-}
-
 app.on('second-instance', () => {
   if (!mainWindow) return
   if (mainWindow.isMinimized()) mainWindow.restore()
@@ -227,7 +159,9 @@ app.whenReady().then(() => {
     console.error('trash purge failed', err)
   }
   if (devHooks && process.env['INKLING_SEED']) seedDemo()
-  // First run: one notebook and a welcome page, rather than a wizard asking for both.
+  // Tasks from before checkboxes lived only in notes get a note of their own.
+  repos.adoptLooseTasks()
+  // First run: a welcome note, no wizard.
   repos.bootstrapFirstRun()
   registerIpc()
   createMainWindow()

@@ -29,21 +29,20 @@ export function searchQuery(q: string): SearchResult[] {
        FROM search_index WHERE search_index MATCH ? ORDER BY rank LIMIT 20`
     )
     .all(match) as Array<{ title: string; snippet: string; source_type: string; source_id: string }>
+  // What each kind of hit opens: a live note, the live note a task sits in, or a deck.
+  const targets: Record<SearchResult['source_type'], string> = {
+    note: `SELECT id FROM notes WHERE id = ? AND deleted_at IS NULL`,
+    task: `SELECT t.note_id AS id FROM tasks t JOIN notes n ON n.id = t.note_id WHERE t.id = ? AND n.deleted_at IS NULL`,
+    deck: `SELECT id FROM flashcard_decks WHERE id = ?`
+  }
   const results: SearchResult[] = []
   for (const r of rows) {
     const id = Number(r.source_id)
-    let notebookId: number | null = null
-    if (r.source_type === 'note') notebookId = (getDb().prepare(`SELECT notebook_id FROM notes WHERE id = ? AND deleted_at IS NULL`).get(id) as { notebook_id: number } | undefined)?.notebook_id ?? null
-    else if (r.source_type === 'task') notebookId = (getDb().prepare(`SELECT notebook_id FROM tasks WHERE id = ?`).get(id) as { notebook_id: number } | undefined)?.notebook_id ?? null
-    else if (r.source_type === 'deck') notebookId = (getDb().prepare(`SELECT notebook_id FROM flashcard_decks WHERE id = ?`).get(id) as { notebook_id: number } | undefined)?.notebook_id ?? null
-    if (notebookId === null) continue // stale index row
-    results.push({
-      source_type: r.source_type as SearchResult['source_type'],
-      source_id: id,
-      title: r.title,
-      snippet: r.snippet,
-      notebook_id: notebookId
-    })
+    const type = r.source_type as SearchResult['source_type']
+    // A task opens the note it lives in; a row whose target is gone is stale and skipped.
+    const target = getDb().prepare(targets[type]).get(id) as { id: number } | undefined
+    if (!target) continue
+    results.push({ source_type: type, source_id: id, title: r.title, snippet: r.snippet, note_id: type === 'deck' ? null : target.id })
   }
   return results
 }

@@ -5,10 +5,9 @@ import type { Note } from '@shared/types'
 
 const EMPTY_DOC = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] })
 
-export function listNotes(notebookId: number): Note[] {
-  return getDb()
-    .prepare(`SELECT * FROM notes WHERE notebook_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC`)
-    .all(notebookId) as Note[]
+/** Every live note, newest edit first. */
+export function listNotes(): Note[] {
+  return getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY updated_at DESC`).all() as Note[]
 }
 
 export function getNote(id: number): Note | null {
@@ -75,8 +74,13 @@ export function purgeExpiredNotes(): number {
     .prepare(`SELECT id FROM notes WHERE deleted_at IS NOT NULL AND deleted_at < ?`)
     .all(cutoff) as Array<{ id: number }>
   const del = getDb().prepare(`DELETE FROM notes WHERE id = ?`)
+  const taskIds = getDb().prepare(`SELECT id FROM tasks WHERE note_id = ?`)
+  const delTasks = getDb().prepare(`DELETE FROM tasks WHERE note_id = ?`)
   const tx = getDb().transaction(() => {
     for (const n of stale) {
+      // A note's checkboxes go with it.
+      for (const t of taskIds.all(n.id) as Array<{ id: number }>) ftsDelete('task', t.id)
+      delTasks.run(n.id)
       del.run(n.id)
       ftsDelete('note', n.id)
     }

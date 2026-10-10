@@ -1,6 +1,8 @@
 import { getDb } from '../db'
-import { ftsDelete } from './search'
 import type { ColorKey, Notebook } from '@shared/types'
+
+// Notebooks are a storage detail now: the app shows one list of notes. Older databases can
+// hold several, and their notes all show up together.
 
 export function listNotebooks(): Notebook[] {
   return getDb().prepare(`SELECT * FROM notebooks ORDER BY sort_order, id`).all() as Notebook[]
@@ -14,26 +16,7 @@ export function createNotebook(input: { name: string; color: ColorKey }): Notebo
   return getDb().prepare(`SELECT * FROM notebooks WHERE id = ?`).get(info.lastInsertRowid) as Notebook
 }
 
-export function updateNotebook(id: number, patch: Record<string, unknown>): Notebook {
-  const allowed = ['name', 'color', 'sort_order'] as const
-  const keys = allowed.filter((k) => k in patch)
-  if (keys.length > 0) {
-    const sets = keys.map((k) => `${k} = @${k}`).join(', ')
-    getDb().prepare(`UPDATE notebooks SET ${sets} WHERE id = @id`).run({ ...patch, id })
-  }
-  return getDb().prepare(`SELECT * FROM notebooks WHERE id = ?`).get(id) as Notebook
-}
-
-export function removeNotebook(id: number): void {
-  const db = getDb()
-  const noteIds = db.prepare(`SELECT id FROM notes WHERE notebook_id = ?`).all(id) as Array<{ id: number }>
-  const taskIds = db.prepare(`SELECT id FROM tasks WHERE notebook_id = ?`).all(id) as Array<{ id: number }>
-  const deckIds = db.prepare(`SELECT id FROM flashcard_decks WHERE notebook_id = ?`).all(id) as Array<{ id: number }>
-  const tx = db.transaction(() => {
-    for (const n of noteIds) ftsDelete('note', n.id)
-    for (const t of taskIds) ftsDelete('task', t.id)
-    for (const d of deckIds) ftsDelete('deck', d.id)
-    db.prepare(`DELETE FROM notebooks WHERE id = ?`).run(id)
-  })
-  tx()
+/** Where new notes and decks go: the first notebook, made on the spot if there is none. */
+export function homeNotebookId(): number {
+  return listNotebooks()[0]?.id ?? createNotebook({ name: 'Notes', color: 'teal' }).id
 }

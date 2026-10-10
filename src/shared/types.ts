@@ -2,7 +2,6 @@ import type { CardState } from './fsrs'
 
 export type ColorKey = 'teal' | 'coral' | 'amber' | 'pink' | 'gray'
 export type TaskStatus = 'todo' | 'done'
-export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study'
 
 export interface Notebook {
   id: number
@@ -32,6 +31,11 @@ export interface Task {
   due_date: string | null // ISO UTC
   created_at: string
   completed_at: string | null
+}
+
+/** An open checkbox from a live note, with that note's title for Today. */
+export interface OpenTask extends Task {
+  note_title: string | null
 }
 
 export interface Deck {
@@ -69,7 +73,8 @@ export interface SearchResult {
   source_id: number
   title: string
   snippet: string
-  notebook_id: number
+  /** The note a note or task result opens; null for a deck. */
+  note_id: number | null
 }
 
 export interface NoteTaskItem {

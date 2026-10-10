@@ -34,7 +34,7 @@ vi.mock('electron', () => ({ app: electron.app, BrowserWindow: electron.BrowserW
 vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn() } }))
 vi.mock('../src/main/db', () => ({ openDb: electron.openDb, getDb: vi.fn() }))
 vi.mock('../src/main/ipc', () => ({ registerIpc: vi.fn() }))
-vi.mock('../src/main/repos', () => ({ purgeExpiredNotes: vi.fn(), bootstrapFirstRun: vi.fn() }))
+vi.mock('../src/main/repos', () => ({ purgeExpiredNotes: vi.fn(), adoptLooseTasks: vi.fn(), bootstrapFirstRun: vi.fn(), getSetting: vi.fn(() => null) }))
 
 type FakeWindow = InstanceType<typeof electron.BrowserWindow>
 

@@ -8,10 +8,7 @@ const invoke =
 
 const api: InklingApi = {
   notebooks: {
-    list: invoke('notebooks.list'),
-    create: invoke('notebooks.create'),
-    update: invoke('notebooks.update'),
-    remove: invoke('notebooks.remove')
+    home: invoke('notebooks.home')
   },
   notes: {
     list: invoke('notes.list'),
@@ -24,12 +21,8 @@ const api: InklingApi = {
     syncCards: invoke('notes.syncCards')
   },
   tasks: {
-    list: invoke('tasks.list'),
-    smart: invoke('tasks.smart'),
-    get: invoke('tasks.get'),
-    create: invoke('tasks.create'),
-    update: invoke('tasks.update'),
-    remove: invoke('tasks.remove')
+    open: invoke('tasks.open'),
+    setDone: invoke('tasks.setDone')
   },
   decks: {
     list: invoke('decks.list'),

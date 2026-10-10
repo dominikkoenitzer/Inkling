@@ -1,5 +1,5 @@
 import type {
-  Notebook,
+  OpenTask,
   Note,
   Task,
   Deck,
@@ -7,19 +7,16 @@ import type {
   SearchResult,
   NoteTaskItem,
   NoteCardLine,
-  ColorKey,
   ReviewGrade,
 } from './types'
 
 export interface InklingApi {
   notebooks: {
-    list(): Promise<Notebook[]>
-    create(input: { name: string; color: ColorKey }): Promise<Notebook>
-    update(id: number, patch: Partial<Pick<Notebook, 'name' | 'color' | 'sort_order'>>): Promise<Notebook>
-    remove(id: number): Promise<void>
+    /** The notebook new notes and decks go into. */
+    home(): Promise<number>
   }
   notes: {
-    list(notebookId: number): Promise<Note[]>
+    list(): Promise<Note[]>
     get(id: number): Promise<Note | null>
     create(input: { notebook_id: number; title?: string | null; content?: string }): Promise<Note>
     update(id: number, patch: Partial<Pick<Note, 'title' | 'content' | 'notebook_id'>>): Promise<Note | null>
@@ -31,18 +28,8 @@ export interface InklingApi {
     syncCards(noteId: number, notebookId: number, name: string, lines: NoteCardLine[]): Promise<{ deck: Deck; lineIds: number[] }>
   }
   tasks: {
-    list(notebookId: number): Promise<Task[]>
-    smart(view: 'today' | 'week'): Promise<Task[]>
-    get(id: number): Promise<Task | null>
-    create(input: {
-      notebook_id: number
-      title: string
-      status?: Task['status']
-      due_date?: string | null
-      note_id?: number | null
-    }): Promise<Task>
-    update(id: number, patch: Partial<Pick<Task, 'title' | 'status' | 'due_date' | 'notebook_id'>>): Promise<Task>
-    remove(id: number): Promise<void>
+    open(): Promise<OpenTask[]>
+    setDone(id: number, done: boolean): Promise<Task | null>
   }
   decks: {
     list(notebookId?: number): Promise<Deck[]>
@@ -64,7 +51,8 @@ export interface InklingApi {
     query(q: string): Promise<SearchResult[]>
   }
   app: {
-    setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>
+    /** Matches the window buttons and background to the theme. */
+    setTitlebar(theme: 'light' | 'dark'): Promise<void>
     saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null; error?: string }>
   }
 }

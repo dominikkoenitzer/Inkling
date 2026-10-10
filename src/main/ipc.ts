@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
 import * as repos from './repos'
+import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 
 type Handler = (...args: never[]) => unknown
 
@@ -9,10 +10,7 @@ function handle(channel: string, fn: Handler): void {
 }
 
 export function registerIpc(): void {
-  handle('notebooks.list', repos.listNotebooks)
-  handle('notebooks.create', repos.createNotebook)
-  handle('notebooks.update', repos.updateNotebook)
-  handle('notebooks.remove', repos.removeNotebook)
+  handle('notebooks.home', repos.homeNotebookId)
 
   handle('notes.list', repos.listNotes)
   handle('notes.get', repos.getNote)
@@ -23,12 +21,8 @@ export function registerIpc(): void {
   handle('notes.syncTasks', repos.syncNoteTasks)
   handle('notes.syncCards', repos.syncNoteCards)
 
-  handle('tasks.list', repos.listTasks)
-  handle('tasks.smart', repos.smartTasks)
-  handle('tasks.get', repos.getTask)
-  handle('tasks.create', repos.createTask)
-  handle('tasks.update', repos.updateTask)
-  handle('tasks.remove', repos.removeTask)
+  handle('tasks.open', repos.openTasks)
+  handle('tasks.setDone', repos.setTaskDone)
 
   handle('decks.list', repos.listDecks)
   handle('decks.create', repos.createDeck)
@@ -46,10 +40,11 @@ export function registerIpc(): void {
 
   handle('search.query', repos.searchQuery)
 
-  ipcMain.handle('app.setTitlebar', (event, colors: { color: string; symbolColor: string }) => {
+  ipcMain.handle('app.setTitlebar', (event, theme: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     try {
-      win?.setTitleBarOverlay({ color: colors.color, symbolColor: colors.symbolColor, height: 36 })
+      win?.setTitleBarOverlay({ ...CHROME[themeOf(theme)], height: TITLEBAR_HEIGHT })
+      win?.setBackgroundColor(CHROME[themeOf(theme)].color)
     } catch {
       /* not supported on this platform */
     }
