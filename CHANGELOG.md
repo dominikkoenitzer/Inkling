@@ -8,6 +8,9 @@ All notable changes to Inkling are documented here. The format is based on
 
 A calmer, simpler Inkling, built around your notes.
 
+### Added
+- Start Inkling with `--mcp` and an AI assistant can work with your notes, to-dos and decks.
+
 ### Changed
 - One quiet sidebar: Today, Study and Settings, then all your notes. Notebooks are gone
   from the screen; every note is in one list.
