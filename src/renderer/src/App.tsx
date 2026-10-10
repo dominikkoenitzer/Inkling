@@ -61,8 +61,19 @@ export default function App(): React.JSX.Element {
 
   if (failed) {
     return (
-      <div className="flex h-full items-center justify-center p-8 text-center text-sm" style={{ background: '#fbfaf8', color: '#625d56' }}>
-        Inkling could not open its data. Close it and start it again.
+      <div className="titlebar-drag flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-sm" style={{ background: '#fbfaf8', color: '#625d56' }}>
+        Inkling could not open its data.
+        <button
+          type="button"
+          onClick={() => {
+            useApp.setState({ failed: false })
+            void useApp.getState().init()
+          }}
+          className="no-drag rounded-md border px-3 py-1.5"
+          style={{ borderColor: '#e8e4dd', color: '#1f1d1a' }}
+        >
+          Try again
+        </button>
       </div>
     )
   }

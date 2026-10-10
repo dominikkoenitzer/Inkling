@@ -81,6 +81,7 @@ export const useApp = create<AppState>((set, get) => ({
       const [settings, home] = await Promise.all([api.settings.all(), api.notebooks.home()])
       set({
         ready: true,
+        failed: false,
         theme: settings['theme'] === 'dark' ? 'dark' : 'light',
         fsrsParams: parseParams(settings['fsrs_params']),
         homeNotebookId: home

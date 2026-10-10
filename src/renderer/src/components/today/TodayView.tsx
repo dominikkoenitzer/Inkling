@@ -18,6 +18,7 @@ export function TodayView(): React.JSX.Element {
   const [tasks, setTasks] = useState<OpenTask[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
   // Ticked rows stay on screen, struck through, until the next visit.
   const [ticked, setTicked] = useState<Set<number>>(new Set())
 
@@ -36,8 +37,9 @@ export function TodayView(): React.JSX.Element {
         })
         setDecks(d.filter((x) => x.due_count > 0))
         setLoaded(true)
+        setFailed(false)
       },
-      () => !stale && setLoaded(true)
+      () => !stale && setFailed(true)
     )
     return () => {
       stale = true
@@ -73,7 +75,9 @@ export function TodayView(): React.JSX.Element {
         <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Today</h1>
         <p className="mt-1 text-sm text-muted">{longDate.format(new Date())}</p>
 
-        {empty && (
+        {failed && <p className="mt-16 text-sm text-muted">Today could not be loaded. It tries again as soon as anything changes.</p>}
+
+        {empty && !failed && (
           <div className="mt-16 flex flex-col items-center text-center">
             <Inky size={44} className="mb-4" />
             <p className="text-[15px] text-ink">Nothing open. Enjoy the calm.</p>

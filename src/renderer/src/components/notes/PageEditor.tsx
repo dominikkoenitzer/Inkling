@@ -120,6 +120,10 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       if (!editor.isDestroyed) {
         assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
         json = editor.getJSON() as Record<string, unknown>
+      } else {
+        // Closed while syncing: stamp the ids into the snapshot itself, so the saved note
+        // still knows which task each checkbox is.
+        json = stampTaskIds(json, ids)
       }
       lastItemsRef.current = extractNoteTaskItems(json)
       bumpData('tasks')
@@ -273,6 +277,23 @@ function assignNodeIds(
     view.dispatch(tr)
     syncingRef.current = false
   }
+}
+
+/** The same stamping as `assignNodeIds`, on plain JSON: task items in document order. */
+function stampTaskIds(doc: Record<string, unknown>, ids: number[]): Record<string, unknown> {
+  let i = 0
+  const walk = (n: unknown): unknown => {
+    if (!n || typeof n !== 'object') return n
+    const node = n as { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }
+    const next: typeof node = { ...node }
+    if (node.type === 'taskItem') {
+      const want = ids[i++]
+      if (want !== undefined && want > 0) next.attrs = { ...node.attrs, taskId: want }
+    }
+    if (Array.isArray(node.content)) next.content = node.content.map(walk)
+    return next
+  }
+  return walk(doc) as Record<string, unknown>
 }
 
 function safeParse(content: string): object {

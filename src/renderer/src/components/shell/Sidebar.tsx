@@ -87,7 +87,6 @@ function NavRow({
 
 // Notes deleted while one undo toast is up: its Undo brings all of them back.
 let undoable: number[] = []
-let undoableUntil = 0
 
 function NotesList(): React.JSX.Element {
   const view = useApp((s) => s.view)
@@ -104,30 +103,33 @@ function NotesList(): React.JSX.Element {
   }, [version])
 
   const remove = (n: Note, row: HTMLElement | null): void => {
-    const app = useApp.getState()
     // Keep the keyboard in the list: the next row, or the one before, takes focus.
     const next = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('button') as HTMLElement | null
-    if (app.selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
+    if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
     // Let the open editor flush its last edit before the note goes.
     setTimeout(() => {
       void api.notes.remove(n.id).then(() => {
         bumpData('notes')
         bumpData('tasks')
-        const now = Date.now()
-        if (now > undoableUntil) undoable = []
-        undoable = [...undoable, n.id]
-        undoableUntil = now + 6000
+        // Opened again in the meantime: it is gone now, so close it.
+        if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
+        // The list only grows while its own toast is still the one on screen.
+        if (!useApp.getState().toast?.message.startsWith('Deleted')) undoable = []
+        if (!undoable.includes(n.id)) undoable = [...undoable, n.id]
         const ids = undoable
-        app.showToast({
+        useApp.getState().showToast({
           message: ids.length === 1 ? `Deleted "${n.title?.trim() || 'Untitled'}"` : `Deleted ${ids.length} notes`,
           actionLabel: 'Undo',
           onAction: () => {
             undoable = []
-            void Promise.all(ids.map((id) => api.notes.restore(id))).then(() => {
-              bumpData('notes')
-              bumpData('tasks')
-              useApp.getState().openNote(ids[ids.length - 1])
-            })
+            Promise.all(ids.map((id) => api.notes.restore(id))).then(
+              () => {
+                bumpData('notes')
+                bumpData('tasks')
+                useApp.getState().openNote(ids[ids.length - 1])
+              },
+              () => useApp.getState().showToast({ message: 'Could not bring the note back.' })
+            )
           }
         })
       })

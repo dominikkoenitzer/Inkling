@@ -88,6 +88,8 @@ export function adoptLooseTasks(): number {
   const db = getDb()
   let adopted = 0
   db.transaction(() => {
+    // A task pointing at a note that no longer exists counts as loose too.
+    db.prepare(`UPDATE tasks SET note_id = NULL WHERE note_id IS NOT NULL AND note_id NOT IN (SELECT id FROM notes)`).run()
     const loose = db.prepare(`SELECT * FROM tasks WHERE note_id IS NULL ORDER BY notebook_id, id`).all() as Task[]
     if (loose.length === 0) return
     const notebooks = new Set((db.prepare(`SELECT id FROM notebooks`).all() as Array<{ id: number }>).map((n) => n.id))

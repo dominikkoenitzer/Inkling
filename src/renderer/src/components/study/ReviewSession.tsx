@@ -48,9 +48,9 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
     const card = queue[index]
     if (!card || gradedAt.current === index) return // nothing to grade, or already graded
     gradingRef.current = true
-    gradedAt.current = index
     try {
       const updated = await api.decks.review(card.id, g)
+      gradedAt.current = index
       setReviewed((r) => r + 1)
       setShowBack(false)
       if (g === 'again') {

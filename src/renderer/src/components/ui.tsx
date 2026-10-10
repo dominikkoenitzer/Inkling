@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { useApp } from '@/stores/app'
 
 export function Button({
@@ -85,7 +85,7 @@ export function Modal({
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   // Whatever had focus when the dialog opened gets it back when it closes.
-  const [opener] = useState(() => document.activeElement as HTMLElement | null)
+  const opener = useRef<HTMLElement | null>(null)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -108,12 +108,13 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   useEffect(() => {
+    opener.current = document.activeElement as HTMLElement | null
     // An autofocused field inside keeps its focus; otherwise the dialog itself takes it.
     if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus()
     return () => {
-      if (opener?.isConnected) opener.focus()
+      if (opener.current?.isConnected) opener.current.focus()
     }
-  }, [opener])
+  }, [])
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 p-6" onMouseDown={onClose}>
       <div

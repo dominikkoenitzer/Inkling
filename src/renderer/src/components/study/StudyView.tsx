@@ -244,17 +244,23 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 function CardRow({ card }: { card: Card }): React.JSX.Element {
   const [front, setFront] = useState(card.front)
   const [back, setBack] = useState(card.back)
-  const editing = useRef(false)
+  const dirty = useRef(false)
 
-  // Editing a cloze card rewrites its siblings: take their new text unless this row is in use.
+  // Editing a cloze card rewrites its siblings: take their new text unless this row has
+  // changes of its own that are not saved yet.
   useEffect(() => {
-    if (editing.current) return
+    if (dirty.current) return
     setFront(card.front)
     setBack(card.back)
   }, [card.front, card.back])
 
   const save = (): void => {
-    editing.current = false
+    if (!dirty.current) {
+      setFront(card.front)
+      setBack(card.back)
+      return
+    }
+    dirty.current = false
     const f = front.trim()
     const b = back.trim()
     // Same rule as adding a card: a front, and a back unless the front is a cloze.
@@ -273,8 +279,26 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
 
   return (
     <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
-      <input className={field} value={front} onFocus={() => (editing.current = true)} onChange={(e) => setFront(e.target.value)} onBlur={save} aria-label="Front" />
-      <input className={`${field} text-muted`} value={back} onFocus={() => (editing.current = true)} onChange={(e) => setBack(e.target.value)} onBlur={save} aria-label="Back" />
+      <input
+        className={field}
+        value={front}
+        onChange={(e) => {
+          dirty.current = true
+          setFront(e.target.value)
+        }}
+        onBlur={save}
+        aria-label="Front"
+      />
+      <input
+        className={`${field} text-muted`}
+        value={back}
+        onChange={(e) => {
+          dirty.current = true
+          setBack(e.target.value)
+        }}
+        onBlur={save}
+        aria-label="Back"
+      />
       <div className="flex items-center gap-1">
         <span className="w-14 text-right text-xs text-faint">{due ? 'due' : `in ${card.interval_days}d`}</span>
         <button

@@ -43,7 +43,8 @@ export function CommandPalette(): React.JSX.Element {
   const app = useApp.getState()
   const q = query.trim()
   const pending = q !== '' && results.query !== q
-  const found: Item[] = (q && !pending ? results.hits : []).map((r) => ({
+  // The last answer stays on screen while the next one is on its way, so nothing jumps.
+  const found: Item[] = (q && results.query ? results.hits : []).map((r) => ({
     key: `${r.source_type}-${r.source_id}`,
     icon: r.source_type === 'note' ? <FileText size={16} /> : r.source_type === 'task' ? <CheckSquare size={16} /> : <Layers size={16} />,
     label: r.title || 'Untitled',
@@ -55,6 +56,15 @@ export function CommandPalette(): React.JSX.Element {
     { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl N', run: () => void app.newNote().then(close) }
   ]
   const clamped = Math.min(selected, items.length - 1)
+
+  const enterWaiting = useRef(false)
+  useEffect(() => {
+    if (enterWaiting.current && !pending) {
+      enterWaiting.current = false
+      items[clamped]?.run()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending])
 
   useEffect(() => {
     listRef.current?.querySelectorAll('button')[clamped]?.scrollIntoView({ block: 'nearest' })
@@ -70,8 +80,13 @@ export function CommandPalette(): React.JSX.Element {
       e.preventDefault()
       setSelected(Math.max(clamped - 1, 0))
     }
-    // While the answer for what was just typed is on its way, Enter waits for it.
-    if (e.key === 'Enter' && !pending) items[clamped]?.run()
+    if (e.key === 'Enter') {
+      // Handled here, so the key never reaches what gets focus once the palette closes.
+      e.preventDefault()
+      // While the answer for what was just typed is on its way, Enter waits for it.
+      if (pending) enterWaiting.current = true
+      else items[clamped]?.run()
+    }
   }
 
   return (
