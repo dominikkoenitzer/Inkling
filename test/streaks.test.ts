@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { isLiveDay, localDay, streaksFrom } from '@shared/streaks'
+import { isLiveDay, streaksFrom } from '@shared/streaks'
+import { localDay } from '@shared/day'
 
 /**
  * `today` is injected everywhere so these assertions mean the same thing in June as

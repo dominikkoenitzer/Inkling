@@ -1,4 +1,4 @@
-import { localDayKey } from '@/stores/app'
+import { localDay } from '@shared/day'
 
 export interface HeatmapDay {
   key: string
@@ -25,7 +25,7 @@ export function heatmapColumns(weeks: number, now: Date = new Date()): HeatmapDa
     for (let r = 0; r < 7; r++) {
       const offset = first + c * 7 + r
       const date = new Date(y, m, offset)
-      col.push({ key: localDayKey(date), date, future: offset > today })
+      col.push({ key: localDay(date), date, future: offset > today })
     }
     cols.push(col)
   }

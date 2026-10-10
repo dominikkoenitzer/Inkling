@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
 import type { GradingSystem } from '@shared/grades'
 import { parseParams } from '@shared/fsrs'
+import { localDay } from '@shared/day'
 
 const api = window.inkling
 
@@ -19,11 +20,6 @@ export interface Toast {
 }
 let toastSeq = 0
 
-/** Local YYYY-MM-DD key for streak bookkeeping. The single source of what "today" means. */
-export function localDayKey(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 /** Milliseconds from `now` to the next local midnight, by the calendar (23 or 25 h across DST). */
 export function msUntilNextLocalDay(now: Date = new Date()): number {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime()
@@ -31,7 +27,7 @@ export function msUntilNextLocalDay(now: Date = new Date()): number {
 
 interface AppState {
   ready: boolean
-  /** localDayKey() of the day the UI is showing; moves at local midnight and on focus. */
+  /** localDay() of the day the UI is showing; moves at local midnight and on focus. */
   today: string
   theme: Theme
   gradingSystem: GradingSystem
@@ -81,7 +77,7 @@ interface AppState {
 
 export const useApp = create<AppState>((set, get) => ({
   ready: false,
-  today: localDayKey(),
+  today: localDay(),
   theme: 'dark',
   gradingSystem: 'percent',
   fsrsParams: parseParams(null),
@@ -126,7 +122,7 @@ export const useApp = create<AppState>((set, get) => ({
 
   refreshStreak: async () => set({ streak: await api.streak.get() }),
   syncDay: () => {
-    const today = localDayKey()
+    const today = localDay()
     if (today !== get().today) set({ today })
     void get().refreshStreak()
   },
@@ -182,7 +178,7 @@ export const useApp = create<AppState>((set, get) => ({
   dismissToast: () => set({ toast: null }),
 
   bumpStreak: async () => {
-    const streak = await api.streak.bump(localDayKey())
+    const streak = await api.streak.bump(localDay())
     set({ streak })
   }
 }))

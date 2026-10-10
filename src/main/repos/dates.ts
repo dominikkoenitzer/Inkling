@@ -4,7 +4,7 @@
  * compare against `localDay`.
  */
 
-export { localDay } from '@shared/streaks'
+export { localDay } from '@shared/day'
 
 /** Now, as the UTC ISO string every timestamp column stores. */
 export const now = (): string => new Date().toISOString()

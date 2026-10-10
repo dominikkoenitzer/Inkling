@@ -7,7 +7,8 @@ const inkling = vi.hoisted(() => {
   return api
 })
 
-import { useApp, localDayKey, watchDay, msUntilNextLocalDay } from '../src/renderer/src/stores/app'
+import { useApp, watchDay, msUntilNextLocalDay } from '../src/renderer/src/stores/app'
+import { localDay } from '@shared/day'
 
 describe('msUntilNextLocalDay', () => {
   it('counts to the next local midnight, 25 hours on the night clocks go back', () => {
@@ -24,7 +25,7 @@ describe('watchDay', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 9, 24, 23, 59, 0))
-    useApp.setState({ today: localDayKey(), streak: { count: 3, last_day: '2026-10-24' } })
+    useApp.setState({ today: localDay(), streak: { count: 3, last_day: '2026-10-24' } })
     inkling.streak.get.mockClear()
     stop = watchDay(target)
   })

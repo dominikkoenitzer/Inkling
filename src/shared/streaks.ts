@@ -1,8 +1,6 @@
 /** Streak arithmetic over local calendar days. `repos/streak.ts` supplies the days. */
 
-/** A Date rendered as its local calendar day (`YYYY-MM-DD`), not its UTC one. */
-export const localDay = (d: Date): string =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+import { localDay } from './day'
 
 /** The day before `day`, computed at local noon so a DST shift cannot move it. */
 function dayBefore(day: string): string {

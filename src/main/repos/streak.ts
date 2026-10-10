@@ -1,6 +1,7 @@
 import { getDb } from '../db'
 import { getSetting, setSetting } from './settings'
-import { isLiveDay, localDay, streaksFrom } from '@shared/streaks'
+import { localDay } from '@shared/day'
+import { isLiveDay, streaksFrom } from '@shared/streaks'
 import type { StreakInfo } from '@shared/types'
 
 const noon = (day: string): Date => new Date(`${day}T12:00:00`)

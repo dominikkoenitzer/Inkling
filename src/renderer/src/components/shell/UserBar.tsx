@@ -1,5 +1,6 @@
 import { Settings, Play, Pause } from 'lucide-react'
-import { useApp, localDayKey } from '@/stores/app'
+import { useApp } from '@/stores/app'
+import { localDay } from '@shared/day'
 import { useTimer, fmtClock } from '@/stores/timer'
 import { isColorKey } from '@/lib/colors'
 import { Inky } from '@/components/Inky'
@@ -15,7 +16,7 @@ export function UserBar(): React.JSX.Element {
   const timer = useTimer()
   const active = app.notebooks.find((n) => n.id === app.activeNotebookId)
   const inkyColor = isColorKey(active?.color) ? active!.color : 'teal'
-  const activeToday = app.streak.last_day === localDayKey()
+  const activeToday = app.streak.last_day === localDay()
   const midway = !timer.running && timer.secondsLeft > 0 && timer.secondsLeft < timer.totalSeconds
   const showChip = timer.running || midway
 

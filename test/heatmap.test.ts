@@ -6,13 +6,13 @@ vi.hoisted(() => {
 })
 
 import { heatmapColumns } from '../src/renderer/src/lib/heatmap'
-import { localDayKey } from '../src/renderer/src/stores/app'
+import { localDay } from '@shared/day'
 
 const WEEKS = 27
 
 /** First local day of a `days` window ending today, as the main process computes it. */
 function windowStart(days: number, now: Date): string {
-  return localDayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)))
+  return localDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)))
 }
 
 describe('heatmapColumns', () => {
@@ -25,12 +25,12 @@ describe('heatmapColumns', () => {
   for (let i = 0; i < 7; i++) {
     for (const hour of [0, 12, 23]) {
       const now = new Date(2026, 8, 28 + i, hour, 30)
-      it(`puts today in the last column on ${localDayKey(now)} ${hour}:30`, () => {
+      it(`puts today in the last column on ${localDay(now)} ${hour}:30`, () => {
         const cols = heatmapColumns(WEEKS, now)
         expect(cols).toHaveLength(WEEKS)
         const last = cols[WEEKS - 1]
         expect(last[0].date.getDay()).toBe(1)
-        expect(last[i].key).toBe(localDayKey(now))
+        expect(last[i].key).toBe(localDay(now))
         last.forEach((d, r) => expect(d.future).toBe(r > i))
         expect(cols.flat().filter((d) => d.future)).toHaveLength(6 - i)
         expect(cols[0][0].key >= windowStart(WEEKS * 7, now)).toBe(true)
@@ -48,7 +48,7 @@ describe('heatmapColumns', () => {
         expect(Math.round((b.getTime() - a.getTime()) / 86_400_000)).toBe(1)
         expect(b.getHours()).toBe(0)
       }
-      expect(days.find((d) => d.key === localDayKey(now))?.future).toBe(false)
+      expect(days.find((d) => d.key === localDay(now))?.future).toBe(false)
       expect(days[0].key >= windowStart(WEEKS * 7, now)).toBe(true)
     }
   })
