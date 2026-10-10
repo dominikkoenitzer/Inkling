@@ -5,27 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
-import {
-  Bold,
-  Italic,
-  Underline as UnderlineIcon,
-  Strikethrough,
-  Highlighter,
-  Code,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  ListChecks,
-  Quote,
-  Minus,
-  Undo2,
-  Redo2,
-  Sparkles,
-  Code2,
-  FileDown
-} from 'lucide-react'
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Sparkles, FileDown } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { extractNoteTaskItems, extractNoteCardLines, mergeTaskWriteBacks } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
@@ -356,15 +336,6 @@ function Toolbar({
     <div className="flex flex-wrap items-center gap-0.5 border-b border-edge bg-sunken px-3 py-1.5">
       <ToolbarButton icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
       <ToolbarButton icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
-      <ToolbarButton
-        icon={<UnderlineIcon size={16} />}
-        title="Underline (Ctrl+U)"
-        active={editor.isActive('underline')}
-        action={() => c.toggleUnderline().run()}
-      />
-      <ToolbarButton icon={<Strikethrough size={16} />} title="Strikethrough" active={editor.isActive('strike')} action={() => c.toggleStrike().run()} />
-      <ToolbarButton icon={<Highlighter size={16} />} title="Highlight" active={editor.isActive('highlight')} action={() => c.toggleHighlight().run()} />
-      <ToolbarButton icon={<Code size={16} />} title="Inline code" active={editor.isActive('code')} action={() => c.toggleCode().run()} />
       <Divider />
       <ToolbarButton
         icon={<Heading1 size={16} />}
@@ -377,12 +348,6 @@ function Toolbar({
         title="Heading 2"
         active={editor.isActive('heading', { level: 2 })}
         action={() => c.toggleHeading({ level: 2 }).run()}
-      />
-      <ToolbarButton
-        icon={<Heading3 size={16} />}
-        title="Heading 3"
-        active={editor.isActive('heading', { level: 3 })}
-        action={() => c.toggleHeading({ level: 3 }).run()}
       />
       <Divider />
       <ToolbarButton icon={<List size={16} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={() => c.toggleBulletList().run()} />
@@ -398,12 +363,6 @@ function Toolbar({
         active={editor.isActive('taskList')}
         action={() => c.toggleTaskList().run()}
       />
-      <ToolbarButton icon={<Quote size={16} />} title="Quote (or type >)" active={editor.isActive('blockquote')} action={() => c.toggleBlockquote().run()} />
-      <ToolbarButton icon={<Code2 size={16} />} title="Code block" active={editor.isActive('codeBlock')} action={() => c.toggleCodeBlock().run()} />
-      <ToolbarButton icon={<Minus size={16} />} title="Divider" action={() => c.setHorizontalRule().run()} />
-      <Divider />
-      <ToolbarButton icon={<Undo2 size={16} />} title="Undo (Ctrl+Z)" action={() => c.undo().run()} />
-      <ToolbarButton icon={<Redo2 size={16} />} title="Redo (Ctrl+Y)" action={() => c.redo().run()} />
       <Divider />
       <IconBtn title="Make or update flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1 px-2 text-xs font-medium">
         <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
