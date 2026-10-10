@@ -24,7 +24,6 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   const [reviewed, setReviewed] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const gradingRef = useRef(false)
-  const retention = useApp((s) => s.retention)
   const fsrsParams = useApp((s) => s.fsrsParams)
 
   // However the session is left (finished, a tab switch, the rail), re-read the streak the
@@ -104,7 +103,6 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
       ? previewIntervals(
           { state: card.state, stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review },
           new Date(),
-          retention,
           fsrsParams
         )
       : null

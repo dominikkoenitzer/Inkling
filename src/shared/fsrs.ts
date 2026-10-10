@@ -62,10 +62,8 @@ export const MAX_INTERVAL_DAYS = 36500
 /** A lapsed card comes back inside the same session rather than tomorrow. */
 export const RELEARN_MINUTES = 10
 
-/** Desired retention: the recall chance a card is scheduled for. */
-export const DEFAULT_RETENTION = 0.9
-export const MIN_RETENTION = 0.7
-export const MAX_RETENTION = 0.97
+/** Desired retention, fixed: the recall chance every interval is solved for. */
+export const RETENTION = 0.9
 
 export interface MemoryState {
   stability: number
@@ -113,12 +111,6 @@ export function parseParams(json: string | null | undefined): number[] {
   }
 }
 
-/** Reads a stored desired retention, clamped into the supported band. */
-export function parseRetention(value: string | null | undefined): number {
-  const r = Number(value)
-  return value && Number.isFinite(r) ? clamp(r, MIN_RETENTION, MAX_RETENTION) : DEFAULT_RETENTION
-}
-
 /** The curve's exponent, -w20. FSRS-4.5 fixed it at -0.5. */
 export function decayOf(w: readonly number[] = DEFAULT_PARAMS): number {
   return -w[20]
@@ -137,8 +129,7 @@ export function retrievability(elapsedDays: number, stability: number, w: readon
 
 /** Days until recall decays to `desiredRetention`. The inverse of `retrievability`. */
 export function intervalForRetention(desiredRetention: number, stability: number, w: readonly number[] = DEFAULT_PARAMS): number {
-  const r = clamp(desiredRetention, MIN_RETENTION, MAX_RETENTION)
-  return (stability / factorOf(w)) * (Math.pow(r, 1 / decayOf(w)) - 1)
+  return (stability / factorOf(w)) * (Math.pow(desiredRetention, 1 / decayOf(w)) - 1)
 }
 
 /** Stability of a card answered `rating` the very first time it was seen. */
@@ -255,13 +246,12 @@ export function daysBetween(fromIso: string, to: Date): number {
  * A card seen for the first time gets its memory state initialised from the rating.
  * Otherwise both stability and difficulty are updated from how long it had been since
  * the last review. `Again` always sends the card back inside the session; anything
- * else schedules it for the number of days that lands on `desiredRetention`.
+ * else schedules it for the number of days that lands on `RETENTION`.
  */
 export function schedule(
   card: SchedulableCard,
   rating: Rating,
   now: Date,
-  desiredRetention = DEFAULT_RETENTION,
   w: readonly number[] = DEFAULT_PARAMS
 ): ScheduleResult {
   const isNew = card.state === 'new' || card.stability === null || card.difficulty === null
@@ -289,7 +279,7 @@ export function schedule(
     }
   }
 
-  const scheduledDays = clamp(Math.round(intervalForRetention(desiredRetention, stability, w)), 1, MAX_INTERVAL_DAYS)
+  const scheduledDays = clamp(Math.round(intervalForRetention(RETENTION, stability, w)), 1, MAX_INTERVAL_DAYS)
   return {
     state: 'review',
     stability,
@@ -308,12 +298,11 @@ export function schedule(
 export function previewIntervals(
   card: SchedulableCard,
   now: Date,
-  desiredRetention = DEFAULT_RETENTION,
   w: readonly number[] = DEFAULT_PARAMS
 ): Record<Rating, number> {
   const out = {} as Record<Rating, number>
   for (const rating of [1, 2, 3, 4] as Rating[]) {
-    out[rating] = schedule(card, rating, now, desiredRetention, w).scheduledDays
+    out[rating] = schedule(card, rating, now, w).scheduledDays
   }
   return out
 }

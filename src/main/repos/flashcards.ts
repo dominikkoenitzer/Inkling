@@ -2,7 +2,7 @@ import { getDb } from '../db'
 import { now } from './dates'
 import { ftsDelete, ftsUpsert } from './search'
 import { getSetting } from './settings'
-import { DEFAULT_RETENTION, RATINGS, parseParams, schedule } from '@shared/fsrs'
+import { RATINGS, parseParams, schedule } from '@shared/fsrs'
 import { clozeNumbers } from '@shared/cloze'
 import type { Card, Deck, NoteCardLine, ReviewGrade } from '@shared/types'
 
@@ -84,15 +84,6 @@ export function removeCard(id: number): void {
 }
 
 /**
- * The retention and FSRS parameters in use. Retention is fixed at 90%: the setting was
- * removed in 0.6.0, so a value stored before then is ignored. The parameters are the
- * user's fitted ones, or the defaults.
- */
-export function schedulerSettings(): { retention: number; params: number[] } {
-  return { retention: DEFAULT_RETENTION, params: parseParams(getSetting('fsrs_params')) }
-}
-
-/**
  * Review one card and append to the review log. The scheduling maths is in `@shared/fsrs`;
  * this reads the memory state, writes the new one and records what happened. The old SM-2
  * columns are kept roughly in step for anything still reading them.
@@ -104,12 +95,12 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
 
   // Not the module-level now(): the schedule and the log must use the same instant.
   const reviewedAt = new Date()
-  const { retention, params } = schedulerSettings()
+  // Fitted parameters stored by earlier versions still apply; anything unusable gives the defaults.
+  const params = parseParams(getSetting('fsrs_params'))
   const result = schedule(
     { state: card.state ?? 'new', stability: card.stability, difficulty: card.difficulty, lastReview: card.last_review },
     RATINGS[grade],
     reviewedAt,
-    retention,
     params
   )
   const reviewedAtIso = reviewedAt.toISOString()

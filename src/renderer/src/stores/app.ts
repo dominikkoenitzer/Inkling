@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
 import type { GradingSystem } from '@shared/grades'
-import { DEFAULT_RETENTION, parseParams } from '@shared/fsrs'
+import { parseParams } from '@shared/fsrs'
 
 const api = window.inkling
 
@@ -35,8 +35,7 @@ interface AppState {
   today: string
   theme: Theme
   gradingSystem: GradingSystem
-  /** Desired retention and FSRS parameters, mirrored from the settings for the interval preview. */
-  retention: number
+  /** FSRS parameters, mirrored from the settings for the interval preview. */
   fsrsParams: number[]
   notebooks: Notebook[]
   activeNotebookId: number | null
@@ -85,7 +84,6 @@ export const useApp = create<AppState>((set, get) => ({
   today: localDayKey(),
   theme: 'dark',
   gradingSystem: 'percent',
-  retention: DEFAULT_RETENTION,
   fsrsParams: parseParams(null),
   notebooks: [],
   activeNotebookId: null,
@@ -106,7 +104,6 @@ export const useApp = create<AppState>((set, get) => ({
       ready: true,
       theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
       gradingSystem: isGradingSystem(settings['grading_system']) ? settings['grading_system'] : 'percent',
-      retention: DEFAULT_RETENTION,
       fsrsParams: parseParams(settings['fsrs_params']),
       notebooks,
       activeNotebookId: notebooks[0]?.id ?? null,

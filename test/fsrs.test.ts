@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_PARAMS,
   MAX_INTERVAL_DAYS,
-  MAX_RETENTION,
-  MIN_RETENTION,
   MIN_STABILITY,
   RELEARN_MINUTES,
   clampParams,
@@ -21,7 +19,6 @@ import {
   nextRecallStability,
   nextShortTermStability,
   parseParams,
-  parseRetention,
   previewIntervals,
   retrievability,
   schedule,
@@ -80,11 +77,6 @@ describe('intervalForRetention', () => {
 
   it('asking for higher retention shortens the interval', () => {
     expect(intervalForRetention(0.95, 20)).toBeLessThan(intervalForRetention(0.85, 20))
-  })
-
-  it('clamps absurd retention targets into a sane band', () => {
-    expect(intervalForRetention(0.1, 10)).toBeCloseTo(intervalForRetention(MIN_RETENTION, 10), 10)
-    expect(intervalForRetention(1.5, 10)).toBeCloseTo(intervalForRetention(MAX_RETENTION, 10), 10)
   })
 })
 
@@ -243,12 +235,6 @@ describe('schedule: a card with history', () => {
     expect(sameDay.stability).toBeLessThan(30 * 1.05)
   })
 
-  it('honours a higher desired retention with shorter intervals', () => {
-    const relaxed = schedule(reviewed(30, 5, 30), 3, NOW, 0.85).scheduledDays
-    const strict = schedule(reviewed(30, 5, 30), 3, NOW, 0.95).scheduledDays
-    expect(strict).toBeLessThan(relaxed)
-  })
-
   it('keeps intervals inside the supported range', () => {
     const r = schedule(reviewed(MAX_INTERVAL_DAYS, 1, 1), 4, NOW)
     expect(r.scheduledDays).toBeLessThanOrEqual(MAX_INTERVAL_DAYS)
@@ -404,29 +390,6 @@ describe('carrying cards over from FSRS-4.5', () => {
     expect(r.retrievability).toBeCloseTo(0.9, 6)
     expect(r.stability).toBeCloseTo(nextRecallStability(5, 30, 0.9, 3), 10)
     expect(r.difficulty).toBeCloseTo(nextDifficulty(5, 3), 10)
-  })
-})
-
-describe('desired retention', () => {
-  it('schedules shorter at a higher target and longer at a lower one', () => {
-    const card = reviewed(20, 5, 20)
-    const at = (r: number): number => schedule(card, 3, NOW, r).scheduledDays
-    expect(at(0.97)).toBeLessThan(at(0.9))
-    expect(at(0.9)).toBeLessThan(at(0.8))
-    expect(at(0.8)).toBeLessThan(at(0.7))
-  })
-
-  it('does not change the memory state, only the interval', () => {
-    const card = reviewed(20, 5, 20)
-    expect(schedule(card, 3, NOW, 0.97).stability).toBe(schedule(card, 3, NOW, 0.8).stability)
-  })
-
-  it('reads a stored setting, clamped to 0.7–0.97 with 0.9 as the default', () => {
-    expect(parseRetention(null)).toBe(0.9)
-    expect(parseRetention('0.85')).toBe(0.85)
-    expect(parseRetention('0.5')).toBe(0.7)
-    expect(parseRetention('0.999')).toBe(0.97)
-    expect(parseRetention('nonsense')).toBe(0.9)
   })
 })
 
