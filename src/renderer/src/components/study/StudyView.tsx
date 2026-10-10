@@ -100,15 +100,16 @@ export function StudyView(): React.JSX.Element {
                     {d.due_count > 0 && <span className="text-accent-text"> · {d.due_count} due</span>}
                   </span>
                   {d.due_count > 0 && (
-                    <Button
-                      variant="ghost"
-                      className="h-7 px-2.5 text-accent-text"
-                      onClick={() => {
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
                         useApp.getState().reviewDeck(d.id)
                       }}
+                      className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-accent-soft"
                     >
                       Review
-                    </Button>
+                    </button>
                   )}
                 </li>
               )

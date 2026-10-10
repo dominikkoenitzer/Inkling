@@ -58,7 +58,7 @@ export function CommandPalette(): React.JSX.Element {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 pt-[15vh]" onMouseDown={close}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/10 pt-[15vh]" onMouseDown={close}>
       <div
         className="w-[560px] overflow-hidden rounded-lg border border-edge bg-raised"
         style={{ boxShadow: 'var(--shadow)' }}

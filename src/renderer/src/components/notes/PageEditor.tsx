@@ -311,7 +311,7 @@ function Toolbar({
   const c = editor.chain().focus()
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-4 pt-2.5">
+    <div className="mx-auto flex w-full max-w-[720px] flex-wrap items-center gap-0.5 px-8 pt-3">
       <ToolbarButton icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
       <ToolbarButton icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
       <Divider />

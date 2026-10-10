@@ -268,7 +268,9 @@ textarea:focus {
   margin: 0.15em 0;
 }
 .tiptap ul[data-type='taskList'] li > label {
-  margin-top: 0.36em;
+  display: flex;
+  height: 1.7em;
+  align-items: center;
 }
 .tiptap ul[data-type='taskList'] li > div {
   flex: 1;
