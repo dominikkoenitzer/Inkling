@@ -9,19 +9,26 @@ import type Database from 'better-sqlite3'
 export function openSqlite(): { raw: DatabaseSync; db: Database.Database } {
   const raw = new DatabaseSync(':memory:')
   raw.exec('PRAGMA foreign_keys = ON')
+  let depth = 0
   const db = Object.assign(raw, {
     pragma: (src: string, opts?: { simple?: boolean }) => {
       if (src.includes('=')) return void raw.exec(`PRAGMA ${src}`)
       const row = raw.prepare(`PRAGMA ${src}`).get() as Record<string, unknown>
       return opts?.simple ? Object.values(row)[0] : row
     },
-    transaction: (fn: () => void) => () => {
-      raw.exec('BEGIN')
+    // Like better-sqlite3: passes arguments and the result through, and nests as savepoints.
+    transaction: (fn: (...args: unknown[]) => unknown) => (...args: unknown[]) => {
+      const sp = `sp${depth}`
+      raw.exec(depth === 0 ? 'BEGIN' : `SAVEPOINT ${sp}`)
+      depth++
       try {
-        fn()
-        raw.exec('COMMIT')
+        const result = fn(...args)
+        depth--
+        raw.exec(depth === 0 ? 'COMMIT' : `RELEASE ${sp}`)
+        return result
       } catch (err) {
-        raw.exec('ROLLBACK')
+        depth--
+        raw.exec(depth === 0 ? 'ROLLBACK' : `ROLLBACK TO ${sp}; RELEASE ${sp}`)
         throw err
       }
     }
