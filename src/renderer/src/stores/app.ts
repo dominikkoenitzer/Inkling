@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
+import type { ModuleTab, Notebook } from '@shared/types'
 import { DEFAULT_RETENTION, parseParams } from '@shared/fsrs'
 
 const api = window.inkling
@@ -16,7 +16,7 @@ export interface Toast {
 }
 let toastSeq = 0
 
-/** Local YYYY-MM-DD key for streak bookkeeping. The single source of what "today" means. */
+/** Local YYYY-MM-DD key. The single source of what "today" means. */
 export function localDayKey(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -42,14 +42,12 @@ interface AppState {
   selectedDeckId: number | null
   paletteOpen: boolean
   settingsOpen: boolean
-  streak: StreakInfo
   celebrating: boolean
   toast: Toast | null
 
   init(): Promise<void>
   refreshNotebooks(): Promise<void>
-  refreshStreak(): Promise<void>
-  /** Re-read the calendar day and the streak, e.g. after midnight or when the window returns. */
+  /** Re-read the calendar day, e.g. after midnight or when the window returns. */
   syncDay(): void
   setTheme(t: Theme): void
   setFsrsParams(v: number[]): void
@@ -73,7 +71,6 @@ interface AppState {
   celebrate(): void
   showToast(t: Omit<Toast, 'id'>): void
   dismissToast(): void
-  bumpStreak(): Promise<void>
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -91,20 +88,18 @@ export const useApp = create<AppState>((set, get) => ({
   reviewingDeckId: null,
   paletteOpen: false,
   settingsOpen: false,
-  streak: { count: 0, last_day: null },
   celebrating: false,
   toast: null,
 
   init: async () => {
-    const [settings, notebooks, streak] = await Promise.all([api.settings.all(), api.notebooks.list(), api.streak.get()])
+    const [settings, notebooks] = await Promise.all([api.settings.all(), api.notebooks.list()])
     set({
       ready: true,
       theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
       retention: DEFAULT_RETENTION,
       fsrsParams: parseParams(settings['fsrs_params']),
       notebooks,
-      activeNotebookId: notebooks[0]?.id ?? null,
-      streak
+      activeNotebookId: notebooks[0]?.id ?? null
     })
   },
 
@@ -121,11 +116,9 @@ export const useApp = create<AppState>((set, get) => ({
     })
   },
 
-  refreshStreak: async () => set({ streak: await api.streak.get() }),
   syncDay: () => {
     const today = localDayKey()
     if (today !== get().today) set({ today })
-    void get().refreshStreak()
   },
 
   setTheme: (theme) => {
@@ -173,12 +166,7 @@ export const useApp = create<AppState>((set, get) => ({
       if (get().toast?.id === id) set({ toast: null })
     }, t.durationMs ?? 6000)
   },
-  dismissToast: () => set({ toast: null }),
-
-  bumpStreak: async () => {
-    const streak = await api.streak.bump(localDayKey())
-    set({ streak })
-  }
+  dismissToast: () => set({ toast: null })
 }))
 
 /* Per-domain change counters: bump on any mutation (local or from another window). */
@@ -192,7 +180,7 @@ export const useData = create<DataState>((set) => ({
   bump: (domain) => set((s) => ({ versions: { ...s.versions, [domain]: (s.versions[domain] ?? 0) + 1 } }))
 }))
 
-/** Keeps `today` and the streak current: at each local midnight and whenever the window regains focus. */
+/** Keeps `today` current: at each local midnight and whenever the window regains focus. */
 export function watchDay(target: EventTarget = window): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null
   const arm = (): void => {

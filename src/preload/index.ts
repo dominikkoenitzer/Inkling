@@ -46,10 +46,6 @@ const api: InklingApi = {
     createFromPairs: invoke('decks.createFromPairs'),
     optimise: invoke('decks.optimise')
   },
-  streak: {
-    get: invoke('streak.get'),
-    bump: invoke('streak.bump')
-  },
   settings: {
     all: invoke('settings.all'),
     set: invoke('settings.set')

@@ -3,8 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const inkling = vi.hoisted(() => {
   const api = {
     notes: { restore: vi.fn(async () => undefined) },
-    tasks: { update: vi.fn(async () => undefined) },
-    streak: { get: vi.fn(async () => ({ count: 0, last_day: null as string | null })) }
+    tasks: { update: vi.fn(async () => undefined) }
   }
   ;(globalThis as unknown as { window: unknown }).window = { inkling: api }
   return api

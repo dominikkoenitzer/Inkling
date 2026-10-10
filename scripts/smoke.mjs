@@ -69,8 +69,6 @@ const checks = `
     const after = await api.decks.review(due[0].id, 'good')
     ok('a review schedules the card forward', new Date(after.next_review_date) > new Date(), after.next_review_date)
     ok('a review records FSRS memory state', after.stability > 0 && after.difficulty > 0)
-
-    ok('the streak advances', (await api.streak.bump(new Date().toISOString().slice(0, 10))).count >= 1)
   } catch (e) {
     r.push('FAIL threw: ' + (e && e.message ? e.message : String(e)))
   }

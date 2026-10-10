@@ -5,7 +5,6 @@ import type {
   Deck,
   Card,
   SearchResult,
-  StreakInfo,
   NoteTaskItem,
   NoteCardLine,
   ColorKey,
@@ -62,10 +61,6 @@ export interface InklingApi {
     createFromPairs(notebookId: number, name: string, pairs: Array<[string, string]>): Promise<Deck>
     /** Fits the FSRS parameters to the review log; keeps the ones in use unless the fit is better. */
     optimise(): Promise<OptimiseOutcome>
-  }
-  streak: {
-    get(): Promise<StreakInfo>
-    bump(localDay: string): Promise<StreakInfo>
   }
   settings: {
     all(): Promise<Record<string, string>>

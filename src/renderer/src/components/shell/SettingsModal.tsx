@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Moon, Flame, Database, Keyboard, Sparkles } from 'lucide-react'
+import { Moon, Database, Keyboard, Sparkles } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { DEFAULT_PARAMS } from '@shared/fsrs'
 import type { OptimiseOutcome } from '@shared/types'
@@ -39,12 +39,6 @@ export function SettingsModal(): React.JSX.Element {
         <Row icon={<Database size={16} />} label="Your data" hint="">
           <p className="text-xs text-muted">
             Everything lives on this machine in a local SQLite database, fully offline. The last 5 backups are kept automatically next to it.
-          </p>
-        </Row>
-
-        <Row icon={<Flame size={16} />} label="Streak" hint="">
-          <p className="text-xs text-muted">
-            {app.streak.count > 0 ? `${app.streak.count} day${app.streak.count === 1 ? '' : 's'}. Reviews and focus sessions keep it alive. Missing a day just quietly resets it; no shame here.` : 'Review flashcards or finish a focus session to start one.'}
           </p>
         </Row>
 

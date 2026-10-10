@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Layers, Flame, ArrowRight, Plus, CheckSquare, FileText } from 'lucide-react'
+import { Layers, ArrowRight, Plus, CheckSquare, FileText } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
@@ -105,11 +105,6 @@ export function TodayView(): React.JSX.Element {
             <h1 className="text-[28px] font-bold leading-tight">{greeting()}!</h1>
             <p className="text-sm text-muted">
               {format(new Date(), 'EEEE, MMMM d')}
-              {app.streak.count > 0 && (
-                <span className="ml-2 inline-flex items-center gap-1 font-semibold text-ink">
-                  <Flame size={14} className="flame" style={{ color: 'var(--accent-text)' }} /> {app.streak.count}-day streak
-                </span>
-              )}
             </p>
             <p className="mt-0.5 text-sm text-faint">
               {cleared

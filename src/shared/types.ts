@@ -88,11 +88,6 @@ export interface SearchResult {
   notebook_id: number
 }
 
-export interface StreakInfo {
-  count: number
-  last_day: string | null // YYYY-MM-DD (local)
-}
-
 export interface NoteTaskItem {
   taskId: number | null
   title: string
