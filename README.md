@@ -1,37 +1,29 @@
-<div align="center">
-
-<img src="docs/banner.png" alt="Inkling: a calm place for your notes, to-dos and flashcards" width="820" />
-
-<br />
+# Inkling
 
 [![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/dominikkoenitzer/Inkling?color=4155B9)](https://github.com/dominikkoenitzer/Inkling/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-4155B9.svg)](LICENSE)
 
-A calm place for your notes, to-dos and flashcards. Local, offline, nothing to sign up for.
-
-</div>
-
-## Download
-
-**[Download Inkling for Windows](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-Setup.exe)**, then double-click it. It installs and opens on its own.
-
-Also for [macOS](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.dmg) (Intel and Apple Silicon) and [Linux](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling.AppImage).
-
-If Windows says it protected your PC, click **More info**, then **Run anyway**. Inkling updates itself after that.
+Inkling is a desktop app for studying from your own notes: the to-dos and flashcards you write in a note come together on one Today page, and everything stays on your computer.
 
 <p align="center">
   <img src="docs/notes.png" width="880" alt="A note in Inkling with a checklist and flashcard lines" />
 </p>
 
+## Download
+
+**[Download Inkling for Windows](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-Setup.exe)**, then double-click it. It installs and opens on its own, and there is no account to make.
+
+Windows may say "Windows protected your PC"; click More info, then Run anyway.
+
+For macOS and Linux, see [Other ways to install](#other-ways-to-install).
+
 ## What it does
 
-- **Notes.** Type anywhere, it saves as you go. `#` makes a heading, `-` a list, `[]` a to-do.
-- **To-dos live in your notes.** Every open checkbox, from every note, shows up on Today. Tick it there or in the note, it is the same box.
-- **Today.** What is still open and which flashcards are due, on one quiet page.
-- **Flashcards from your notes.** Write `Term :: Definition`, press Flashcards, and the note becomes a deck. Each card comes back right before you would forget it.
-- **Search.** `Ctrl+K` finds any note, to-do or deck.
-- **Light and dark.** Both calm, both easy on the eyes.
+- Type anywhere in a note and it saves as you go. `#` makes a heading, `-` a list, `[]` a to-do.
+- Every open to-do from every note shows up on Today, next to the flashcard decks with cards due. Tick a to-do there or in the note; it is the same box.
+- Write `Term :: Definition` in a note and press Flashcards, and the note becomes a deck. Cloze lines such as `{{c1::Bern}} is the capital of Switzerland` work too. Under Study you can also make a deck by hand.
+- Each card comes back right before you would forget it. The scheduler is FSRS-6.
+- `Ctrl+K` finds any note, to-do or deck.
+- Light and dark themes.
 
 <p align="center">
   <img src="docs/today.png" width="880" alt="Today in Inkling: open to-dos from every note and decks with cards due" />
@@ -50,13 +42,15 @@ If Windows says it protected your PC, click **More info**, then **Run anyway**. 
 | `Ctrl+,` | Settings |
 | `Space`, then `1` to `4` | In a review: show the answer, then Again, Hard, Good or Easy |
 
-## Your data
+## Other ways to install
 
-Everything stays on your computer, in one SQLite file in `%APPDATA%\Inkling` (Windows), `~/Library/Application Support/Inkling` (macOS) or `~/.config/Inkling` (Linux). Each time Inkling starts, a copy goes into `backups/` next to it, and the last five are kept. Any note can be saved as Markdown from the button above it.
+- macOS, Intel and Apple Silicon: [Inkling-mac.dmg](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.dmg). Open it and drag Inkling into Applications.
+- Linux: [Inkling.AppImage](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling.AppImage). Make it executable with `chmod +x Inkling.AppImage`, then run it.
+- Every version is on the [releases page](https://github.com/dominikkoenitzer/Inkling/releases).
 
 ## Use it with an AI assistant
 
-Inkling has a small MCP server built in. Connect it to an AI assistant on your computer and the assistant can look through your notes, write new ones and keep your to-dos and flashcards going.
+Inkling has an MCP server built in. Started as `Inkling.exe --mcp`, it lets an AI assistant on your computer look through your notes, write new ones and keep your to-dos and flashcards going.
 
 Add Inkling to your MCP client's list of servers, with the path where Inkling is installed. On Windows:
 
@@ -71,7 +65,7 @@ Add Inkling to your MCP client's list of servers, with the path where Inkling is
 }
 ```
 
-On macOS the command is `/Applications/Inkling.app/Contents/MacOS/Inkling`, on Linux the full path to your `Inkling.AppImage`. Write the path out in full, most clients do not expand `%LOCALAPPDATA%` or `~`.
+On macOS the command is `/Applications/Inkling.app/Contents/MacOS/Inkling`, on Linux the full path to your `Inkling.AppImage`. Write the path out in full; most clients do not expand `%LOCALAPPDATA%` or `~`.
 
 What the assistant can do:
 
@@ -84,15 +78,29 @@ What it cannot do: delete anything, rewrite or remove what a note already says, 
 
 Open Inkling once before you connect it, so it can set up your data. After an update, open it once more before the assistant carries on. Inkling can stay open while the assistant works; switch back to it and the changes are there.
 
-Nothing leaves your computer. The assistant app starts Inkling itself and they talk over standard input and output: no network, no account, no server somewhere else.
+Inkling sends nothing over the network here. The assistant app starts Inkling itself and they talk over standard input and output. What the assistant reads becomes part of your conversation with it.
 
-## Build it yourself
+## Your data, updates and removal
 
-You need [Git](https://git-scm.com), [Bun](https://bun.sh) and [Node.js](https://nodejs.org) 22 or newer. On Windows:
+Your notes, to-dos and cards live in one SQLite file, `inkling.db`, in `%APPDATA%\Inkling` on Windows, `~/Library/Application Support/Inkling` on macOS and `~/.config/Inkling` on Linux. Each time Inkling starts, a copy goes into `backups` next to it, and the last five are kept. The export button above a note saves it as Markdown.
+
+The installed app goes online for one thing: when it starts, it checks for a new version. On Windows and Linux it downloads the update in the background and installs it when you close Inkling. On macOS, get a new version from the [releases page](https://github.com/dominikkoenitzer/Inkling/releases).
+
+To remove Inkling on Windows, uninstall it under Settings > Apps > Installed apps. Your notes stay. To delete them too, close Inkling and delete these folders:
+
+- `%APPDATA%\Inkling`: your notes and the backups
+- `%LOCALAPPDATA%\inkling-updater`: downloaded updates
+- `%TEMP%\inkling-mcp`: only there if you used the AI assistant connection
+
+On macOS, move Inkling from Applications to the Trash, then delete `~/Library/Application Support/Inkling` and `~/Library/Caches/inkling-updater`. On Linux, delete the AppImage, `~/.config/Inkling` and `~/.cache/inkling-updater`.
+
+## Build from source
+
+You need [Git](https://git-scm.com), [Bun](https://bun.sh) 1.4.2 (the version CI uses) and [Node.js](https://nodejs.org) 22 or newer. On Windows:
 
 ```powershell
 winget install --id Git.Git -e
-winget install --id Oven-sh.Bun -e
+winget install --id Oven-sh.Bun -e --version 1.4.2
 winget install --id OpenJS.NodeJS.LTS -e
 ```
 
@@ -106,7 +114,7 @@ node node_modules/electron/install.js   # fetches the Electron app if bun skippe
 bun run dev                             # opens Inkling with live reload
 ```
 
-On Windows, `scripts\setup.ps1` does the same checks and steps for you and tells you what is missing.
+On Windows, `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` does the same checks and steps, runs the tests and tells you what is missing.
 
 Other scripts:
 
@@ -135,7 +143,11 @@ test           Vitest suites
 
 For screenshots and the smoke test, development builds read `INKLING_USERDATA` (separate profile), `INKLING_SEED` (demo notes), `INKLING_SCREENSHOT` and `INKLING_EVAL`. Release builds ignore all but the first.
 
-See [`CHANGELOG.md`](CHANGELOG.md) for what changed in each version.
+## More
+
+- [CHANGELOG.md](CHANGELOG.md): what changed in each version
+- [CONTRIBUTING.md](CONTRIBUTING.md): local setup, code style and the checks a change has to pass
+- [SECURITY.md](SECURITY.md): how to report a vulnerability privately
 
 ## License
 
