@@ -81,6 +81,9 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const lastItemsRef = useRef<NoteTaskItem[]>([])
   const notebookIdRef = useRef<number | null>(null)
   const titleRef = useRef('')
+  // The content as last loaded or saved here, to spot a change made outside (an assistant via MCP).
+  const contentRef = useRef<string | null>(null)
+  const savingRef = useRef(0)
 
   const editor = useEditor({
     // Read-only until the note has loaded, so nothing typed early is overwritten.
@@ -112,28 +115,50 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
-    // Read everything now: on unmount the editor is gone by the time the IPC answers.
-    let json = editor.getJSON() as Record<string, unknown>
-    const title = titleRef.current || null
-    const items = extractNoteTaskItems(json)
-    if (!itemsEqual(items, lastItemsRef.current)) {
-      const ids = await api.notes.syncTasks(noteId, notebookId, items)
-      if (!editor.isDestroyed) {
-        assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
-        json = editor.getJSON() as Record<string, unknown>
-      } else {
-        // Closed while syncing: stamp the ids into the snapshot itself, so the saved note
-        // still knows which task each checkbox is.
-        json = stampTaskIds(json, ids)
+    savingRef.current++
+    try {
+      // Read everything now: on unmount the editor is gone by the time the IPC answers.
+      let json = editor.getJSON() as Record<string, unknown>
+      const title = titleRef.current || null
+      const items = extractNoteTaskItems(json)
+      if (!itemsEqual(items, lastItemsRef.current)) {
+        const ids = await api.notes.syncTasks(noteId, notebookId, items)
+        if (!editor.isDestroyed) {
+          assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
+          json = editor.getJSON() as Record<string, unknown>
+        } else {
+          // Closed while syncing: stamp the ids into the snapshot itself, so the saved note
+          // still knows which task each checkbox is.
+          json = stampTaskIds(json, ids)
+        }
+        lastItemsRef.current = extractNoteTaskItems(json)
+        bumpData('tasks')
       }
-      lastItemsRef.current = extractNoteTaskItems(json)
-      bumpData('tasks')
-    }
 
-    const saved = await api.notes.update(noteId, { title, content: JSON.stringify(json) })
-    if (!saved) return // note was deleted out from under us
-    setSavedAt(new Date())
-    bumpData('notes')
+      const content = JSON.stringify(json)
+      const saved = await api.notes.update(noteId, { title, content })
+      if (!saved) return // note was deleted out from under us
+      contentRef.current = content
+      setSavedAt(new Date())
+      bumpData('notes')
+    } finally {
+      savingRef.current--
+    }
+  }
+
+  /** Puts a stored note into the editor, kept out of the undo history. */
+  const showNote = (note: Note): void => {
+    if (!editor) return
+    syncingRef.current = true
+    // Kept out of the undo history, or Ctrl+Z right after opening would empty the note.
+    editor.chain().setMeta('addToHistory', false).setContent(safeParse(note.content), { emitUpdate: false }).run()
+    editor.setEditable(true, false)
+    syncingRef.current = false
+    setTitle(note.title ?? '')
+    titleRef.current = note.title ?? ''
+    notebookIdRef.current = note.notebook_id
+    contentRef.current = note.content
+    lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
   }
 
   // initial load
@@ -146,19 +171,36 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
         useApp.setState({ selectedNoteId: null })
         return
       }
-      syncingRef.current = true
-      // Kept out of the undo history, or Ctrl+Z right after opening would empty the note.
-      editor.chain().setMeta('addToHistory', false).setContent(safeParse(note.content), { emitUpdate: false }).run()
-      editor.setEditable(true, false)
-      syncingRef.current = false
-      setTitle(note.title ?? '')
-      titleRef.current = note.title ?? ''
-      notebookIdRef.current = note.notebook_id
-      lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
+      showNote(note)
     })
     return () => {
       alive = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, noteId])
+
+  // Reload on focus when the note changed outside, unless an edit here is pending or saving.
+  useEffect(() => {
+    if (!editor) return
+    let alive = true
+    const idle = (): boolean => !timerRef.current && savingRef.current === 0 && contentRef.current !== null
+    const onFocus = (): void => {
+      if (!idle()) return
+      void api.notes.get(noteId).then((note: Note | null) => {
+        if (!alive || editor.isDestroyed || !idle()) return
+        if (!note || note.deleted_at) {
+          useApp.setState({ selectedNoteId: null })
+          return
+        }
+        if (note.content !== contentRef.current || (note.title ?? '') !== titleRef.current) showNote(note)
+      })
+    }
+    window.addEventListener('focus', onFocus)
+    return () => {
+      alive = false
+      window.removeEventListener('focus', onFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, noteId])
 
   // Flush a pending save on unmount, when the window loses focus and when it closes.
