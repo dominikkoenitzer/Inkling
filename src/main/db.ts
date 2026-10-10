@@ -1,5 +1,4 @@
 import Database from 'better-sqlite3'
-import { app } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import { tiptapToText } from './repos/text'
@@ -91,8 +90,8 @@ CREATE UNIQUE INDEX idx_cards_external ON flashcards(external_id) WHERE external
 // The calendar module's `events` table is not created any more. Existing databases keep
 // their rows; fresh ones have no reason to carry it.
 
-export function openDb(): Database.Database {
-  const dir = app.getPath('userData')
+/** Opens the database in `dir` (the userData folder), backs it up and migrates it. */
+export function openDb(dir: string): Database.Database {
   fs.mkdirSync(dir, { recursive: true })
   const file = join(dir, 'inkling.db')
   db = new Database(file)
@@ -106,6 +105,38 @@ export function openDb(): Database.Database {
   }
   migrate(db)
   return db
+}
+
+/**
+ * Opens the database for the MCP server, which runs next to the app. It never creates,
+ * backs up or migrates: the app does that, and two processes must not migrate at once.
+ * Throws unless the schema is exactly the one this build knows.
+ */
+export function attachDb(dir: string): Database.Database {
+  const file = join(dir, 'inkling.db')
+  if (!fs.existsSync(file)) throw new Error('Inkling has no data on this computer yet. Open Inkling once, then try again.')
+  const d = new Database(file, { fileMustExist: true, timeout: 5000 })
+  try {
+    checkVersion(d)
+    d.pragma('journal_mode = WAL')
+    d.pragma('foreign_keys = ON')
+  } catch (err) {
+    d.close()
+    throw err
+  }
+  db = d
+  return d
+}
+
+/** Throws a readable error when the schema on disk is not the one this build expects. */
+export function checkVersion(d: Database.Database): void {
+  const version = d.pragma('user_version', { simple: true }) as number
+  if (version < CURRENT_VERSION) {
+    throw new Error('Inkling has to update its data first. Open Inkling once, then try again.')
+  }
+  if (version > CURRENT_VERSION) {
+    throw new Error('Your Inkling data is newer than this copy of Inkling. Update Inkling, then try again.')
+  }
 }
 
 export function getDb(): Database.Database {

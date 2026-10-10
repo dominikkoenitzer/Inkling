@@ -151,7 +151,7 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   if (!isPrimary) return // quitting: the copy already running owns the database
-  openDb()
+  openDb(app.getPath('userData'))
   // Clear anything that has sat in the trash past the retention window.
   try {
     repos.purgeExpiredNotes()
