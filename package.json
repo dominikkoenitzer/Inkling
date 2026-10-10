@@ -5,7 +5,7 @@
   "version": "0.7.0",
   "description": "Notes, tasks, schedule and study, together",
   "main": "out/main/index.js",
-  "author": "dominikkoenitzer",
+  "author": "Inkling",
   "license": "MIT",
   "trustedDependencies": [
     "electron",
@@ -113,7 +113,7 @@
       ],
       "icon": "resources/icon.png",
       "category": "Office",
-      "maintainer": "dominikkoenitzer",
+      "maintainer": "Inkling",
       "artifactName": "${productName}.${ext}"
     }
   }
