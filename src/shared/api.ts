@@ -38,7 +38,6 @@ export interface InklingApi {
   tasks: {
     list(notebookId: number): Promise<Task[]>
     smart(view: 'today' | 'week'): Promise<Task[]>
-    forNote(noteId: number): Promise<Task[]>
     get(id: number): Promise<Task | null>
     create(input: {
       notebook_id: number
@@ -61,7 +60,6 @@ export interface InklingApi {
     updateCard(id: number, front: string, back: string): Promise<void>
     removeCard(id: number): Promise<void>
     review(cardId: number, grade: ReviewGrade): Promise<Card>
-    createFromPairs(notebookId: number, name: string, pairs: Array<[string, string]>): Promise<Deck>
   }
   focus: {
     start(input: { task_id?: number | null; deck_id?: number | null }): Promise<number>

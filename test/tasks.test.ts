@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DatabaseSync } from 'node:sqlite'
 import type Database from 'better-sqlite3'
 import { openSqlite } from './sqlite'
+import type { Task } from '../src/shared/types'
 
 let raw: DatabaseSync
 let db: Database.Database
@@ -9,8 +10,10 @@ let db: Database.Database
 vi.mock('../src/main/db', () => ({ getDb: () => db }))
 
 const { createNote } = await import('../src/main/repos/notes')
-const { removeTask, syncNoteTasks, tasksForNote, updateTask } = await import('../src/main/repos/tasks')
+const { removeTask, syncNoteTasks, updateTask } = await import('../src/main/repos/tasks')
 const { searchQuery } = await import('../src/main/repos/search')
+
+const tasksForNote = (noteId: number): Task[] => db.prepare(`SELECT * FROM tasks WHERE note_id = ? ORDER BY id`).all(noteId) as Task[]
 
 type Node = { type: string; attrs?: Record<string, unknown>; content?: Node[]; text?: string }
 

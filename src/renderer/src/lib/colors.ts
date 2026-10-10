@@ -104,10 +104,3 @@ export function softTint(key: string | null | undefined, theme: 'dark' | 'cozy')
   if (theme === 'dark') return { bg: `color-mix(in srgb, ${r[500]} 18%, transparent)`, text: r[300] }
   return { bg: r[100], text: r[700] }
 }
-
-/** Sticky-note fill/text per theme. */
-export function stickyColors(key: string | null | undefined, theme: 'dark' | 'cozy'): { bg: string; text: string; edge: string } {
-  const r = ramp(key)
-  if (theme === 'dark') return { bg: r[900], text: r[100], edge: r[700] }
-  return { bg: r[100], text: r[900], edge: r[300] }
-}

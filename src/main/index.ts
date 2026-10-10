@@ -146,11 +146,10 @@ function seedDemo(): void {
   repos.createTask({ notebook_id: nb.id, title: 'Email study group' })
   repos.createGrade({ notebook_id: nb.id, title: 'Quiz 1', score: 5, max: 6, weight: 1, system: 'swiss' })
   repos.createGrade({ notebook_id: nb.id, title: 'Midterm', score: 4.5, max: 6, weight: 2, system: 'swiss' })
-  const deck = repos.createDeckFromPairs(nb.id, 'Cell biology', [
-    ['Photosynthesis', 'The process plants use to convert light into energy'],
-    ['Mitochondria', 'The powerhouse of the cell'],
-    ['Osmosis', 'Diffusion of water across a semipermeable membrane']
-  ])
+  const deck = repos.createDeck(nb.id, 'Cell biology')
+  repos.addCard(deck.id, 'Photosynthesis', 'The process plants use to convert light into energy')
+  repos.addCard(deck.id, 'Mitochondria', 'The powerhouse of the cell')
+  repos.addCard(deck.id, 'Osmosis', 'Diffusion of water across a semipermeable membrane')
   seedHistory(deck.id)
 
   // A couple of neighbours so the notebook rail and the subject list are not a single item.
@@ -179,10 +178,6 @@ function seedHistory(deckId: number): void {
   const cardIds = (db.prepare(`SELECT id FROM flashcards WHERE deck_id = ?`).all(deckId) as Array<{ id: number }>).map((c) => c.id)
   if (cardIds.length === 0) return
 
-  const logReview = db.prepare(
-    `INSERT INTO review_log (card_id, deck_id, rating, state, stability, difficulty, elapsed_days, scheduled_days, reviewed_at)
-     VALUES (?, ?, ?, 'review', ?, ?, ?, ?, ?)`
-  )
   const logFocus = db.prepare(
     `INSERT INTO focus_sessions (task_id, deck_id, duration_minutes, started_at, completed) VALUES (NULL, ?, ?, ?, 1)`
   )
@@ -203,16 +198,17 @@ function seedHistory(deckId: number): void {
         const roll = (daysAgo * 31 + i * 7) % 100
         const rating = roll < 11 ? 1 : roll < 26 ? 2 : roll < 86 ? 3 : 4
         const stability = 2 + ((120 - daysAgo) / 120) * 40
-        logReview.run(
-          cardIds[i % cardIds.length],
+        repos.logReview({
+          cardId: cardIds[i % cardIds.length],
           deckId,
           rating,
+          state: 'review',
           stability,
-          5.5,
-          Math.max(0, stability * 0.9),
-          stability,
-          at.toISOString()
-        )
+          difficulty: 5.5,
+          elapsedDays: Math.max(0, stability * 0.9),
+          scheduledDays: stability,
+          reviewedAt: at.toISOString()
+        })
       }
       if (daysAgo % 2 === 0) logFocus.run(deckId, 25, new Date(day.getTime() - 3_600_000).toISOString())
     }

@@ -65,20 +65,6 @@ export interface Card {
   cloze: number
 }
 
-/** One row per answered card: the history SM-2 never kept, and what Stats is built on. */
-export interface ReviewLogEntry {
-  id: number
-  card_id: number
-  deck_id: number | null
-  rating: number
-  state: CardState
-  stability: number
-  difficulty: number
-  elapsed_days: number
-  scheduled_days: number
-  reviewed_at: string
-}
-
 export interface Grade {
   id: number
   notebook_id: number

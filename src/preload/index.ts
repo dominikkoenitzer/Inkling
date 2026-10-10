@@ -26,7 +26,6 @@ const api: InklingApi = {
   tasks: {
     list: invoke('tasks.list'),
     smart: invoke('tasks.smart'),
-    forNote: invoke('tasks.forNote'),
     get: invoke('tasks.get'),
     create: invoke('tasks.create'),
     update: invoke('tasks.update'),
@@ -42,8 +41,7 @@ const api: InklingApi = {
     addCard: invoke('decks.addCard'),
     updateCard: invoke('decks.updateCard'),
     removeCard: invoke('decks.removeCard'),
-    review: invoke('decks.review'),
-    createFromPairs: invoke('decks.createFromPairs')
+    review: invoke('decks.review')
   },
   focus: {
     start: invoke('focus.start'),

@@ -25,7 +25,6 @@ export function registerIpc(): void {
 
   handle('tasks.list', repos.listTasks)
   handle('tasks.smart', repos.smartTasks)
-  handle('tasks.forNote', repos.tasksForNote)
   handle('tasks.get', repos.getTask)
   handle('tasks.create', repos.createTask)
   handle('tasks.update', repos.updateTask)
@@ -41,7 +40,6 @@ export function registerIpc(): void {
   handle('decks.updateCard', repos.updateCard)
   handle('decks.removeCard', repos.removeCard)
   handle('decks.review', repos.reviewCard)
-  handle('decks.createFromPairs', repos.createDeckFromPairs)
 
   handle('focus.start', repos.startFocus)
   handle('focus.complete', repos.completeFocus)

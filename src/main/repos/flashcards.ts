@@ -19,12 +19,18 @@ export function listDecks(notebookId?: number): Deck[] {
   return getDb().prepare(`${base} ORDER BY d.id`).all(nowIso) as Deck[]
 }
 
-export function createDeck(notebookId: number, name: string): Deck {
+/** Inserts a deck with its search entry and returns the new id. */
+function insertDeck(notebookId: number, name: string, noteId: number | null = null): number {
   const info = getDb()
-    .prepare(`INSERT INTO flashcard_decks (notebook_id, name, created_at) VALUES (?, ?, ?)`)
-    .run(notebookId, name, now())
+    .prepare(`INSERT INTO flashcard_decks (notebook_id, name, created_at, note_id) VALUES (?, ?, ?, ?)`)
+    .run(notebookId, name, now(), noteId)
   const id = Number(info.lastInsertRowid)
   ftsUpsert('deck', id, name, '')
+  return id
+}
+
+export function createDeck(notebookId: number, name: string): Deck {
+  const id = insertDeck(notebookId, name)
   return listDecks(notebookId).find((d) => d.id === id)!
 }
 
@@ -119,34 +125,41 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
       result.scheduledDays,
       cardId
     )
-    db.prepare(
-      `INSERT INTO review_log (card_id, deck_id, rating, state, stability, difficulty, elapsed_days, scheduled_days, reviewed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
+    logReview({
       cardId,
-      card.deck_id,
-      RATINGS[grade],
+      deckId: card.deck_id,
+      rating: RATINGS[grade],
       // The state the card was in when asked; true retention only counts 'review' rows.
-      card.state ?? 'new',
-      result.stability,
-      result.difficulty,
-      result.elapsedDays,
-      result.scheduledDays,
-      reviewedAtIso
-    )
+      state: card.state ?? 'new',
+      stability: result.stability,
+      difficulty: result.difficulty,
+      elapsedDays: result.elapsedDays,
+      scheduledDays: result.scheduledDays,
+      reviewedAt: reviewedAtIso
+    })
   })
   tx()
   return db.prepare(`SELECT * FROM flashcards WHERE id = ?`).get(cardId) as Card
 }
 
-export function createDeckFromPairs(notebookId: number, name: string, pairs: Array<[string, string]>): Deck {
-  const deck = createDeck(notebookId, name)
-  const insert = getDb().prepare(`INSERT INTO flashcards (deck_id, front, back, next_review_date) VALUES (?, ?, ?, ?)`)
-  const tx = getDb().transaction(() => {
-    for (const [front, back] of pairs) insert.run(deck.id, front, back, now())
-  })
-  tx()
-  return listDecks(notebookId).find((d) => d.id === deck.id)!
+/** Appends one row to the review log. */
+export function logReview(r: {
+  cardId: number
+  deckId: number | null
+  rating: number
+  state: string
+  stability: number
+  difficulty: number
+  elapsedDays: number
+  scheduledDays: number
+  reviewedAt: string
+}): void {
+  getDb()
+    .prepare(
+      `INSERT INTO review_log (card_id, deck_id, rating, state, stability, difficulty, elapsed_days, scheduled_days, reviewed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(r.cardId, r.deckId, r.rating, r.state, r.stability, r.difficulty, r.elapsedDays, r.scheduledDays, r.reviewedAt)
 }
 
 /* ------------------------------ Lines and cloze ----------------------------- */
@@ -224,15 +237,7 @@ export function syncNoteCards(
     const linked = db.prepare(`SELECT id FROM flashcard_decks WHERE note_id = ? ORDER BY id LIMIT 1`).get(noteId) as
       | { id: number }
       | undefined
-    if (linked) {
-      deckId = linked.id
-    } else {
-      const info = db
-        .prepare(`INSERT INTO flashcard_decks (notebook_id, name, created_at, note_id) VALUES (?, ?, ?, ?)`)
-        .run(notebookId, name, now(), noteId)
-      deckId = Number(info.lastInsertRowid)
-      ftsUpsert('deck', deckId, name, '')
-    }
+    deckId = linked ? linked.id : insertDeck(notebookId, name, noteId)
 
     const groups = new Map<number, Card[]>()
     const synced = db.prepare(`SELECT * FROM flashcards WHERE deck_id = ? AND source_line IS NOT NULL ORDER BY id`).all(deckId) as Card[]

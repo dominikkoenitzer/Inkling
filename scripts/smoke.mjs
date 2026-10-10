@@ -63,7 +63,9 @@ const checks = `
     const back = (await api.notes.list(nb.id)).some((n) => n.id === note.id)
     ok('delete then undo restores the page', !gone && back)
 
-    const deck = await api.decks.createFromPairs(nb.id, 'Smoke deck', [['Front', 'Back'], ['A', 'B']])
+    const deck = await api.decks.create(nb.id, 'Smoke deck')
+    await api.decks.addCard(deck.id, 'Front', 'Back')
+    await api.decks.addCard(deck.id, 'A', 'B')
     const due = await api.decks.dueCards(deck.id)
     ok('new cards are due immediately', due.length === 2, due.length + ' due')
     const after = await api.decks.review(due[0].id, 'good')

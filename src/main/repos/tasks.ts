@@ -26,10 +26,6 @@ export function smartTasks(view: 'today' | 'week'): Task[] {
     .all(end.toISOString()) as Task[]
 }
 
-export function tasksForNote(noteId: number): Task[] {
-  return getDb().prepare(`SELECT * FROM tasks WHERE note_id = ? ORDER BY id`).all(noteId) as Task[]
-}
-
 export function getTask(id: number): Task | null {
   return (getDb().prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as Task | undefined) ?? null
 }
