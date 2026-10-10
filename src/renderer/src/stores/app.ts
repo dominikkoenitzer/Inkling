@@ -1,14 +1,11 @@
 import { create } from 'zustand'
-import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
-import type { GradingSystem } from '@shared/grades'
+import type { ModuleTab, Notebook } from '@shared/types'
 import { parseParams } from '@shared/fsrs'
 import { localDay } from '@shared/day'
 
 const api = window.inkling
 
 export type Theme = 'dark' | 'cozy'
-
-const isGradingSystem = (v: string | undefined): v is GradingSystem => v === 'percent' || v === 'swiss'
 
 /** A transient message at the bottom of the window, optionally with one undo action. */
 export interface Toast {
@@ -30,7 +27,6 @@ interface AppState {
   /** localDay() of the day the UI is showing; moves at local midnight and on focus. */
   today: string
   theme: Theme
-  gradingSystem: GradingSystem
   /** FSRS parameters, mirrored from the settings for the interval preview. */
   fsrsParams: number[]
   notebooks: Notebook[]
@@ -41,17 +37,13 @@ interface AppState {
   selectedDeckId: number | null
   paletteOpen: boolean
   settingsOpen: boolean
-  streak: StreakInfo
-  celebrating: boolean
   toast: Toast | null
 
   init(): Promise<void>
   refreshNotebooks(): Promise<void>
-  refreshStreak(): Promise<void>
-  /** Re-read the calendar day and the streak, e.g. after midnight or when the window returns. */
+  /** Re-read the calendar day, e.g. after midnight or when the window returns. */
   syncDay(): void
   setTheme(t: Theme): void
-  setGradingSystem(v: GradingSystem): void
   setActiveNotebook(id: number): void
   setTab(tab: ModuleTab): void
   openNote(notebookId: number, noteId: number): void
@@ -69,17 +61,14 @@ interface AppState {
   reviewDeck(notebookId: number, deckId: number): void
   setPaletteOpen(v: boolean): void
   setSettingsOpen(v: boolean): void
-  celebrate(): void
   showToast(t: Omit<Toast, 'id'>): void
   dismissToast(): void
-  bumpStreak(): Promise<void>
 }
 
 export const useApp = create<AppState>((set, get) => ({
   ready: false,
   today: localDay(),
   theme: 'dark',
-  gradingSystem: 'percent',
   fsrsParams: parseParams(null),
   notebooks: [],
   activeNotebookId: null,
@@ -90,20 +79,16 @@ export const useApp = create<AppState>((set, get) => ({
   reviewingDeckId: null,
   paletteOpen: false,
   settingsOpen: false,
-  streak: { count: 0, last_day: null },
-  celebrating: false,
   toast: null,
 
   init: async () => {
-    const [settings, notebooks, streak] = await Promise.all([api.settings.all(), api.notebooks.list(), api.streak.get()])
+    const [settings, notebooks] = await Promise.all([api.settings.all(), api.notebooks.list()])
     set({
       ready: true,
       theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
-      gradingSystem: isGradingSystem(settings['grading_system']) ? settings['grading_system'] : 'percent',
       fsrsParams: parseParams(settings['fsrs_params']),
       notebooks,
-      activeNotebookId: notebooks[0]?.id ?? null,
-      streak
+      activeNotebookId: notebooks[0]?.id ?? null
     })
   },
 
@@ -120,20 +105,14 @@ export const useApp = create<AppState>((set, get) => ({
     })
   },
 
-  refreshStreak: async () => set({ streak: await api.streak.get() }),
   syncDay: () => {
     const today = localDay()
     if (today !== get().today) set({ today })
-    void get().refreshStreak()
   },
 
   setTheme: (theme) => {
     set({ theme })
     void api.settings.set('theme', theme)
-  },
-  setGradingSystem: (gradingSystem) => {
-    set({ gradingSystem })
-    void api.settings.set('grading_system', gradingSystem)
   },
 
   setActiveNotebook: (id) =>
@@ -161,11 +140,6 @@ export const useApp = create<AppState>((set, get) => ({
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
 
-  celebrate: () => {
-    set({ celebrating: true })
-    setTimeout(() => set({ celebrating: false }), 700)
-  },
-
   showToast: (t) => {
     const id = ++toastSeq
     set({ toast: { ...t, id } })
@@ -175,12 +149,7 @@ export const useApp = create<AppState>((set, get) => ({
       if (get().toast?.id === id) set({ toast: null })
     }, t.durationMs ?? 6000)
   },
-  dismissToast: () => set({ toast: null }),
-
-  bumpStreak: async () => {
-    const streak = await api.streak.bump(localDay())
-    set({ streak })
-  }
+  dismissToast: () => set({ toast: null })
 }))
 
 /* Per-domain change counters: bump on any mutation (local or from another window). */
@@ -194,7 +163,7 @@ export const useData = create<DataState>((set) => ({
   bump: (domain) => set((s) => ({ versions: { ...s.versions, [domain]: (s.versions[domain] ?? 0) + 1 } }))
 }))
 
-/** Keeps `today` and the streak current: at each local midnight and whenever the window regains focus. */
+/** Keeps `today` current: at each local midnight and whenever the window regains focus. */
 export function watchDay(target: EventTarget = window): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null
   const arm = (): void => {

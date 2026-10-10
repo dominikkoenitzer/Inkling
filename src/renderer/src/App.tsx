@@ -21,7 +21,7 @@ export default function App(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Roll "today" and the streak over at midnight and when the window comes back.
+  // Roll "today" over at midnight and when the window comes back.
   useEffect(() => watchDay(), [])
 
   // Theme on the root element; keep the native titlebar overlay in sync.

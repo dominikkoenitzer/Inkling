@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, FileText, CheckSquare, Layers, Zap, Percent, Moon, Sun, Plus, GraduationCap, BarChart3 } from 'lucide-react'
+import { Search, FileText, CheckSquare, Layers, Plus } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
-import { useTimer, isFocusLive, startFocusSession } from '@/stores/timer'
 import { fuzzyScore } from '@/lib/parse'
 import type { SearchResult } from '@shared/types'
 
@@ -17,7 +16,6 @@ interface PaletteItem {
 
 export function CommandPalette(): React.JSX.Element {
   const app = useApp()
-  const focusLive = useTimer(isFocusLive)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selected, setSelected] = useState(0)
@@ -37,60 +35,22 @@ export function CommandPalette(): React.JSX.Element {
     const nb = app.notebooks.find((n) => n.id === app.activeNotebookId)
     const list: PaletteItem[] = []
     if (nb) {
-      list.push(
-        {
-          key: 'new-note',
-          icon: <Plus size={16} />,
-          label: 'New page',
-          detail: `in ${nb.name}`,
-          run: () => {
-            void api.notes.create({ notebook_id: nb.id }).then((n) => {
-              bumpData('notes')
-              app.openNote(nb.id, n.id)
-            })
-          }
-        },
-        {
-          key: 'new-task',
-          icon: <CheckSquare size={16} />,
-          label: 'New task',
-          detail: `in ${nb.name}`,
-          run: () => {
-            app.setTab('tasks')
-            close()
-          }
-        },
-        {
-          key: 'focus',
-          icon: <Zap size={16} />,
-          label: focusLive ? 'Resume focus session' : 'Start focus session',
-          run: () => {
-            startFocusSession()
-            close()
-          }
-        }
-      )
-    }
-    list.push(
-      { key: 'go-today', icon: <Sun size={16} />, label: 'Jump to Today', run: () => { app.setTab('today'); close() } },
-      { key: 'go-notes', icon: <FileText size={16} />, label: 'Jump to Notes', run: () => { app.setTab('notes'); close() } },
-      { key: 'go-tasks', icon: <CheckSquare size={16} />, label: 'Jump to Tasks', run: () => { app.setTab('tasks'); close() } },
-      { key: 'go-study', icon: <GraduationCap size={16} />, label: 'Jump to Study', run: () => { app.setTab('study'); close() } },
-      { key: 'go-grades', icon: <Percent size={16} />, label: 'Jump to Grades', run: () => { app.setTab('grades'); close() } },
-      { key: 'go-stats', icon: <BarChart3 size={16} />, label: 'Jump to Progress', run: () => { app.setTab('stats'); close() } },
-      {
-        key: 'theme',
-        icon: app.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />,
-        label: app.theme === 'dark' ? 'Switch to Cozy theme' : 'Switch to Dark theme',
+      list.push({
+        key: 'new-note',
+        icon: <Plus size={16} />,
+        label: 'New page',
+        detail: `in ${nb.name}`,
         run: () => {
-          app.setTheme(app.theme === 'dark' ? 'cozy' : 'dark')
-          close()
+          void api.notes.create({ notebook_id: nb.id }).then((n) => {
+            bumpData('notes')
+            app.openNote(nb.id, n.id)
+          })
         }
-      }
-    )
+      })
+    }
     return list.filter((a) => fuzzyScore(query, a.label) >= 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, app.notebooks, app.activeNotebookId, app.theme, focusLive])
+  }, [query, app.notebooks, app.activeNotebookId])
 
   // An empty box shows no matches; the last query's hits stay cached for the
   // 120ms debounce so retyping doesn't blank the list mid-keystroke.
@@ -141,7 +101,7 @@ export function CommandPalette(): React.JSX.Element {
               setSelected(0)
             }}
             onKeyDown={onKey}
-            placeholder="Search notes, tasks, decks, or run a command…"
+            placeholder="Search notes, tasks and decks…"
             className="flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
           <kbd className="rounded-sm border border-edge px-1.5 py-0.5 text-[11px] text-faint">esc</kbd>

@@ -5,20 +5,18 @@ import {
   GraduationCap,
   Search,
   Plus,
+  Download,
   Trash2,
   MoreHorizontal,
-  Sun,
-  Percent,
-  BarChart3
+  Sun
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { onActivateKey } from '@/lib/keys'
-import { RAMPS, COLOR_KEYS, isColorKey, ramp } from '@/lib/colors'
-import { subjectAverage } from '@shared/grades'
+import { RAMPS, COLOR_KEYS, isColorKey } from '@/lib/colors'
 import { Modal, Field, inputCls, Button, IconBtn } from '@/components/ui'
 import { UserBar } from '@/components/shell/UserBar'
-import type { Note, Deck, Grade, Task, ModuleTab, ColorKey } from '@shared/types'
+import type { Note, Deck, Task, ModuleTab, ColorKey, ImportSummary } from '@shared/types'
 
 const api = window.inkling
 
@@ -26,9 +24,7 @@ const TABS: Array<{ id: ModuleTab; icon: React.JSX.Element; label: string }> = [
   { id: 'today', icon: <Sun size={16} />, label: 'Today' },
   { id: 'notes', icon: <FileText size={16} />, label: 'Notes' },
   { id: 'tasks', icon: <CheckSquare size={16} />, label: 'Tasks' },
-  { id: 'study', icon: <GraduationCap size={16} />, label: 'Study' },
-  { id: 'grades', icon: <Percent size={16} />, label: 'Grades' },
-  { id: 'stats', icon: <BarChart3 size={16} />, label: 'Progress' }
+  { id: 'study', icon: <GraduationCap size={16} />, label: 'Study' }
 ]
 
 export function Sidebar(): React.JSX.Element {
@@ -79,7 +75,6 @@ export function Sidebar(): React.JSX.Element {
             {app.tab === 'today' && <TodaySidebar />}
             {app.tab === 'notes' && <NotesList notebookId={notebook.id} />}
             {app.tab === 'study' && <StudySidebar notebookId={notebook.id} />}
-            {app.tab === 'grades' && <GradesSidebar />}
           </>
         ) : (
           <p className="px-2 py-4 text-sm text-muted">Create a notebook to get going. The + button on the left is waiting.</p>
@@ -197,6 +192,7 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
   const [decks, setDecks] = useState<Deck[]>([])
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => {
     void api.decks.list(notebookId).then(setDecks)
@@ -209,6 +205,23 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
     setSelectedDeck(deck.id)
     setAdding(false)
     setName('')
+  }
+
+  const importDeck = async (): Promise<void> => {
+    setImporting(true)
+    try {
+      const result = await api.app.importDeck(notebookId)
+      if (!result) return
+      if ('error' in result) {
+        useApp.getState().showToast({ message: `Could not import that file. ${result.error}` })
+        return
+      }
+      bumpData('decks')
+      if (result.deckId !== null) useApp.getState().openDeck(notebookId, result.deckId)
+      useApp.getState().showToast({ message: importMessage(result), durationMs: 8000 })
+    } finally {
+      setImporting(false)
+    }
   }
 
   return (
@@ -262,68 +275,37 @@ function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element
           <Plus size={16} /> New deck
         </button>
       )}
+      <button
+        type="button"
+        onClick={() => void importDeck()}
+        disabled={importing}
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-faint transition-colors hover:bg-hover hover:text-ink disabled:opacity-60"
+      >
+        <Download size={16} /> {importing ? 'Importing…' : 'Import deck…'}
+      </button>
     </div>
   )
 }
 
-/* ------------------------------ Grades sidebar ----------------------------- */
+const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
 
-function GradesSidebar(): React.JSX.Element {
-  const { notebooks, activeNotebookId, setActiveNotebook, gradingSystem } = useApp()
-  const version = useVersion('grades')
-  const [all, setAll] = useState<Grade[]>([])
-
-  useEffect(() => {
-    void api.grades.all().then(setAll)
-  }, [version])
-
-  const bySubject = notebooks
-    .map((nb) => ({ nb, avg: subjectAverage(all.filter((g) => g.notebook_id === nb.id), gradingSystem) }))
-    .filter((x): x is { nb: (typeof notebooks)[number]; avg: NonNullable<ReturnType<typeof subjectAverage>> } => x.avg !== null)
-
-  // Overall: the mean of the subject averages, in whichever system is in use.
-  const mean = bySubject.length > 0 ? bySubject.reduce((a, x) => a + x.avg.value, 0) / bySubject.length : null
-  const overallLabel = gradingSystem === 'swiss' ? 'Ø Grade' : 'Average'
-  const overallValue = mean === null ? null : gradingSystem === 'swiss' ? mean.toFixed(2) : `${mean.toFixed(1)}%`
-
-  return (
-    <div className="fade-up">
-      <SectionLabel>Overall</SectionLabel>
-      <div className="mb-2 rounded-lg bg-sunken px-3 py-2">
-        {overallValue === null ? (
-          <p className="text-xs text-faint">No grades yet. Add some in the main panel.</p>
-        ) : (
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-faint">{overallLabel}</div>
-              <div className="text-xl font-bold tabular-nums">{overallValue}</div>
-            </div>
-            <div className="text-xs text-muted">
-              {bySubject.length} subject{bySubject.length === 1 ? '' : 's'}
-            </div>
-          </div>
-        )}
-      </div>
-      <SectionLabel>By subject</SectionLabel>
-      {bySubject.length === 0 && <p className="px-2 py-2 text-xs text-faint">Weighted averages show up here.</p>}
-      {bySubject.map(({ nb, avg }) => (
-        <button
-          key={nb.id}
-          type="button"
-          onClick={() => setActiveNotebook(nb.id)}
-          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-            activeNotebookId === nb.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
-          }`}
-        >
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: ramp(nb.color)[500] }} />
-          <span className="truncate">{nb.name}</span>
-          <span className="ml-auto font-semibold tabular-nums" style={{ color: 'var(--accent-text)' }}>
-            {avg.display}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
+/** The toast after an Anki import: what came in, then what stayed out. */
+function importMessage(r: ImportSummary): string {
+  const s = r.skipped
+  if (r.cards === 0) return s.duplicates > 0 ? 'Nothing new. Every card in that file is here already.' : 'That file has no cards to import.'
+  const parts = [
+    `Imported ${plural(r.cards, 'card')}${r.reviews > 0 ? ` with ${plural(r.reviews, 'review')}` : ''}.`
+  ]
+  const left = [
+    s.suspended > 0 && `${s.suspended} suspended`,
+    s.imageOcclusion > 0 && `${s.imageOcclusion} image occlusion`,
+    s.duplicates > 0 && `${s.duplicates} already here`,
+    s.mediaOnly > 0 && `${s.mediaOnly} with only a picture or sound as the question`,
+    s.unusable > 0 && `${s.unusable} empty`
+  ].filter(Boolean)
+  if (left.length > 0) parts.push(`Skipped ${left.join(', ')}.`)
+  if (s.media > 0) parts.push(`${plural(s.media, 'image or sound', 'images and sounds')} left out.`)
+  return parts.join(' ')
 }
 
 /* --------------------------------- Shared --------------------------------- */
@@ -350,7 +332,6 @@ function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: (
     bumpData('notes')
     bumpData('tasks')
     bumpData('decks')
-    bumpData('grades')
     onClose()
   }
   return (

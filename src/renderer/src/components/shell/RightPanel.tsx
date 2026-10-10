@@ -93,10 +93,7 @@ function TaskContext({ taskId }: { taskId: number }): React.JSX.Element {
             <button
               key={s}
               type="button"
-              onClick={() => {
-                if (s === 'done' && task.status !== 'done') useApp.getState().celebrate()
-                patch({ status: s })
-              }}
+              onClick={() => patch({ status: s })}
               className={`flex-1 rounded-lg border py-1 text-xs font-medium ${task.status === s ? 'border-transparent text-white' : 'border-edge text-muted'}`}
               style={task.status === s ? { background: 'var(--accent)' } : undefined}
             >

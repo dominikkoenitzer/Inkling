@@ -1,8 +1,4 @@
-/**
- * Two clocks: rows are stamped in UTC so they sort correctly anywhere, but a "day" (streak,
- * heatmap square) is the user's own calendar, so those queries bucket with `localtime` and
- * compare against `localDay`.
- */
+/** Rows are stamped in UTC; a "day" is the user's own calendar, see `localDay`. */
 
 export { localDay } from '@shared/day'
 

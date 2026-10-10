@@ -1,8 +1,12 @@
-import { Moon, Flame, Database, Keyboard, Percent } from 'lucide-react'
-import { useApp } from '@/stores/app'
-import { GRADING_SYSTEM_OPTIONS } from '@shared/grades'
-import { Modal, Segmented } from '@/components/ui'
+import { useState } from 'react'
+import { Moon, Sparkles } from 'lucide-react'
+import { useApp, bumpData } from '@/stores/app'
+import { DEFAULT_PARAMS } from '@shared/fsrs'
+import type { OptimiseOutcome } from '@shared/types'
+import { Button, Modal, Segmented } from '@/components/ui'
 import { LogoMark } from '@/components/Inky'
+
+const api = window.inkling
 
 export function SettingsModal(): React.JSX.Element {
   const app = useApp()
@@ -21,35 +25,59 @@ export function SettingsModal(): React.JSX.Element {
           />
         </Row>
 
-        <Row icon={<Percent size={16} />} label="Grading" hint="How Inkling shows your averages: the Swiss 1–6 scale (6 is best) or plain percentages.">
-          <Segmented options={GRADING_SYSTEM_OPTIONS} value={app.gradingSystem} onChange={app.setGradingSystem} />
-        </Row>
-
-        <Row icon={<Keyboard size={16} />} label="Shortcuts" hint="">
-          <div className="space-y-1 text-xs text-muted">
-            <div><Kbd>Ctrl K</Kbd> command palette & search</div>
-            <div><Kbd>Space</Kbd> reveal flashcard · <Kbd>1–4</Kbd> grade it</div>
-          </div>
-        </Row>
-
-        <Row icon={<Database size={16} />} label="Your data" hint="">
-          <p className="text-xs text-muted">
-            Everything lives on this machine in a local SQLite database, fully offline. The last 5 backups are kept automatically next to it.
-          </p>
-        </Row>
-
-        <Row icon={<Flame size={16} />} label="Streak" hint="">
-          <p className="text-xs text-muted">
-            {app.streak.count > 0 ? `${app.streak.count} day${app.streak.count === 1 ? '' : 's'}. Reviews and focus sessions keep it alive. Missing a day just quietly resets it; no shame here.` : 'Review flashcards or finish a focus session to start one.'}
-          </p>
+        <Row icon={<Sparkles size={16} />} label="Your reviews" hint="Fit the scheduler to how you actually remember.">
+          <Optimise />
         </Row>
 
         <div className="flex items-center gap-2 border-t border-edge pt-4 text-xs text-faint">
           <LogoMark size={18} />
-          Inkling {__APP_VERSION__} · notes, tasks, study and grades. Studying, made fun.
+          Inkling {__APP_VERSION__} · notes, tasks and study. Studying, made fun.
         </div>
       </div>
     </Modal>
+  )
+}
+
+function outcomeText(o: OptimiseOutcome, fitted: boolean): string {
+  if (o.status === 'too-few') {
+    return `Needs ${o.needed} reviews a day or more apart, you have ${o.reviews}. Keeping the ${fitted ? 'current parameters' : 'defaults'}.`
+  }
+  if (o.status === 'no-better') return 'The parameters in use already fit your reviews best.'
+  const better = Math.max(1, Math.round((1 - o.lossAfter / o.lossBefore) * 100))
+  return `Fitted to ${o.reviews} reviews. Predictions ${better}% closer.`
+}
+
+function Optimise(): React.JSX.Element {
+  const fitted = useApp((s) => s.fsrsParams.some((v, i) => v !== DEFAULT_PARAMS[i]))
+  const setFsrsParams = useApp((s) => s.setFsrsParams)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  const run = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      const outcome = await api.decks.optimise()
+      if (outcome.params) {
+        setFsrsParams(outcome.params)
+        bumpData('decks')
+      }
+      setMessage(outcomeText(outcome, fitted))
+    } catch {
+      setMessage('Could not optimise. Your parameters are unchanged.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <Button onClick={() => void run()} disabled={busy}>
+        {busy ? 'Optimising…' : 'Optimise from my reviews'}
+      </Button>
+      <p className="mt-1.5 text-[11px] text-faint" aria-live="polite">
+        {message ?? (fitted ? 'Using parameters fitted to your reviews.' : 'Using the default parameters.')}
+      </p>
+    </div>
   )
 }
 
@@ -66,8 +94,4 @@ function Row({ icon, label, hint, children }: { icon: React.ReactNode; label: st
       <div>{children}</div>
     </div>
   )
-}
-
-function Kbd({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <kbd className="rounded-sm border border-edge bg-sunken px-1 py-0.5 text-[11px]">{children}</kbd>
 }

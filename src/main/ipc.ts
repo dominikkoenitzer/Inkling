@@ -41,26 +41,10 @@ export function registerIpc(): void {
   handle('decks.removeCard', repos.removeCard)
   handle('decks.review', repos.reviewCard)
 
-  handle('focus.start', repos.startFocus)
-  handle('focus.complete', repos.completeFocus)
-  handle('focus.todayMinutes', repos.todayFocusMinutes)
-
-  handle('streak.get', repos.getStreak)
-  handle('streak.bump', repos.bumpStreak)
-
   handle('settings.all', repos.allSettings)
   handle('settings.set', repos.setSetting)
 
   handle('search.query', repos.searchQuery)
-
-  handle('stats.overview', repos.statsOverview)
-  handle('stats.activity', repos.activity)
-
-  handle('grades.list', repos.listGrades)
-  handle('grades.all', repos.listAllGrades)
-  handle('grades.create', repos.createGrade)
-  handle('grades.update', repos.updateGrade)
-  handle('grades.remove', repos.removeGrade)
 
   ipcMain.handle('app.setTitlebar', (event, colors: { color: string; symbolColor: string }) => {
     const win = BrowserWindow.fromWebContents(event.sender)

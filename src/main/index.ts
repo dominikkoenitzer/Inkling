@@ -147,8 +147,6 @@ function seedDemo(): void {
   repos.createTask({ notebook_id: nb.id, title: 'Finish reading Ch. 4', due_date: today.toISOString() })
   repos.createTask({ notebook_id: nb.id, title: 'Lab report draft', due_date: tomorrow.toISOString() })
   repos.createTask({ notebook_id: nb.id, title: 'Email study group' })
-  repos.createGrade({ notebook_id: nb.id, title: 'Quiz 1', score: 5, max: 6, weight: 1, system: 'swiss' })
-  repos.createGrade({ notebook_id: nb.id, title: 'Midterm', score: 4.5, max: 6, weight: 2, system: 'swiss' })
   const deck = repos.createDeck(nb.id, 'Cell biology')
   repos.addCard(deck.id, 'Photosynthesis', 'The process plants use to convert light into energy')
   repos.addCard(deck.id, 'Mitochondria', 'The powerhouse of the cell')
@@ -159,7 +157,6 @@ function seedDemo(): void {
   const maths = repos.createNotebook({ name: 'Maths', color: 'coral' })
   repos.createNote({ notebook_id: maths.id, title: 'Integration by parts', content: page('Integration by parts', 'u dv = uv minus the integral of v du. Pick u so that du is simpler.') })
   repos.createTask({ notebook_id: maths.id, title: 'Problem set 7', due_date: tomorrow.toISOString() })
-  repos.createGrade({ notebook_id: maths.id, title: 'Test 1', score: 5.5, max: 6, weight: 1, system: 'swiss' })
   const history = repos.createNotebook({ name: 'History', color: 'amber' })
   repos.createNote({ notebook_id: history.id, title: 'Cold War timeline', content: page('Cold War timeline', '1947 Truman Doctrine. 1961 Berlin Wall. 1989 it comes down.') })
 }
@@ -180,10 +177,6 @@ function seedHistory(deckId: number): void {
   const db = getDb()
   const cardIds = (db.prepare(`SELECT id FROM flashcards WHERE deck_id = ?`).all(deckId) as Array<{ id: number }>).map((c) => c.id)
   if (cardIds.length === 0) return
-
-  const logFocus = db.prepare(
-    `INSERT INTO focus_sessions (task_id, deck_id, duration_minutes, started_at, completed) VALUES (NULL, ?, ?, ?, 1)`
-  )
 
   const tx = db.transaction(() => {
     for (let daysAgo = 120; daysAgo >= 0; daysAgo--) {
@@ -213,7 +206,6 @@ function seedHistory(deckId: number): void {
           reviewedAt: at.toISOString()
         })
       }
-      if (daysAgo % 2 === 0) logFocus.run(deckId, 25, new Date(day.getTime() - 3_600_000).toISOString())
     }
   })
   tx()

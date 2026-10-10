@@ -43,32 +43,12 @@ const api: InklingApi = {
     removeCard: invoke('decks.removeCard'),
     review: invoke('decks.review')
   },
-  focus: {
-    start: invoke('focus.start'),
-    complete: invoke('focus.complete'),
-    todayMinutes: invoke('focus.todayMinutes')
-  },
-  streak: {
-    get: invoke('streak.get'),
-    bump: invoke('streak.bump')
-  },
   settings: {
     all: invoke('settings.all'),
     set: invoke('settings.set')
   },
   search: {
     query: invoke('search.query')
-  },
-  stats: {
-    overview: invoke('stats.overview'),
-    activity: invoke('stats.activity')
-  },
-  grades: {
-    list: invoke('grades.list'),
-    all: invoke('grades.all'),
-    create: invoke('grades.create'),
-    update: invoke('grades.update'),
-    remove: invoke('grades.remove')
   },
   app: {
     setTitlebar: invoke('app.setTitlebar'),

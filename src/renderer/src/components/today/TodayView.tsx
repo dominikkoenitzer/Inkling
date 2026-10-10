@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Layers, TrendingUp, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
+import { Layers, ArrowRight, Plus, CheckSquare, FileText } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { useTimer, isFocusLive, startFocusSession } from '@/stores/timer'
-import { subjectAverage } from '@shared/grades'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
 import { onActivateKey } from '@/lib/keys'
 import { Inky } from '@/components/Inky'
-import type { Deck, Task, Grade, Note, Notebook } from '@shared/types'
+import type { Deck, Task, Note, Notebook } from '@shared/types'
 
 const api = window.inkling
 
@@ -30,20 +28,14 @@ function useNow(intervalMs = 60_000): number {
 }
 
 /**
- * The daily plan: due flashcards, open tasks, the weakest graded subject and today's focus
- * time, each with a one-click start.
+ * The daily plan: due flashcards and open tasks, each with a one-click start.
  */
 export function TodayView(): React.JSX.Element {
   const app = useApp()
   const now = useNow()
-  // A focus session is live if it's running or paused part-way through, used so the plan
-  // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
-  const timerActive = useTimer(isFocusLive)
-  const version = useVersion('decks') + useVersion('tasks') + useVersion('grades') + useVersion('focus')
+  const version = useVersion('decks') + useVersion('tasks')
   const [decks, setDecks] = useState<Deck[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [grades, setGrades] = useState<Grade[]>([])
-  const [minutes, setMinutes] = useState(0)
   const [loaded, setLoaded] = useState(false)
   // tasks mid-completion: keeps the checkbox visibly ticked until the refetch removes the row
   const [completing, setCompleting] = useState<Set<number>>(new Set())
@@ -53,18 +45,16 @@ export function TodayView(): React.JSX.Element {
   useEffect(() => {
     // Overlapping fetches can resolve out of order; only the newest may write state.
     let stale = false
-    void Promise.all([api.decks.list(), api.tasks.smart('today'), api.grades.all(), api.focus.todayMinutes()]).then(([d, t, g, m]) => {
+    void Promise.all([api.decks.list(), api.tasks.smart('today')]).then(([d, t]) => {
       if (stale) return
       setDecks(d)
       setTasks(t)
-      setGrades(g)
-      setMinutes(m)
       setLoaded(true)
     })
     return () => {
       stale = true
     }
-    // app.today: "due today" and today's focus minutes are a new list after midnight
+    // app.today: "due today" is a new list after midnight
   }, [version, app.today])
 
   useEffect(() => {
@@ -79,21 +69,12 @@ export function TodayView(): React.JSX.Element {
   const inkyColor = isColorKey(active?.color) ? active.color : 'teal'
   const dueDecks = decks.filter((d) => d.due_count > 0)
   const openTasks = tasks.filter((t) => t.status !== 'done')
-  const bySubject = app.notebooks
-    .map((nb) => ({ nb, avg: subjectAverage(grades.filter((g) => g.notebook_id === nb.id), app.gradingSystem) }))
-    .filter((x): x is { nb: Notebook; avg: NonNullable<ReturnType<typeof subjectAverage>> } => x.avg !== null)
-  const weakest = bySubject.length >= 2 ? bySubject.reduce((a, b) => (b.avg.value < a.avg.value ? b : a)) : null
-  // gate on loaded so the focus card can't flash before the first fetch lands.
-  // A running session shows "resume"; otherwise suggest a fresh block only if none is done yet.
-  const suggestFocus = loaded && minutes === 0
-  const focusItem: 'resume' | 'start' | null = timerActive ? 'resume' : suggestFocus ? 'start' : null
-  const planCount = dueDecks.length + openTasks.length + (weakest ? 1 : 0) + (focusItem ? 1 : 0)
+  const planCount = dueDecks.length + openTasks.length
   const cleared = loaded && planCount === 0
 
   const completeTask = (t: Task): void => {
     setCompleting((prev) => new Set(prev).add(t.id))
     void api.tasks.update(t.id, { status: 'done' }).then(() => {
-      app.celebrate()
       bumpData('tasks')
       if (t.note_id !== null) bumpData('notes')
     })
@@ -107,8 +88,6 @@ export function TodayView(): React.JSX.Element {
     return { text: hm === '00:00' ? 'today' : `due ${hm}`, overdue: false }
   }
 
-  const startFocus = startFocusSession
-
   const newPage = async (): Promise<void> => {
     if (app.activeNotebookId === null) return
     const note = await api.notes.create({ notebook_id: app.activeNotebookId })
@@ -120,16 +99,11 @@ export function TodayView(): React.JSX.Element {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex w-full max-w-2xl flex-col px-6 pb-16 pt-10">
         <div className="fade-up mb-6 flex items-center gap-4">
-          <Inky pose={cleared ? 'happy' : 'wave'} color={inkyColor} size={76} />
+          <Inky color={inkyColor} size={76} />
           <div>
             <h1 className="text-[28px] font-bold leading-tight">{greeting()}!</h1>
             <p className="text-sm text-muted">
               {format(new Date(), 'EEEE, MMMM d')}
-              {app.streak.count > 0 && (
-                <span className="ml-2 inline-flex items-center gap-1 font-semibold text-ink">
-                  <Flame size={14} className="flame" style={{ color: 'var(--accent-text)' }} /> {app.streak.count}-day streak
-                </span>
-              )}
             </p>
             <p className="mt-0.5 text-sm text-faint">
               {cleared
@@ -147,7 +121,7 @@ export function TodayView(): React.JSX.Element {
               <span className="font-semibold">Plan cleared.</span>
               <span className="text-muted">Nothing due. Get ahead, or enjoy it.</span>
             </div>
-            <div className="stagger mt-2 grid grid-cols-3 gap-2">
+            <div className="mt-2 grid grid-cols-3 gap-2">
               <QuickAction icon={<Plus size={18} />} label="New page" onClick={() => void newPage()} />
               <QuickAction
                 icon={<Layers size={18} />}
@@ -162,7 +136,7 @@ export function TodayView(): React.JSX.Element {
           </>
         )}
 
-        <div className="stagger space-y-2">
+        <div className="space-y-2">
           {dueDecks.map((d) => {
             const nb = nbOf(d.notebook_id)
             return (
@@ -195,7 +169,7 @@ export function TodayView(): React.JSX.Element {
                   checked={completing.has(t.id)}
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => completeTask(t)}
-                  className="check-pop h-4 w-4 shrink-0 accent-[var(--accent)]"
+                  className="h-4 w-4 shrink-0 accent-[var(--accent)]"
                   title="Mark done"
                 />
                 <div className="min-w-0 flex-1">
@@ -209,41 +183,12 @@ export function TodayView(): React.JSX.Element {
               </div>
             )
           })}
-
-          {weakest && (
-            <PlanCard
-              bubble={<TrendingUp size={18} />}
-              tint={softTint(weakest.nb.color, app.theme)}
-              title={`Give ${weakest.nb.name} some love`}
-              sub={`Your lowest average right now (${weakest.avg.display})`}
-              actionLabel="Open"
-              onAction={() => {
-                app.setActiveNotebook(weakest.nb.id)
-                app.setTab('grades')
-              }}
-            />
-          )}
-
-          {focusItem && !cleared && (
-            <PlanCard
-              bubble={<Play size={18} />}
-              tint={softTint(active?.color, app.theme)}
-              title={focusItem === 'resume' ? 'Focus session in progress' : 'One 25-minute focus block'}
-              sub={
-                focusItem === 'resume'
-                  ? 'Pick up where you left off. Your timer is still running.'
-                  : 'Start the timer, pick anything above. Momentum does the rest.'
-              }
-              actionLabel={focusItem === 'resume' ? 'Resume' : 'Start'}
-              onAction={startFocus}
-            />
-          )}
         </div>
 
         {recent.length > 0 && (
           <div className="mt-8">
             <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-faint">Jump back in</div>
-            <div className="stagger space-y-0.5">
+            <div className="space-y-0.5">
               {recent.map((n) => (
                 <button
                   key={n.id}

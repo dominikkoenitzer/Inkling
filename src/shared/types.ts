@@ -1,9 +1,8 @@
-import type { GradingSystem } from './grades'
 import type { CardState } from './fsrs'
 
 export type ColorKey = 'teal' | 'coral' | 'amber' | 'pink' | 'gray'
 export type TaskStatus = 'todo' | 'done'
-export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study' | 'grades' | 'stats'
+export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study'
 
 export interface Notebook {
   id: number
@@ -65,64 +64,12 @@ export interface Card {
   cloze: number
 }
 
-export interface Grade {
-  id: number
-  notebook_id: number
-  title: string
-  score: number
-  max: number
-  weight: number
-  /** The grading system the row was entered under, so a later system switch can't reinterpret it. */
-  system: GradingSystem
-  created_at: string
-}
-
-export interface FocusSession {
-  id: number
-  task_id: number | null
-  deck_id: number | null
-  duration_minutes: number | null
-  started_at: string
-  completed: 0 | 1
-}
-
 export interface SearchResult {
   source_type: 'note' | 'task' | 'deck'
   source_id: number
   title: string
   snippet: string
   notebook_id: number
-}
-
-export interface StreakInfo {
-  count: number
-  last_day: string | null // YYYY-MM-DD (local)
-}
-
-/* ---------------------------------- Stats --------------------------------- */
-
-/** One local calendar day of activity. Days with nothing to show are omitted. */
-export interface ActivityDay {
-  day: string // YYYY-MM-DD, local
-  reviews: number
-  focus_minutes: number
-}
-
-export interface StatsOverview {
-  /** Window the counts cover, in days. */
-  window_days: number
-  reviews: number
-  reviews_all_time: number
-  /** Share of reviews in the window graded better than Again, 0–1. Null when nothing was due. */
-  retention: number | null
-  focus_minutes: number
-  /** Consecutive local days with a review or a completed focus session, ending today or yesterday. */
-  current_streak: number
-  longest_streak: number
-  /** Days studied at all, in the window. */
-  active_days: number
-  /** Cards due right now, across every deck. */
-  due_now: number
 }
 
 export interface NoteTaskItem {

@@ -5,7 +5,6 @@ import { isColorKey, ramp } from '@/lib/colors'
 import { hasCloze } from '@shared/cloze'
 import { EmptyState } from '@/components/Inky'
 import { Button, IconBtn, inputCls } from '@/components/ui'
-import { FocusTimer } from './FocusTimer'
 import { ReviewSession } from './ReviewSession'
 import type { Notebook, Deck, Card } from '@shared/types'
 
@@ -42,7 +41,6 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
           {decks.length === 0 ? (
             <div className="rounded-lg border border-edge bg-raised">
               <EmptyState
-                pose="wave"
                 color={color}
                 title="First flashcard deck? Let’s make it"
                 hint="Create one in the sidebar, or write “Term :: Definition” lines in any note and hit the Flashcards button."
@@ -72,11 +70,6 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
               ))}
             </div>
           )}
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-base font-bold">Focus timer</h2>
-          <FocusTimer notebook={notebook} decks={decks} />
         </section>
       </div>
     </div>

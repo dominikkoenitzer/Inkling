@@ -5,16 +5,11 @@ import type {
   Deck,
   Card,
   SearchResult,
-  StreakInfo,
   NoteTaskItem,
   NoteCardLine,
   ColorKey,
   ReviewGrade,
-  Grade,
-  StatsOverview,
-  ActivityDay
 } from './types'
-import type { GradingSystem } from './grades'
 
 export interface InklingApi {
   notebooks: {
@@ -61,32 +56,12 @@ export interface InklingApi {
     removeCard(id: number): Promise<void>
     review(cardId: number, grade: ReviewGrade): Promise<Card>
   }
-  focus: {
-    start(input: { task_id?: number | null; deck_id?: number | null }): Promise<number>
-    complete(id: number, minutes: number): Promise<void>
-    todayMinutes(): Promise<number>
-  }
-  streak: {
-    get(): Promise<StreakInfo>
-    bump(localDay: string): Promise<StreakInfo>
-  }
   settings: {
     all(): Promise<Record<string, string>>
     set(key: string, value: string): Promise<void>
   }
   search: {
     query(q: string): Promise<SearchResult[]>
-  }
-  stats: {
-    overview(windowDays?: number): Promise<StatsOverview>
-    activity(days?: number): Promise<ActivityDay[]>
-  }
-  grades: {
-    list(notebookId: number): Promise<Grade[]>
-    all(): Promise<Grade[]>
-    create(input: { notebook_id: number; title: string; score: number; max: number; weight: number; system?: GradingSystem }): Promise<Grade>
-    update(id: number, patch: Partial<Pick<Grade, 'title' | 'score' | 'max' | 'weight'>>): Promise<Grade>
-    remove(id: number): Promise<void>
   }
   app: {
     setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>
