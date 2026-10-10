@@ -43,7 +43,16 @@ export function TodayView(): React.JSX.Element {
       else next.delete(t.id)
       return next
     })
-    void api.tasks.setDone(t.id, done).then(() => bumpData('notes'))
+    api.tasks.setDone(t.id, done).then(
+      () => bumpData('notes'),
+      () =>
+        setTicked((prev) => {
+          const next = new Set(prev)
+          if (done) next.delete(t.id)
+          else next.add(t.id)
+          return next
+        })
+    )
   }
 
   const empty = loaded && tasks.length === 0 && decks.length === 0

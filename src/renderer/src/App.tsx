@@ -24,10 +24,12 @@ export default function App(): React.JSX.Element {
   // Roll "today" over at midnight and when the window comes back.
   useEffect(() => watchDay(), [])
 
+  // Only once the saved theme is known: the window already opened in it.
   useEffect(() => {
+    if (!ready) return
     document.documentElement.dataset.theme = theme
     void api.app.setTitlebar(theme)
-  }, [theme])
+  }, [ready, theme])
 
   // Ctrl+K search, Ctrl+N new note, Ctrl+, settings.
   useEffect(() => {

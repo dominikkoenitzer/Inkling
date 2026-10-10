@@ -27,6 +27,8 @@ beforeEach(() => {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME
     );
+    CREATE TABLE tasks (id INTEGER PRIMARY KEY, notebook_id INTEGER, note_id INTEGER, title TEXT, status TEXT);
+    CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT);
     CREATE VIRTUAL TABLE search_index USING fts5(
       title, content_text, source_type UNINDEXED, source_id UNINDEXED
     );

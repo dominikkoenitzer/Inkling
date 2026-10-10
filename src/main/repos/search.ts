@@ -23,26 +23,28 @@ export function searchQuery(q: string): SearchResult[] {
     .filter(Boolean)
   if (tokens.length === 0) return []
   const match = tokens.map((t) => `"${t.replace(/"/g, '')}"*`).join(' AND ')
+  // Hits whose target is gone (a trashed note, a task in one) are dropped before the limit,
+  // so they can never crowd live results out. A task opens the note it lives in.
   const rows = getDb()
     .prepare(
-      `SELECT title, snippet(search_index, 1, '⟪', '⟫', '…', 10) AS snippet, source_type, source_id
-       FROM search_index WHERE search_index MATCH ? ORDER BY rank LIMIT 20`
+      `SELECT s.title, snippet(search_index, 1, '⟪', '⟫', '…', 10) AS snippet, s.source_type, s.source_id,
+              CASE s.source_type WHEN 'note' THEN n.id WHEN 'task' THEN tn.id END AS note_id
+       FROM search_index s
+       LEFT JOIN notes n ON s.source_type = 'note' AND n.id = s.source_id AND n.deleted_at IS NULL
+       LEFT JOIN tasks t ON s.source_type = 'task' AND t.id = s.source_id
+       LEFT JOIN notes tn ON tn.id = t.note_id AND tn.deleted_at IS NULL
+       LEFT JOIN flashcard_decks d ON s.source_type = 'deck' AND d.id = s.source_id
+       WHERE search_index MATCH ?
+         AND (n.id IS NOT NULL OR tn.id IS NOT NULL OR d.id IS NOT NULL)
+       ORDER BY rank LIMIT 20`
     )
-    .all(match) as Array<{ title: string; snippet: string; source_type: string; source_id: string }>
-  // What each kind of hit opens: a live note, the live note a task sits in, or a deck.
-  const targets: Record<SearchResult['source_type'], string> = {
-    note: `SELECT id FROM notes WHERE id = ? AND deleted_at IS NULL`,
-    task: `SELECT t.note_id AS id FROM tasks t JOIN notes n ON n.id = t.note_id WHERE t.id = ? AND n.deleted_at IS NULL`,
-    deck: `SELECT id FROM flashcard_decks WHERE id = ?`
-  }
-  const results: SearchResult[] = []
-  for (const r of rows) {
-    const id = Number(r.source_id)
-    const type = r.source_type as SearchResult['source_type']
-    // A task opens the note it lives in; a row whose target is gone is stale and skipped.
-    const target = getDb().prepare(targets[type]).get(id) as { id: number } | undefined
-    if (!target) continue
-    results.push({ source_type: type, source_id: id, title: r.title, snippet: r.snippet, note_id: type === 'deck' ? null : target.id })
-  }
+    .all(match) as Array<{ title: string; snippet: string; source_type: string; source_id: string; note_id: number | null }>
+  const results: SearchResult[] = rows.map((r) => ({
+    source_type: r.source_type as SearchResult['source_type'],
+    source_id: Number(r.source_id),
+    title: r.title,
+    snippet: r.snippet,
+    note_id: r.source_type === 'deck' ? null : r.note_id
+  }))
   return results
 }

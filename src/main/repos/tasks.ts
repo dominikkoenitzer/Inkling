@@ -1,5 +1,6 @@
 import { getDb } from '../db'
 import { now } from './dates'
+import { homeNotebookId } from './notebooks'
 import { createNote, getNote } from './notes'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
 import type { NoteTaskItem, OpenTask, Task } from '@shared/types'
@@ -79,25 +80,26 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
 }
 
 /**
- * Tasks made before checkboxes were the only kind have no note. Each notebook's loose tasks
- * become one "Tasks" note with a checklist, so nothing disappears. Tasks of a note that was
- * deleted for good go too. Safe to run on every start.
+ * Tasks made before checkboxes were the only kind have no note, and older versions left the
+ * tasks of a purged note without one too. Each notebook's loose tasks become one "Tasks" note
+ * with a checklist, so nothing disappears. Safe to run on every start.
  */
 export function adoptLooseTasks(): number {
   const db = getDb()
   let adopted = 0
   db.transaction(() => {
-    const purged = db
-      .prepare(`SELECT id FROM tasks WHERE note_id IS NOT NULL AND note_id NOT IN (SELECT id FROM notes)`)
-      .all() as Array<{ id: number }>
-    for (const t of purged) {
-      db.prepare(`DELETE FROM tasks WHERE id = ?`).run(t.id)
-      ftsDelete('task', t.id)
-    }
     const loose = db.prepare(`SELECT * FROM tasks WHERE note_id IS NULL ORDER BY notebook_id, id`).all() as Task[]
+    if (loose.length === 0) return
+    const notebooks = new Set((db.prepare(`SELECT id FROM notebooks`).all() as Array<{ id: number }>).map((n) => n.id))
     const byNotebook = new Map<number, Task[]>()
-    for (const t of loose) byNotebook.set(t.notebook_id, [...(byNotebook.get(t.notebook_id) ?? []), t])
-    const link = db.prepare(`UPDATE tasks SET note_id = ? WHERE id = ?`)
+    for (const t of loose) {
+      // A task whose notebook is gone goes to the home notebook rather than nowhere.
+      const nb = notebooks.has(t.notebook_id) ? t.notebook_id : homeNotebookId()
+      const list = byNotebook.get(nb)
+      if (list) list.push(t)
+      else byNotebook.set(nb, [t])
+    }
+    const link = db.prepare(`UPDATE tasks SET note_id = ?, notebook_id = ? WHERE id = ?`)
     for (const [notebookId, tasks] of byNotebook) {
       const doc = {
         type: 'doc',
@@ -113,7 +115,7 @@ export function adoptLooseTasks(): number {
         ]
       }
       const note = createNote({ notebook_id: notebookId, title: 'Tasks', content: JSON.stringify(doc) })
-      for (const t of tasks) link.run(note.id, t.id)
+      for (const t of tasks) link.run(note.id, notebookId, t.id)
       adopted += tasks.length
     }
   })()
@@ -135,11 +137,19 @@ function checkNoteItem(noteId: number, taskId: number, checked: boolean): void {
     return // malformed content, skip
   }
   let changed = false
-  const walk = (n: DocNode): void => {
-    for (const child of n.content ?? []) {
-      if (child.type === 'taskItem' && Number(child.attrs?.taskId) === taskId && child.attrs && child.attrs.checked !== checked) {
-        child.attrs.checked = checked
-        changed = true
+  let found = false
+  const walk = (n: DocNode | null): void => {
+    if (!n || typeof n !== 'object' || !Array.isArray(n.content)) return
+    for (const child of n.content) {
+      if (found) return
+      if (child && child.type === 'taskItem' && Number(child.attrs?.taskId) === taskId && child.attrs) {
+        // Only the first line with this id: a pasted copy gets its own task on the next sync.
+        found = true
+        if (child.attrs.checked !== checked) {
+          child.attrs.checked = checked
+          changed = true
+        }
+        return
       }
       walk(child)
     }

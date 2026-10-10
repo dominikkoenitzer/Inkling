@@ -52,6 +52,9 @@ function linkedNote(): { noteId: number; ids: number[] } {
 beforeEach(() => {
   ;({ raw, db } = openSqlite())
   raw.exec(`
+    CREATE TABLE notebooks (id INTEGER PRIMARY KEY, name TEXT, color TEXT, sort_order INTEGER DEFAULT 0, created_at DATETIME);
+    INSERT INTO notebooks (id, name, color) VALUES (1, 'Notes', 'teal'), (2, 'Maths', 'teal');
+    CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT);
     CREATE TABLE notes (
       id INTEGER PRIMARY KEY, notebook_id INTEGER, title TEXT, content TEXT NOT NULL,
       created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
@@ -131,14 +134,29 @@ describe('adoptLooseTasks', () => {
     expect(adoptLooseTasks()).toBe(0)
   })
 
-  it('drops the tasks of a note that was deleted for good', () => {
-    const { noteId } = linkedNote()
-    raw.exec(`PRAGMA foreign_keys = OFF`)
+  it('gives the tasks of a purged note and of a vanished notebook a note too', () => {
+    const { noteId, ids } = linkedNote()
+    // Foreign keys set note_id to NULL when a note is deleted for good, as older versions did.
     raw.prepare(`DELETE FROM notes WHERE id = ?`).run(noteId)
+    raw.exec(`PRAGMA foreign_keys = OFF; INSERT INTO tasks (notebook_id, note_id, title, status) VALUES (9, NULL, 'Orphan', 'todo'); PRAGMA foreign_keys = ON;`)
 
-    adoptLooseTasks()
+    expect(adoptLooseTasks()).toBe(3)
 
-    expect(tasksForNote(noteId)).toEqual([])
-    expect(raw.prepare(`SELECT COUNT(*) AS n FROM notes`).get()).toEqual({ n: 0 })
+    const kept = raw.prepare(`SELECT id, notebook_id, note_id FROM tasks ORDER BY id`).all() as Array<{ id: number; notebook_id: number; note_id: number }>
+    expect(kept.map((t) => t.id).slice(0, 2)).toEqual(ids)
+    expect(kept.every((t) => t.note_id !== null)).toBe(true)
+    expect(kept.every((t) => t.notebook_id === 1)).toBe(true)
+  })
+})
+
+describe('search with a trashed note full of to-dos', () => {
+  it('still finds the live note', () => {
+    const trashed = createNote({ notebook_id: 1, title: 'Old', content: docOf(list(...Array.from({ length: 25 }, (_, i) => item(null, `alpha ${i}`)))) })
+    syncNoteTasks(trashed.id, 1, itemsOf(trashed.content))
+    raw.prepare(`UPDATE notes SET deleted_at = '2026-01-01' WHERE id = ?`).run(trashed.id)
+    raw.prepare(`DELETE FROM search_index WHERE source_type = 'note' AND source_id = ?`).run(String(trashed.id))
+    const live = createNote({ notebook_id: 1, title: 'Alpha notes', content: docOf() })
+
+    expect(searchQuery('alpha').map((r) => [r.source_type, r.note_id])).toEqual([['note', live.id]])
   })
 })

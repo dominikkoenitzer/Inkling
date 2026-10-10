@@ -29,9 +29,11 @@ function welcomeDoc(taskId: number | null): string {
 
 /** First run: one welcome note, made on the spot. */
 export function bootstrapFirstRun(): void {
-  if (listNotebooks().length > 0) return
-  const home = createNotebook({ name: 'Notes', color: 'teal' })
-  const note = createNote({ notebook_id: home.id, title: 'Welcome to Inkling', content: welcomeDoc(null) })
-  const [taskId] = syncNoteTasks(note.id, home.id, [{ taskId: null, title: 'Tick me off', checked: false }])
-  getDb().prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(welcomeDoc(taskId), note.id)
+  getDb().transaction(() => {
+    if (listNotebooks().length > 0) return
+    const home = createNotebook({ name: 'Notes', color: 'teal' })
+    const note = createNote({ notebook_id: home.id, title: 'Welcome to Inkling', content: welcomeDoc(null) })
+    const [taskId] = syncNoteTasks(note.id, home.id, [{ taskId: null, title: 'Tick me off', checked: false }])
+    getDb().prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(welcomeDoc(taskId), note.id)
+  })()
 }
