@@ -4,6 +4,9 @@
  *
  *   bun run build && bun run mcp:smoke
  *
+ * MCP_SMOKE_EXE=<path to a packaged Inkling> checks that build's --mcp instead; the profile is
+ * still set up by the unpackaged app.
+ *
  * Exits non-zero if any check fails.
  */
 import { spawn, spawnSync } from 'node:child_process'
@@ -28,7 +31,9 @@ const ok = (name, cond, detail) => results.push((cond ? 'PASS ' : 'FAIL ') + nam
 
 /** One MCP session over the child's stdin and stdout. */
 function session() {
-  const child = spawn(electron, [root, '--mcp', ...sandbox], { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+  const packaged = process.env['MCP_SMOKE_EXE']
+  const [cmd, args] = packaged ? [packaged, ['--mcp', ...sandbox]] : [electron, [root, '--mcp', ...sandbox]]
+  const child = spawn(cmd, args, { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
   const pending = new Map()
   const stray = []
   let buf = ''
