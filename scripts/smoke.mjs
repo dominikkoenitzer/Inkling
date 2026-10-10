@@ -42,28 +42,39 @@ const checks = `
   const r = []
   const ok = (name, cond, detail) => r.push((cond ? 'PASS ' : 'FAIL ') + name + (detail ? ' (' + detail + ')' : ''))
   try {
-    const nb = (await api.notebooks.list())[0]
-    ok('first run creates a notebook', !!nb, nb && nb.name)
+    const home = await api.notebooks.home()
+    const first = await api.notes.list()
+    ok('first run makes a welcome note', first.length === 1 && first[0].title === 'Welcome to Inkling', first[0] && first[0].title)
+    const welcomeTodo = (await api.tasks.open()).find((t) => t.note_id === first[0].id)
+    ok('the welcome note has an open to-do on Today', !!welcomeTodo, welcomeTodo && welcomeTodo.title)
 
-    const note = await api.notes.create({ notebook_id: nb.id, title: 'Smoke note' })
-    const ids = await api.notes.syncTasks(note.id, nb.id, [{ taskId: null, title: 'From a checkbox', checked: false }])
-    const linked = await api.tasks.get(ids[0])
-    ok('a note checkbox becomes a linked task', !!linked && linked.note_id === note.id, linked && linked.title)
+    // As the editor does it: the checkbox in the note, then its task row, then the id stamped back.
+    const docWith = (taskId) => JSON.stringify({ type: 'doc', content: [{ type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false, taskId }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'From a checkbox' }] }] }] }] })
+    const note = await api.notes.create({ notebook_id: home, title: 'Smoke note', content: docWith(null) })
+    const ids = await api.notes.syncTasks(note.id, home, [{ taskId: null, title: 'From a checkbox', checked: false }])
+    await api.notes.update(note.id, { content: docWith(ids[0]) })
+    const open = await api.tasks.open()
+    const linked = open.find((t) => t.id === ids[0])
+    ok('a note checkbox shows up on Today', !!linked && linked.note_id === note.id && linked.note_title === 'Smoke note', linked && linked.title)
 
-    await api.tasks.update(linked.id, { status: 'done' })
-    const done = await api.tasks.get(linked.id)
-    ok('completing a task stamps completed_at', done.status === 'done' && !!done.completed_at)
+    const done = await api.tasks.setDone(linked.id, true)
+    const doc = JSON.stringify(JSON.parse((await api.notes.get(note.id)).content))
+    ok('ticking on Today stamps completed_at', done.status === 'done' && !!done.completed_at)
+    ok('ticking on Today ticks the box in the note', doc.includes('"checked":true'))
+    ok('a ticked to-do leaves Today', !(await api.tasks.open()).some((t) => t.id === linked.id))
 
     const hits = await api.search.query('Smoke')
-    ok('full-text search finds the note', hits.some((h) => h.source_type === 'note' && h.source_id === note.id))
+    ok('full-text search finds the note', hits.some((h) => h.source_type === 'note' && h.note_id === note.id))
+    const taskHit = (await api.search.query('checkbox')).find((h) => h.source_type === 'task')
+    ok('a to-do in search opens its note', !!taskHit && taskHit.note_id === note.id)
 
     await api.notes.remove(note.id)
-    const gone = (await api.notes.list(nb.id)).some((n) => n.id === note.id)
+    const gone = !(await api.notes.list()).some((n) => n.id === note.id)
     await api.notes.restore(note.id)
-    const back = (await api.notes.list(nb.id)).some((n) => n.id === note.id)
-    ok('delete then undo restores the page', !gone && back)
+    const back = (await api.notes.list()).some((n) => n.id === note.id)
+    ok('delete then undo brings the note back', gone && back)
 
-    const deck = await api.decks.create(nb.id, 'Smoke deck')
+    const deck = await api.decks.create(home, 'Smoke deck')
     await api.decks.addCard(deck.id, 'Front', 'Back')
     await api.decks.addCard(deck.id, 'A', 'B')
     const due = await api.decks.dueCards(deck.id)
