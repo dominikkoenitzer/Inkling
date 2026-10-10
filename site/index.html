@@ -85,11 +85,13 @@ body {
   overflow-x: clip;
 }
 a { color: var(--accent-ink); text-underline-offset: 0.18em; }
-a:focus-visible, .btn:focus-visible, summary:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 3px; border-radius: 0.6rem; }
+a:focus-visible, .btn:focus-visible, summary:focus-visible, .codecard:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 3px; }
+a:not(.btn):focus-visible, summary:focus-visible { border-radius: 0.6rem; }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 img { display: block; max-width: 100%; height: auto; }
 picture { display: contents; }
 kbd { font: inherit; font-weight: 700; color: var(--text); }
-code { font: 0.92em/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; }
+code { font: 0.92em/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; overflow-wrap: anywhere; }
 .wrap { position: relative; max-width: 78rem; margin: 0 auto; padding: 0 1.5rem; }
 section[id] { scroll-margin-top: 1.5rem; }
 
@@ -145,7 +147,7 @@ nav.top { position: relative; display: flex; align-items: center; justify-conten
   align-items: center;
   padding-top: clamp(2.5rem, 8vh, 5.5rem);
 }
-h1 { margin: 0; font-size: clamp(3.5rem, 9vw, 7.75rem); line-height: 0.92; letter-spacing: -0.055em; font-weight: 780; }
+h1 { margin: 0; font-size: clamp(3.5rem, var(--h1-vw, 9vw), var(--h1-max, 7.75rem)); line-height: 0.92; letter-spacing: -0.055em; font-weight: 780; }
 .lede { margin: 1.5rem 0 0; max-width: 27rem; font-size: clamp(1.15rem, 1.7vw, 1.3rem); line-height: 1.5; }
 .get { margin-top: 2.25rem; }
 .small { margin: 1rem 0 0; font-size: 0.93rem; color: var(--muted); line-height: 1.5; }
@@ -317,6 +319,9 @@ footer p { margin: 0.3rem 0; }
   .feature { margin-bottom: clamp(6rem, 18vw, 8rem); }
   .pair .shot { width: 80%; }
 }
+@media (min-width: 600px) and (max-width: 900px) {
+  .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .btn { transition: none; }
@@ -350,7 +355,7 @@ footer p { margin: 0.3rem 0; }
 </div>
 </div>
 <div class="hero-shot">
-<figure class="window"><picture><source srcset="img/note-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/note-light.webp" width="2880" height="1800" alt="A biology note in Inkling with five terms, two bullet points and a short to-do list" fetchpriority="high" decoding="async"></picture></figure>
+<figure class="window"><picture><source srcset="img/note-dark-1440.webp 1440w, img/note-dark.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" media="(prefers-color-scheme: dark)"><img src="img/note-light.webp" srcset="img/note-light-1440.webp 1440w, img/note-light.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" width="2880" height="1800" alt="A biology note in Inkling with five terms, two bullet points and a short to-do list" fetchpriority="high" decoding="async"></picture></figure>
 </div>
 </div>
 </div>
@@ -365,7 +370,7 @@ footer p { margin: 0.3rem 0; }
 <p>The decks with cards due wait on the same page.</p>
 </div>
 <div class="stage">
-<div class="main" style="--pos: 52% 0; --zoom: 1; --ar: 2880 / 1800"><picture><source srcset="img/today-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/today-light.webp" width="2880" height="1800" alt="The Today page with nine open to-dos from six notes and three decks with cards due" loading="lazy" decoding="async"></picture></div>
+<div class="main" style="--pos: 52% 0; --zoom: 1; --ar: 2880 / 1800"><picture><source srcset="img/today-dark-1440.webp 1440w, img/today-dark.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" media="(prefers-color-scheme: dark)"><img src="img/today-light.webp" srcset="img/today-light-1440.webp 1440w, img/today-light.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" width="2880" height="1800" alt="The Today page with nine open to-dos from six notes and three decks with cards due" loading="lazy" decoding="async"></picture></div>
 <div class="detail"><picture><source srcset="img/todo-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/todo-light.webp" width="1260" height="505" alt="" loading="lazy" decoding="async"></picture></div>
 </div>
 </div>
@@ -388,7 +393,7 @@ footer p { margin: 0.3rem 0; }
 <p><kbd>Ctrl+K</kbd> finds any note, to-do or deck, and <kbd>Ctrl+N</kbd> starts a new note. Your hands stay on the keyboard.</p>
 </div>
 <div class="stage">
-<div class="main" style="--pos: 45% 0; --zoom: 1; --ar: 2880 / 1800"><picture><source srcset="img/search-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/search-light.webp" width="2880" height="1800" alt="The search window over Today with results for the word cell" loading="lazy" decoding="async"></picture></div>
+<div class="main" style="--pos: 45% 0; --zoom: 1; --ar: 2880 / 1800"><picture><source srcset="img/search-dark-1440.webp 1440w, img/search-dark.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" media="(prefers-color-scheme: dark)"><img src="img/search-light.webp" srcset="img/search-light-1440.webp 1440w, img/search-light.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" width="2880" height="1800" alt="The search window over Today with results for the word cell" loading="lazy" decoding="async"></picture></div>
 <div class="detail"><picture><source srcset="img/palette-dark.webp" media="(prefers-color-scheme: dark)"><img src="img/palette-light.webp" width="1160" height="515" alt="" loading="lazy" decoding="async"></picture></div>
 </div>
 </div>
@@ -400,8 +405,8 @@ footer p { margin: 0.3rem 0; }
 <p class="lead">Pick one in Settings. The window opens in your theme from the very first frame.</p>
 </div>
 <div class="shots">
-<div class="shot one"><picture><img src="img/note-light.webp" width="2880" height="1800" alt="Inkling in its light theme" loading="lazy" decoding="async"></picture></div>
-<div class="shot two"><picture><img src="img/today-dark.webp" width="2880" height="1800" alt="Inkling in its dark theme" loading="lazy" decoding="async"></picture></div>
+<div class="shot one"><picture><img src="img/note-light.webp" srcset="img/note-light-1440.webp 1440w, img/note-light.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" width="2880" height="1800" alt="Inkling in its light theme" loading="lazy" decoding="async"></picture></div>
+<div class="shot two"><picture><img src="img/today-dark.webp" srcset="img/today-dark-1440.webp 1440w, img/today-dark.webp 2880w" sizes="(max-width: 900px) 100vw, 60vw" width="2880" height="1800" alt="Inkling in its dark theme" loading="lazy" decoding="async"></picture></div>
 </div>
 </section>
 <section class="assistant" aria-labelledby="ai-h">
@@ -412,7 +417,7 @@ footer p { margin: 0.3rem 0; }
 <p>It cannot delete anything or rewrite what a note already says. The assistant starts Inkling itself and nothing goes over the network.</p>
 <p>Want your assistant to know Inkling inside out? <a href="/skill/inkling.zip">Download the skill</a>.</p>
 </div>
-<div class="codecard">
+<div class="codecard" tabindex="0" role="region" aria-label="Add Inkling to your MCP client">
 <p class="cap">Add Inkling to your MCP client</p>
 <pre><code>{
   &quot;mcpServers&quot;: {
@@ -424,7 +429,8 @@ footer p { margin: 0.3rem 0; }
 }</code></pre>
 </div>
 </section>
-<section id="new" aria-label="Details">
+<section id="new" aria-labelledby="new-h">
+<h2 id="new-h" class="vh">Details</h2>
 <div class="grid2">
 <div class="card">
 <div class="num">Version 0.8.0</div>
@@ -461,7 +467,8 @@ footer p { margin: 0.3rem 0; }
 <li><span>Again, Hard, Good or Easy</span><kbd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></kbd></li>
 </ul>
 </section>
-<section aria-label="Install, update and remove">
+<section aria-labelledby="basics-h">
+<h2 id="basics-h" class="vh">Install, update and remove</h2>
 <div class="grid3">
 <div class="card">
 <div class="num">01</div>
