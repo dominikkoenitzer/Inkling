@@ -114,7 +114,7 @@ node node_modules/electron/install.js   # fetches the Electron app if bun skippe
 bun run dev                             # opens Inkling with live reload
 ```
 
-On Windows, `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` does the same checks and steps, runs the tests and tells you what is missing.
+On Windows, `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` checks that Git, Bun and Node.js 22 or newer are there, installs the packages, fetches Electron and runs the tests.
 
 Other scripts:
 
