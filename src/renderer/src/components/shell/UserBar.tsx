@@ -20,7 +20,7 @@ export function UserBar(): React.JSX.Element {
         title="Today"
         className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-hover"
       >
-        <Inky pose={app.celebrating ? 'happy' : 'neutral'} color={inkyColor} size={32} />
+        <Inky color={inkyColor} size={32} />
       </button>
 
       <IconBtn title="Settings (Ctrl+,)" onClick={() => app.setSettingsOpen(true)}>

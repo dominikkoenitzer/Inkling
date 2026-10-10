@@ -75,7 +75,6 @@ export function TodayView(): React.JSX.Element {
   const completeTask = (t: Task): void => {
     setCompleting((prev) => new Set(prev).add(t.id))
     void api.tasks.update(t.id, { status: 'done' }).then(() => {
-      app.celebrate()
       bumpData('tasks')
       if (t.note_id !== null) bumpData('notes')
     })
@@ -100,7 +99,7 @@ export function TodayView(): React.JSX.Element {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex w-full max-w-2xl flex-col px-6 pb-16 pt-10">
         <div className="fade-up mb-6 flex items-center gap-4">
-          <Inky pose={cleared ? 'happy' : 'wave'} color={inkyColor} size={76} />
+          <Inky color={inkyColor} size={76} />
           <div>
             <h1 className="text-[28px] font-bold leading-tight">{greeting()}!</h1>
             <p className="text-sm text-muted">
@@ -122,7 +121,7 @@ export function TodayView(): React.JSX.Element {
               <span className="font-semibold">Plan cleared.</span>
               <span className="text-muted">Nothing due. Get ahead, or enjoy it.</span>
             </div>
-            <div className="stagger mt-2 grid grid-cols-3 gap-2">
+            <div className="mt-2 grid grid-cols-3 gap-2">
               <QuickAction icon={<Plus size={18} />} label="New page" onClick={() => void newPage()} />
               <QuickAction
                 icon={<Layers size={18} />}
@@ -137,7 +136,7 @@ export function TodayView(): React.JSX.Element {
           </>
         )}
 
-        <div className="stagger space-y-2">
+        <div className="space-y-2">
           {dueDecks.map((d) => {
             const nb = nbOf(d.notebook_id)
             return (
@@ -170,7 +169,7 @@ export function TodayView(): React.JSX.Element {
                   checked={completing.has(t.id)}
                   onClick={(e) => e.stopPropagation()}
                   onChange={() => completeTask(t)}
-                  className="check-pop h-4 w-4 shrink-0 accent-[var(--accent)]"
+                  className="h-4 w-4 shrink-0 accent-[var(--accent)]"
                   title="Mark done"
                 />
                 <div className="min-w-0 flex-1">
@@ -189,7 +188,7 @@ export function TodayView(): React.JSX.Element {
         {recent.length > 0 && (
           <div className="mt-8">
             <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-faint">Jump back in</div>
-            <div className="stagger space-y-0.5">
+            <div className="space-y-0.5">
               {recent.map((n) => (
                 <button
                   key={n.id}

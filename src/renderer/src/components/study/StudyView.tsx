@@ -41,7 +41,6 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
           {decks.length === 0 ? (
             <div className="rounded-lg border border-edge bg-raised">
               <EmptyState
-                pose="wave"
                 color={color}
                 title="First flashcard deck? Let’s make it"
                 hint="Create one in the sidebar, or write “Term :: Definition” lines in any note and hit the Flashcards button."

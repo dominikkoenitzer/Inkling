@@ -35,9 +35,6 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   }, [deck.id])
 
   const finish = (): void => {
-    if (reviewed > 0) {
-      useApp.getState().celebrate()
-    }
     bumpData('decks')
     onDone()
   }
@@ -128,7 +125,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8">
         {done ? (
           <div className="flex flex-col items-center gap-3 text-center fade-up">
-            <Inky pose="happy" size={110} />
+            <Inky size={110} />
             <div className="text-xl font-bold">{reviewed > 0 ? 'All caught up. Nice work!' : 'Nothing due in this deck'}</div>
             <div className="max-w-sm text-muted">
               {reviewed > 0

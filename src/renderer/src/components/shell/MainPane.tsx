@@ -15,7 +15,7 @@ export function MainPane(): React.JSX.Element {
   const notebook = notebooks.find((n) => n.id === activeNotebookId)
 
   if (!notebook) {
-    return <EmptyState pose="wave" title="Welcome to Inkling" hint="Create your first notebook with the + button on the left rail." />
+    return <EmptyState title="Welcome to Inkling" hint="Create your first notebook with the + button on the left rail." />
   }
   const color = isColorKey(notebook.color) ? notebook.color : 'teal'
 
@@ -29,7 +29,6 @@ export function MainPane(): React.JSX.Element {
     }
     return (
       <EmptyState
-        pose="neutral"
         color={color}
         title="Pick a page, or start a fresh one"
         hint="Pages live in the sidebar. Everything auto-saves. No save button, ever."

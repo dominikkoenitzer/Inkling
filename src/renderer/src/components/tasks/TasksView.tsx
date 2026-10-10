@@ -47,7 +47,6 @@ export function TasksView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
       <div className="min-h-0 flex-1 overflow-y-auto p-5 pt-3">
         {tasks.length === 0 ? (
           <EmptyState
-            pose="sleepy"
             color={isColorKey(notebook.color) ? notebook.color : 'teal'}
             title="No tasks here yet"
             hint="Add one above, or type [] inside any note. It lands here automatically."
@@ -106,13 +105,12 @@ function ListView({ tasks }: { tasks: Task[] }): React.JSX.Element {
 }
 
 export function TaskRow({ task }: { task: Task }): React.JSX.Element {
-  const { selectedTaskId, setSelectedTask, celebrate } = useApp()
+  const { selectedTaskId, setSelectedTask } = useApp()
   const done = task.status === 'done'
   const overdue = !done && task.due_date && isBefore(new Date(task.due_date), startOfDay(new Date()))
 
   const toggle = async (): Promise<void> => {
     await updateTask(task, { status: done ? 'todo' : 'done' })
-    if (!done) celebrate()
   }
 
   return (

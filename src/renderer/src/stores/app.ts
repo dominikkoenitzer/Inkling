@@ -42,7 +42,6 @@ interface AppState {
   selectedDeckId: number | null
   paletteOpen: boolean
   settingsOpen: boolean
-  celebrating: boolean
   toast: Toast | null
 
   init(): Promise<void>
@@ -68,7 +67,6 @@ interface AppState {
   reviewDeck(notebookId: number, deckId: number): void
   setPaletteOpen(v: boolean): void
   setSettingsOpen(v: boolean): void
-  celebrate(): void
   showToast(t: Omit<Toast, 'id'>): void
   dismissToast(): void
 }
@@ -88,7 +86,6 @@ export const useApp = create<AppState>((set, get) => ({
   reviewingDeckId: null,
   paletteOpen: false,
   settingsOpen: false,
-  celebrating: false,
   toast: null,
 
   init: async () => {
@@ -151,11 +148,6 @@ export const useApp = create<AppState>((set, get) => ({
     set({ activeNotebookId: notebookId, tab: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
-
-  celebrate: () => {
-    set({ celebrating: true })
-    setTimeout(() => set({ celebrating: false }), 700)
-  },
 
   showToast: (t) => {
     const id = ++toastSeq

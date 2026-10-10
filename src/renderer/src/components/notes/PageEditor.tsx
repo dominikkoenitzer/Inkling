@@ -104,14 +104,9 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     const json = editor.getJSON() as Record<string, unknown>
     const items = extractNoteTaskItems(json)
     if (!itemsEqual(items, lastItemsRef.current)) {
-      const prevChecked = new Map(lastItemsRef.current.filter((i) => i.taskId !== null).map((i) => [i.taskId, i.checked]))
       const ids = await api.notes.syncTasks(noteId, notebook.id, items)
       assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
-      const after = extractNoteTaskItems(editor.getJSON() as Record<string, unknown>)
-      if (after.some((i) => i.checked && i.taskId !== null && prevChecked.get(i.taskId) === false)) {
-        useApp.getState().celebrate()
-      }
-      lastItemsRef.current = after
+      lastItemsRef.current = extractNoteTaskItems(editor.getJSON() as Record<string, unknown>)
       bumpData('tasks')
     }
 
@@ -202,7 +197,6 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     assignNodeIds(editor, 'paragraph', 'cardLine', perParagraph, syncingRef)
     await doSave() // keep the stamped ids, or the next sync matches by text alone
     bumpData('decks')
-    useApp.getState().celebrate()
     useApp.getState().openDeck(notebook.id, deck.id)
   }
 
