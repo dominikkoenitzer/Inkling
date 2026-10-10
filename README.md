@@ -117,6 +117,7 @@ bun run lint        # ESLint
 bun run build       # production bundle into out/
 bun run smoke       # starts the built app off screen and checks notes, to-dos, search and reviews
 bun run mcp         # runs the MCP server from the built app, on stdin and stdout
+bun run mcp:smoke   # talks to the built app's MCP server over stdio and checks every tool
 bun run dist        # Windows installer into release/
 ```
 
