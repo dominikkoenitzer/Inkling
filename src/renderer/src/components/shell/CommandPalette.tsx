@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Search, FileText, CheckSquare, Layers, Plus } from 'lucide-react'
-import { useApp, bumpData } from '@/stores/app'
-import { fuzzyScore } from '@/lib/parse'
+import { useApp } from '@/stores/app'
 import type { SearchResult } from '@shared/types'
 
 const api = window.inkling
 
-interface PaletteItem {
+interface Item {
   key: string
   icon: React.JSX.Element
   label: string
@@ -14,13 +13,13 @@ interface PaletteItem {
   run: () => void
 }
 
+/** Ctrl+K: search notes, to-dos and decks, or start a new note. */
 export function CommandPalette(): React.JSX.Element {
-  const app = useApp()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const close = (): void => app.setPaletteOpen(false)
+  const close = (): void => useApp.getState().setPaletteOpen(false)
 
   useEffect(() => inputRef.current?.focus(), [])
 
@@ -31,43 +30,19 @@ export function CommandPalette(): React.JSX.Element {
     return () => clearTimeout(t)
   }, [query])
 
-  const actions: PaletteItem[] = useMemo(() => {
-    const nb = app.notebooks.find((n) => n.id === app.activeNotebookId)
-    const list: PaletteItem[] = []
-    if (nb) {
-      list.push({
-        key: 'new-note',
-        icon: <Plus size={16} />,
-        label: 'New page',
-        detail: `in ${nb.name}`,
-        run: () => {
-          void api.notes.create({ notebook_id: nb.id }).then((n) => {
-            bumpData('notes')
-            app.openNote(nb.id, n.id)
-          })
-        }
-      })
-    }
-    return list.filter((a) => fuzzyScore(query, a.label) >= 0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, app.notebooks, app.activeNotebookId])
-
-  // An empty box shows no matches; the last query's hits stay cached for the
-  // 120ms debounce so retyping doesn't blank the list mid-keystroke.
-  const searchItems: PaletteItem[] = (query.trim() ? results : []).map((r) => ({
-    key: `s-${r.source_type}-${r.source_id}`,
+  const app = useApp.getState()
+  const found: Item[] = (query.trim() ? results : []).map((r) => ({
+    key: `${r.source_type}-${r.source_id}`,
     icon: r.source_type === 'note' ? <FileText size={16} /> : r.source_type === 'task' ? <CheckSquare size={16} /> : <Layers size={16} />,
     label: r.title || 'Untitled',
     detail: r.snippet.replace(/[⟪⟫]/g, ''),
-    run: () => {
-      if (r.source_type === 'note') app.openNote(r.notebook_id, r.source_id)
-      else if (r.source_type === 'task') app.openTask(r.notebook_id, r.source_id)
-      else app.openDeck(r.notebook_id, r.source_id)
-    }
+    run: () => (r.note_id !== null ? app.openNote(r.note_id) : app.openDeck(r.source_id))
   }))
-
-  const items = [...searchItems, ...actions]
-  const clamped = Math.min(selected, Math.max(0, items.length - 1))
+  const items: Item[] = [
+    ...found,
+    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl N', run: () => void app.newNote().then(close) }
+  ]
+  const clamped = Math.min(selected, items.length - 1)
 
   const onKey = (e: React.KeyboardEvent): void => {
     if (e.key === 'Escape') close()
@@ -79,20 +54,18 @@ export function CommandPalette(): React.JSX.Element {
       e.preventDefault()
       setSelected((s) => Math.max(s - 1, 0))
     }
-    if (e.key === 'Enter' && items[clamped]) {
-      items[clamped].run()
-    }
+    if (e.key === 'Enter') items[clamped]?.run()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[14vh]" onMouseDown={close}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 pt-[15vh]" onMouseDown={close}>
       <div
-        className="pop-in w-[560px] overflow-hidden rounded-lg border border-edge bg-panel"
+        className="w-[560px] overflow-hidden rounded-lg border border-edge bg-raised"
         style={{ boxShadow: 'var(--shadow)' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-edge px-4 py-3">
-          <Search size={16} className="text-faint" />
+        <div className="flex items-center gap-2.5 border-b border-edge px-4">
+          <Search size={16} className="shrink-0 text-faint" />
           <input
             ref={inputRef}
             value={query}
@@ -101,43 +74,27 @@ export function CommandPalette(): React.JSX.Element {
               setSelected(0)
             }}
             onKeyDown={onKey}
-            placeholder="Search notes, tasks and decks…"
-            className="flex-1 bg-transparent text-[15px] placeholder:text-faint"
+            placeholder="Search your notes"
+            className="h-12 flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
-          <kbd className="rounded-sm border border-edge px-1.5 py-0.5 text-[11px] text-faint">esc</kbd>
         </div>
         <div className="max-h-[46vh] overflow-y-auto p-1.5">
-          {items.length === 0 && <p className="px-3 py-6 text-center text-sm text-faint">Nothing found. Try different words?</p>}
-          {searchItems.length > 0 && <GroupLabel>Results</GroupLabel>}
-          {searchItems.map((item, i) => (
-            <Row key={item.key} item={item} active={clamped === i} onHover={() => setSelected(i)} />
-          ))}
-          {actions.length > 0 && <GroupLabel>Actions</GroupLabel>}
-          {actions.map((item, i) => (
-            <Row key={item.key} item={item} active={clamped === searchItems.length + i} onHover={() => setSelected(searchItems.length + i)} />
+          {query.trim() && found.length === 0 && <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>}
+          {items.map((item, i) => (
+            <button
+              key={item.key}
+              type="button"
+              onMouseEnter={() => setSelected(i)}
+              onClick={item.run}
+              className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm ${clamped === i ? 'bg-active text-ink' : 'text-ink'}`}
+            >
+              <span className="text-faint">{item.icon}</span>
+              <span className="shrink-0">{item.label}</span>
+              {item.detail && <span className="ml-auto truncate pl-3 text-xs text-faint">{item.detail}</span>}
+            </button>
           ))}
         </div>
       </div>
     </div>
-  )
-}
-
-function GroupLabel({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <div className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-faint">{children}</div>
-}
-
-function Row({ item, active, onHover }: { item: PaletteItem; active: boolean; onHover: () => void }): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onMouseEnter={onHover}
-      onClick={item.run}
-      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm ${active ? 'text-white' : 'text-ink'}`}
-      style={active ? { background: 'var(--accent)' } : undefined}
-    >
-      <span className={active ? 'text-white' : 'text-muted'}>{item.icon}</span>
-      <span className="shrink-0 font-medium">{item.label}</span>
-      {item.detail && <span className={`truncate text-xs ${active ? 'text-white/75' : 'text-faint'}`}>{item.detail}</span>}
-    </button>
   )
 }

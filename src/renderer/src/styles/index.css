@@ -1,13 +1,10 @@
 @import 'tailwindcss';
 
-/* Tailwind v4 detects sources from the CSS file's project root; be explicit so the
-   two renderer entry HTML files and every component are always scanned. */
+/* Scan every renderer source for class names. */
 @source '../../index.html';
 @source '../**/*.{ts,tsx}';
 
-/* The design system, as Tailwind v4 theme tokens. Each maps to a runtime CSS variable
-   the theme blocks below swap, so `bg-panel`, `text-muted`, `border-edge`, … keep
-   working exactly as they did under the v3 JS config. */
+/* Theme tokens. Each maps to a variable the two theme blocks below set. */
 @theme {
   --color-app: var(--bg-app);
   --color-panel: var(--bg-panel);
@@ -22,15 +19,14 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
 
   --text-base: var(--font-base);
-  --text-base--line-height: 1.55;
-
-  --radius-card: 10px;
+  --text-base--line-height: 1.6;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 }
 
-/* v4's preflight drops the pointer cursor on buttons and defaults `border` to
-   currentColor; restore both so the existing markup reads the way it was designed. */
 @layer base {
   button:not(:disabled),
   [role='button']:not(:disabled) {
@@ -46,42 +42,53 @@
 }
 
 :root {
-  --font-base: 14.5px;
-  --titlebar-h: 36px;
+  --font-base: 15px;
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --titlebar-h: 44px;
+  --sidebar-w: 248px;
 }
 
-/* ---------- Dark theme (default) ---------- */
-/* Elevation ladder does the separating (rail darkest → content lightest).
-   Borders stay almost invisible. */
-:root[data-theme='dark'] {
-  --bg-app: #191a1d;
-  --bg-panel: #26282c;
-  --bg-sunken: #35373c;
-  --bg-raised: #3f4146;
-  --bg-hover: rgba(255, 255, 255, 0.06);
-  --bg-active: rgba(255, 255, 255, 0.1);
-  --text-primary: #e8e9ec;
-  --text-muted: #9a9ca3;
-  --text-faint: #6e7076;
-  --border: rgba(255, 255, 255, 0.05);
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  color-scheme: dark;
-}
-
-/* ---------- Cozy theme (warm off-white) ---------- */
-:root[data-theme='cozy'] {
-  --bg-app: #e2d4bf;
-  --bg-panel: #f0e8da;
-  --bg-sunken: #faf7f1;
+/* Paper: the default. */
+:root[data-theme='light'] {
+  --bg-app: #fbfaf8;
+  --bg-panel: #f4f2ee;
+  --bg-sunken: #fbfaf8;
   --bg-raised: #ffffff;
-  --bg-hover: rgba(93, 78, 55, 0.07);
-  --bg-active: rgba(93, 78, 55, 0.12);
-  --text-primary: #3f3a33;
-  --text-muted: #7d7568;
-  --text-faint: #a89e8f;
-  --border: rgba(93, 78, 55, 0.09);
-  --shadow: 0 8px 24px rgba(93, 78, 55, 0.18);
+  --bg-hover: rgba(40, 36, 30, 0.05);
+  --bg-active: rgba(40, 36, 30, 0.08);
+  --text-primary: #1f1d1a;
+  --text-muted: #6b665e;
+  --text-faint: #9e988e;
+  --border: #e8e4dd;
+  --accent: #4155b9;
+  --accent-soft: rgba(65, 85, 185, 0.1);
+  --accent-text: #3a4daa;
+  --accent-ink: #17204a;
+  --danger: #c2412f;
+  --shadow: 0 12px 32px rgba(30, 26, 20, 0.1), 0 1px 3px rgba(30, 26, 20, 0.06);
   color-scheme: light;
+}
+
+/* Ink: the dark theme. */
+:root[data-theme='dark'] {
+  --bg-app: #1a1918;
+  --bg-panel: #1f1e1c;
+  --bg-sunken: #1a1918;
+  --bg-raised: #252421;
+  --bg-hover: rgba(255, 250, 240, 0.05);
+  --bg-active: rgba(255, 250, 240, 0.08);
+  --text-primary: #ece9e3;
+  --text-muted: #a39f97;
+  --text-faint: #6f6b64;
+  --border: #2c2a27;
+  --accent: #8b9bf0;
+  --accent-soft: rgba(139, 155, 240, 0.14);
+  --accent-text: #a5b2f5;
+  --accent-ink: #10163a;
+  --danger: #e2685a;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
 }
 
 html,
@@ -94,9 +101,13 @@ body,
 body {
   background: var(--bg-app);
   color: var(--text-primary);
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-ui);
   font-size: var(--font-base);
   -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
 }
 
 .titlebar-drag {
@@ -107,19 +118,22 @@ body {
 }
 
 *::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: transparent;
   border-radius: 6px;
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 3px solid transparent;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--border);
+  background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
   background: var(--text-faint);
   background-clip: padding-box;
-  border: 2px solid transparent;
 }
 *::-webkit-scrollbar-corner {
   background: transparent;
@@ -129,55 +143,59 @@ input,
 textarea {
   background: transparent;
 }
-input:focus,
-textarea:focus,
 button:focus-visible,
-[tabindex]:focus-visible {
-  outline: 2px solid var(--accent, #1d9e75);
-  outline-offset: 1px;
+[tabindex]:focus-visible,
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 input:focus,
 textarea:focus {
   outline: none;
 }
-/* A text field shows its caret when focused; a checkbox has no other cue. */
-input[type='checkbox']:focus-visible,
-input[type='radio']:focus-visible {
-  outline: 2px solid var(--accent, #1d9e75);
-  outline-offset: 1px;
+
+::selection {
+  background: var(--accent-soft);
 }
 
-/* ---------------- TipTap editor ---------------- */
+/* ---------------- Editor ---------------- */
 .tiptap,
 .tiptap:focus,
 .tiptap:focus-visible,
 [contenteditable]:focus-visible {
   outline: none !important;
   min-height: 100%;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 .tiptap p {
-  margin: 0.35em 0;
+  margin: 0.4em 0;
+}
+.tiptap h1,
+.tiptap h2,
+.tiptap h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
 .tiptap h1 {
-  font-size: 1.7em;
-  font-weight: 700;
-  margin: 0.7em 0 0.3em;
+  font-size: 1.6em;
+  font-weight: 650;
+  margin: 1.1em 0 0.35em;
 }
 .tiptap h2 {
-  font-size: 1.35em;
-  font-weight: 650;
-  margin: 0.65em 0 0.25em;
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 1em 0 0.3em;
 }
 .tiptap h3 {
-  font-size: 1.15em;
+  font-size: 1.08em;
   font-weight: 600;
-  margin: 0.6em 0 0.2em;
+  margin: 0.9em 0 0.25em;
 }
 .tiptap ul,
 .tiptap ol {
   padding-left: 1.4em;
-  margin: 0.35em 0;
+  margin: 0.4em 0;
 }
 .tiptap ul {
   list-style: disc;
@@ -185,47 +203,49 @@ input[type='radio']:focus-visible {
 .tiptap ol {
   list-style: decimal;
 }
+.tiptap li::marker {
+  color: var(--text-faint);
+}
 .tiptap blockquote {
-  border-left: 3px solid var(--accent, #1d9e75);
-  padding-left: 0.9em;
-  margin: 0.5em 0;
+  border-left: 2px solid var(--border);
+  padding-left: 1em;
+  margin: 0.6em 0;
   color: var(--text-muted);
 }
 .tiptap code {
   background: var(--bg-hover);
-  border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 0.1em 0.35em;
-  font-size: 0.9em;
+  padding: 0.12em 0.35em;
+  font-size: 0.88em;
   font-family: 'Cascadia Code', Consolas, monospace;
 }
 .tiptap pre {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 0.7em 0.9em;
-  margin: 0.5em 0;
+  padding: 0.8em 1em;
+  margin: 0.6em 0;
   overflow-x: auto;
 }
 .tiptap pre code {
   background: none;
-  border: none;
   padding: 0;
 }
 .tiptap hr {
   border: none;
   border-top: 1px solid var(--border);
-  margin: 1em 0;
+  margin: 1.4em 0;
 }
 .tiptap mark {
-  background: color-mix(in srgb, var(--accent, #1d9e75) 30%, transparent);
+  background: color-mix(in srgb, #f2c94c 35%, transparent);
   color: inherit;
   border-radius: 3px;
   padding: 0 2px;
 }
 .tiptap a {
-  color: var(--accent-text, #1d9e75);
+  color: var(--accent-text);
   text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 .tiptap p.is-editor-empty:first-child::before {
@@ -236,97 +256,64 @@ input[type='radio']:focus-visible {
   height: 0;
 }
 
-/* task list */
+/* Checklists */
 .tiptap ul[data-type='taskList'] {
   list-style: none;
-  padding-left: 0.2em;
+  padding-left: 0.1em;
 }
 .tiptap ul[data-type='taskList'] li {
   display: flex;
-  gap: 0.55em;
+  gap: 0.6em;
   align-items: flex-start;
-  margin: 0.2em 0;
+  margin: 0.15em 0;
 }
 .tiptap ul[data-type='taskList'] li > label {
-  margin-top: 0.32em;
+  margin-top: 0.36em;
 }
 .tiptap ul[data-type='taskList'] li > div {
   flex: 1;
 }
-.tiptap ul[data-type='taskList'] input[type='checkbox'] {
+.tiptap ul[data-type='taskList'] li > div > p {
+  margin: 0;
+}
+
+/* One checkbox style for the editor and Today. */
+.tiptap ul[data-type='taskList'] input[type='checkbox'],
+.check {
   appearance: none;
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
   border: 1.5px solid var(--text-faint);
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
   display: inline-block;
   position: relative;
   background: transparent;
 }
-.tiptap ul[data-type='taskList'] input[type='checkbox']:checked {
-  background: var(--accent, #1d9e75);
-  border-color: var(--accent, #1d9e75);
+.tiptap ul[data-type='taskList'] input[type='checkbox']:hover,
+.check:hover {
+  border-color: var(--accent);
 }
-.tiptap ul[data-type='taskList'] input[type='checkbox']:checked::after {
+.tiptap ul[data-type='taskList'] input[type='checkbox']:checked,
+.check:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tiptap ul[data-type='taskList'] input[type='checkbox']:checked::after,
+.check:checked::after {
   content: '';
   position: absolute;
-  left: 4.2px;
-  top: 1.2px;
-  width: 5px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
+  left: 4.3px;
+  top: 1.3px;
+  width: 4.5px;
+  height: 8.5px;
+  border: solid var(--bg-raised);
+  border-width: 0 1.8px 1.8px 0;
   transform: rotate(45deg);
 }
 .tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
   color: var(--text-faint);
   text-decoration: line-through;
-}
-
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.fade-up {
-  animation: fade-up 0.22s ease-out both;
-}
-
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-.pop-in {
-  animation: pop-in 0.16s ease-out both;
-}
-
-/* Plan cards (Today view): lift on hover, settle on press. */
-.plan-card {
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-.plan-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
-.plan-card:active {
-  transform: translateY(0) scale(0.995);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .plan-card {
-    animation: none !important;
-    transition: none !important;
-  }
+  text-decoration-color: var(--text-faint);
 }

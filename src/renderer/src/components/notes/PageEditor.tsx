@@ -5,16 +5,16 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Sparkles, FileDown } from 'lucide-react'
-import { useApp, useVersion, bumpData } from '@/stores/app'
-import { extractNoteTaskItems, extractNoteCardLines, mergeTaskWriteBacks } from '@/lib/parse'
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown } from 'lucide-react'
+import { useApp, bumpData } from '@/stores/app'
+import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { IconBtn } from '@/components/ui'
-import type { Notebook, Note, NoteTaskItem } from '@shared/types'
+import type { Note, NoteTaskItem } from '@shared/types'
 
 const api = window.inkling
 
-/** TaskItem carrying the linked task row's id, so note checkboxes ARE tasks (§7). */
+/** TaskItem carrying the linked task row's id, so a note's checkboxes are its tasks. */
 const LinkedTaskItem = TaskItem.extend({
   addAttributes() {
     return {
@@ -62,16 +62,15 @@ function itemsEqual(a: NoteTaskItem[], b: NoteTaskItem[]): boolean {
   return a.every((x, i) => x.taskId === b[i].taskId && x.title === b[i].title && x.checked === b[i].checked)
 }
 
-export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Notebook }): React.JSX.Element {
+export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const [title, setTitle] = useState('')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [flashMsg, setFlashMsg] = useState<string | null>(null)
-  const notesVersion = useVersion('notes')
 
   const syncingRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastItemsRef = useRef<NoteTaskItem[]>([])
-  const loadedUpdatedAtRef = useRef<string>('')
+  const notebookIdRef = useRef<number | null>(null)
   const titleRef = useRef('')
 
   const editor = useEditor({
@@ -79,7 +78,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       // StarterKit v3 bundles Underline and Link; configure them here rather than registering twice.
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: true } }),
       Highlight,
-      Placeholder.configure({ placeholder: 'Write anything… try “# ” for a heading, “[] ” for a task' }),
+      Placeholder.configure({ placeholder: 'Start writing. “# ” makes a heading, “[] ” a to-do.' }),
       TaskList,
       LinkedTaskItem.configure({ nested: true }),
       CardLineId
@@ -92,11 +91,11 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
 
   const scheduleSave = (): void => {
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => void doSave(), 400) // §7 debounced auto-save
+    timerRef.current = setTimeout(() => void doSave(), 400)
   }
 
   const doSave = async (): Promise<void> => {
-    if (!editor || editor.isDestroyed) return
+    if (!editor || editor.isDestroyed || notebookIdRef.current === null) return
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
@@ -104,7 +103,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     const json = editor.getJSON() as Record<string, unknown>
     const items = extractNoteTaskItems(json)
     if (!itemsEqual(items, lastItemsRef.current)) {
-      const ids = await api.notes.syncTasks(noteId, notebook.id, items)
+      const ids = await api.notes.syncTasks(noteId, notebookIdRef.current, items)
       assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
       lastItemsRef.current = extractNoteTaskItems(editor.getJSON() as Record<string, unknown>)
       bumpData('tasks')
@@ -115,7 +114,6 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       content: JSON.stringify(editor.getJSON())
     })
     if (!saved) return // note was deleted out from under us
-    loadedUpdatedAtRef.current = saved.updated_at
     setSavedAt(new Date())
     bumpData('notes')
   }
@@ -131,7 +129,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
       syncingRef.current = false
       setTitle(note.title ?? '')
       titleRef.current = note.title ?? ''
-      loadedUpdatedAtRef.current = note.updated_at
+      notebookIdRef.current = note.notebook_id
       lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
     })
     return () => {
@@ -139,30 +137,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     }
   }, [editor, noteId])
 
-  // reload when the note changed elsewhere, e.g. the tasks view toggled a linked checkbox
-  useEffect(() => {
-    if (!editor || editor.isDestroyed || editor.isFocused) return
-    void api.notes.get(noteId).then((note) => {
-      if (!note || editor.isDestroyed || editor.isFocused) return
-      if (note.updated_at !== loadedUpdatedAtRef.current) {
-        const stored = safeParse(note.content)
-        // Edits still waiting for their save stay: only the checkbox tasks changed elsewhere
-        // are carried in, and the pending save then writes both.
-        const dirty = timerRef.current !== null
-        syncingRef.current = true
-        editor.commands.setContent(dirty ? mergeTaskWriteBacks(editor.getJSON(), stored, lastItemsRef.current) : stored)
-        syncingRef.current = false
-        if (!dirty) {
-          setTitle(note.title ?? '')
-          titleRef.current = note.title ?? ''
-        }
-        loadedUpdatedAtRef.current = note.updated_at
-        lastItemsRef.current = extractNoteTaskItems(stored as Record<string, unknown>)
-      }
-    })
-  }, [notesVersion, editor, noteId])
-
-  // flush pending save on unmount / window blur (§7: flushed on blur/close)
+  // Flush a pending save on unmount and when the window loses focus.
   useEffect(() => {
     const flush = (): void => {
       if (timerRef.current) void doSave()
@@ -176,17 +151,17 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
   }, [editor])
 
   const makeFlashcards = async (): Promise<void> => {
-    if (!editor) return
+    if (!editor || notebookIdRef.current === null) return
     const lines = extractNoteCardLines(editor.getJSON() as Record<string, unknown>)
     if (lines.length === 0) {
-      setFlashMsg('No “Term :: Definition” lines found in this note yet.')
+      setFlashMsg('Write a line like “Term :: Definition” first.')
       setTimeout(() => setFlashMsg(null), 3500)
       return
     }
     // The note's own deck: made on the first run, updated in place on every later one.
     const { deck, lineIds } = await api.notes.syncCards(
       noteId,
-      notebook.id,
+      notebookIdRef.current,
       titleRef.current || 'Untitled deck',
       lines.map(({ lineId, front, back }) => ({ lineId, front, back }))
     )
@@ -197,7 +172,7 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     assignNodeIds(editor, 'paragraph', 'cardLine', perParagraph, syncingRef)
     await doSave() // keep the stamped ids, or the next sync matches by text alone
     bumpData('decks')
-    useApp.getState().openDeck(notebook.id, deck.id)
+    useApp.getState().openDeck(deck.id)
   }
 
   const exportMarkdown = async (): Promise<void> => {
@@ -207,22 +182,24 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
     const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
     const res = await api.app.saveFile(`${base}.md`, md)
     if (res.saved) {
-      setFlashMsg('Exported to Markdown')
+      setFlashMsg('Saved as Markdown')
       setTimeout(() => setFlashMsg(null), 2500)
     } else if (res.error) {
-      setFlashMsg('Export failed: could not write the file.')
+      setFlashMsg('Could not save the file.')
       setTimeout(() => setFlashMsg(null), 3500)
     }
   }
 
   return (
     <div className="flex h-full flex-col">
-      {editor && (
-        <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExportMd={() => void exportMarkdown()} savedAt={savedAt} />
+      {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExportMd={() => void exportMarkdown()} savedAt={savedAt} />}
+      {flashMsg && (
+        <div role="status" className="mx-auto mt-1 rounded-md bg-hover px-3 py-1 text-xs text-muted">
+          {flashMsg}
+        </div>
       )}
-      {flashMsg && <div className="mx-auto mt-2 rounded-lg border border-edge bg-raised px-3 py-1.5 text-xs text-muted pop-in">{flashMsg}</div>}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-10 pb-24 pt-8">
+        <div className="mx-auto max-w-[720px] px-10 pb-32 pt-10">
           <input
             value={title}
             onChange={(e) => {
@@ -230,10 +207,17 @@ export function PageEditor({ noteId, notebook }: { noteId: number; notebook: Not
               titleRef.current = e.target.value
               scheduleSave()
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                editor?.commands.focus('start')
+              }
+            }}
             placeholder="Untitled"
-            className="mb-2 w-full bg-transparent text-3xl font-bold text-ink placeholder:text-faint"
+            aria-label="Title"
+            className="font-display mb-4 w-full bg-transparent text-[32px] font-semibold leading-tight tracking-tight text-ink placeholder:text-faint"
           />
-          <EditorContent editor={editor} className="[&>div]:min-h-[50vh]" />
+          <EditorContent editor={editor} className="text-[15.5px] [&>div]:min-h-[50vh]" />
         </div>
       </div>
     </div>
@@ -327,7 +311,7 @@ function Toolbar({
   const c = editor.chain().focus()
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 border-b border-edge bg-sunken px-3 py-1.5">
+    <div className="flex flex-wrap items-center gap-0.5 px-4 pt-2.5">
       <ToolbarButton icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
       <ToolbarButton icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
       <Divider />
@@ -358,16 +342,14 @@ function Toolbar({
         action={() => c.toggleTaskList().run()}
       />
       <Divider />
-      <IconBtn title="Make or update flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1 px-2 text-xs font-medium">
-        <Sparkles size={14} style={{ color: 'var(--accent-text)' }} />
+      <IconBtn title="Make or update flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1.5 px-2 text-sm">
+        <Layers size={15} />
         Flashcards
       </IconBtn>
       <IconBtn title="Export as Markdown" onClick={onExportMd}>
         <FileDown size={16} />
       </IconBtn>
-      <span className="ml-auto pr-1 text-[11px] text-faint">
-        {savedAt ? `Saved ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Auto-saves as you type'}
-      </span>
+      <span className="ml-auto pr-1 text-xs text-faint">{savedAt ? 'Saved' : ''}</span>
     </div>
   )
 }

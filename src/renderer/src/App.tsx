@@ -1,10 +1,8 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
+import { Search } from 'lucide-react'
 import { useApp, watchDay } from '@/stores/app'
-import { accentVars, isColorKey } from '@/lib/colors'
-import { IconRail } from '@/components/shell/IconRail'
 import { Sidebar } from '@/components/shell/Sidebar'
 import { MainPane } from '@/components/shell/MainPane'
-import { RightPanel } from '@/components/shell/RightPanel'
 import { CommandPalette } from '@/components/shell/CommandPalette'
 import { SettingsModal } from '@/components/shell/SettingsModal'
 import { LogoMark } from '@/components/Inky'
@@ -13,74 +11,75 @@ import { Toaster } from '@/components/ui'
 const api = window.inkling
 
 export default function App(): React.JSX.Element {
-  const app = useApp()
+  const ready = useApp((s) => s.ready)
+  const theme = useApp((s) => s.theme)
+  const paletteOpen = useApp((s) => s.paletteOpen)
+  const settingsOpen = useApp((s) => s.settingsOpen)
 
   useEffect(() => {
-    void app.init()
-    ;(window as unknown as Record<string, unknown>).__app = useApp // test hook for headless verification
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void useApp.getState().init()
+    ;(window as unknown as Record<string, unknown>).__app = useApp // for headless checks
   }, [])
 
   // Roll "today" over at midnight and when the window comes back.
   useEffect(() => watchDay(), [])
 
-  // Theme on the root element; keep the native titlebar overlay in sync.
   useEffect(() => {
-    document.documentElement.dataset.theme = app.theme
-    void api.app.setTitlebar(
-      app.theme === 'dark' ? { color: '#191a1d', symbolColor: '#b9bbc2' } : { color: '#e2d4bf', symbolColor: '#6b6355' }
-    )
-  }, [app.theme])
+    document.documentElement.dataset.theme = theme
+    void api.app.setTitlebar(theme)
+  }, [theme])
 
-  // Global shortcuts: Ctrl+K palette, Ctrl+, settings
+  // Ctrl+K search, Ctrl+N new note, Ctrl+, settings.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const key = e.key.toLowerCase()
+      const app = useApp.getState()
+      if (key === 'k') {
         e.preventDefault()
-        useApp.getState().setPaletteOpen(!useApp.getState().paletteOpen)
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        app.setPaletteOpen(!app.paletteOpen)
+      } else if (key === 'n') {
         e.preventDefault()
-        useApp.getState().setSettingsOpen(true)
+        void app.newNote()
+      } else if (key === ',') {
+        e.preventDefault()
+        app.setSettingsOpen(true)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const activeNotebook = app.notebooks.find((n) => n.id === app.activeNotebookId) ?? null
-  const accent = useMemo(
-    () => accentVars(isColorKey(activeNotebook?.color) ? activeNotebook!.color : 'teal', app.theme),
-    [activeNotebook, app.theme]
-  )
-
-  if (!app.ready) {
-    return (
-      <div className="flex h-full items-center justify-center bg-app">
-        <LogoMark size={44} />
-      </div>
-    )
-  }
+  if (!ready) return <div className="h-full bg-app" />
 
   return (
-    <div style={accent} className="flex h-full flex-col bg-app text-base">
-      {/* draggable titlebar strip (native window buttons overlay on the right) */}
-      <div className="titlebar-drag flex h-9 shrink-0 items-center gap-2 pl-3 text-xs text-faint">
-        <LogoMark size={16} />
-        <span className="font-semibold tracking-wide">Inkling</span>
-      </div>
+    <div className="flex h-full flex-col bg-app text-ink">
+      {/* Draggable title bar; the window buttons sit over its right end. */}
+      <header className="titlebar-drag flex h-11 shrink-0 items-center border-b border-edge">
+        <div className="flex h-full shrink-0 items-center gap-2 pl-4" style={{ width: 'var(--sidebar-w)' }}>
+          <LogoMark size={18} />
+          <span className="text-sm font-semibold tracking-tight">Inkling</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => useApp.getState().setPaletteOpen(true)}
+          className="no-drag ml-4 flex h-8 w-80 items-center gap-2 rounded-md bg-hover px-3 text-sm text-faint transition-colors hover:text-muted"
+        >
+          <Search size={15} />
+          Search
+          <span className="ml-auto text-xs">Ctrl K</span>
+        </button>
+      </header>
 
       <div className="flex min-h-0 flex-1">
-        <IconRail />
         <Sidebar />
         <main className="min-w-0 flex-1 bg-sunken">
           <MainPane />
         </main>
-        <RightPanel />
       </div>
 
-      {app.paletteOpen && <CommandPalette />}
-      {app.settingsOpen && <SettingsModal />}
+      {paletteOpen && <CommandPalette />}
+      {settingsOpen && <SettingsModal />}
       <Toaster />
     </div>
   )

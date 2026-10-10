@@ -11,10 +11,10 @@ import type { Deck, Card, ReviewGrade } from '@shared/types'
 const api = window.inkling
 
 const GRADES: Array<{ grade: ReviewGrade; label: string; rating: Rating; tone: string }> = [
-  { grade: 'again', label: 'Again', rating: 1, tone: '#d85a30' },
-  { grade: 'hard', label: 'Hard', rating: 2, tone: '#c98b32' },
-  { grade: 'good', label: 'Good', rating: 3, tone: '#1d9e75' },
-  { grade: 'easy', label: 'Easy', rating: 4, tone: '#3db58b' }
+  { grade: 'again', label: 'Again', rating: 1, tone: 'text-danger' },
+  { grade: 'hard', label: 'Hard', rating: 2, tone: 'text-ink' },
+  { grade: 'good', label: 'Good', rating: 3, tone: 'text-accent-text' },
+  { grade: 'easy', label: 'Easy', rating: 4, tone: 'text-accent-text' }
 ]
 
 export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void }): React.JSX.Element {
@@ -101,9 +101,9 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-edge px-5 py-2.5">
-        <h2 className="text-base font-bold">Reviewing · {deck.name}</h2>
-        <span className="text-xs text-muted">
+      <div className="flex items-center gap-3 px-6 pt-4">
+        <h2 className="truncate text-sm font-medium text-muted">{deck.name}</h2>
+        <span className="text-xs tabular-nums text-faint">
           {Math.min(index, queue.length)}/{queue.length}
         </span>
         <div className="ml-auto">
@@ -113,18 +113,18 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         </div>
       </div>
 
-      <div className="h-1 bg-panel">
+      <div className="mx-6 mt-3 h-0.5 rounded-full bg-hover">
         <div
-          className="h-full transition-all duration-300"
+          className="h-full rounded-full transition-all duration-300"
           style={{ width: `${queue.length ? (Math.min(index, queue.length) / queue.length) * 100 : 0}%`, background: 'var(--accent)' }}
         />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8">
         {done ? (
-          <div className="flex flex-col items-center gap-3 text-center fade-up">
-            <Inky size={110} />
-            <div className="text-xl font-bold">{reviewed > 0 ? 'All caught up. Nice work!' : 'Nothing due in this deck'}</div>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Inky size={44} className="mb-2" />
+            <div className="text-[15px] font-medium">{reviewed > 0 ? 'All caught up.' : 'Nothing due in this deck.'}</div>
             <div className="max-w-sm text-muted">
               {reviewed > 0
                 ? `You reviewed ${reviewed} card${reviewed === 1 ? '' : 's'}. Cards you struggled with will come back sooner.`
@@ -137,18 +137,18 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         ) : card ? (
           <>
             <div
-              className="pop-in flex min-h-[220px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-edge bg-raised p-8 text-center shadow-lg"
+              className="flex min-h-[240px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-edge bg-raised p-10 text-center"
               onClick={() => setShowBack(true)}
               key={`${card.id}-${index}`}
             >
-              <div className="whitespace-pre-line text-lg font-semibold">
+              <div className="font-display whitespace-pre-line text-xl font-medium">
                 {card.cloze > 0 ? <ClozeText text={card.front} n={card.cloze} reveal={showBack} /> : card.front}
               </div>
               {showBack ? (
                 // A cloze card's answer is revealed in place; the back only holds an optional extra.
                 card.back && (
                   <>
-                    <div className="h-px w-24" style={{ background: 'var(--accent)' }} />
+                    <div className="h-px w-16 bg-edge" />
                     <div className="whitespace-pre-line text-base text-muted">{card.back}</div>
                   </>
                 )
@@ -157,19 +157,18 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               )}
             </div>
             {showBack && (
-              <div className="flex gap-2 fade-up">
+              <div className="flex gap-2">
                 {GRADES.map((g, i) => (
                   <button
                     key={g.grade}
                     type="button"
                     onClick={() => void grade(g.grade)}
-                    className="min-w-[86px] rounded-lg border border-edge bg-raised px-4 py-2.5 text-sm font-semibold transition-transform hover:scale-105"
-                    style={{ color: g.tone }}
+                    className={`min-w-[88px] rounded-md border border-edge bg-raised px-4 py-2 text-sm font-medium transition-colors hover:bg-hover ${g.tone}`}
                   >
                     {g.label}
                     {/* What each answer would actually schedule; the choice is only
                         meaningful if you can see what it costs. */}
-                    <div className="text-[11px] font-normal text-faint">
+                    <div className="text-xs font-normal text-faint">
                       {intervals ? (intervals[g.rating] === 0 ? `${RELEARN_MINUTES}m` : formatInterval(intervals[g.rating])) : ''}
                       <span className="ml-1 opacity-60">{i + 1}</span>
                     </div>

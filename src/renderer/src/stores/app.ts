@@ -1,11 +1,11 @@
 import { create } from 'zustand'
-import type { ModuleTab, Notebook } from '@shared/types'
 import { parseParams } from '@shared/fsrs'
 import { localDay } from '@shared/day'
 
 const api = window.inkling
 
-export type Theme = 'dark' | 'cozy'
+export type Theme = 'light' | 'dark'
+export type View = 'today' | 'notes' | 'study'
 
 /** A transient message at the bottom of the window, optionally with one undo action. */
 export interface Toast {
@@ -29,36 +29,29 @@ interface AppState {
   theme: Theme
   /** FSRS parameters, mirrored from the settings for the interval preview. */
   fsrsParams: number[]
-  notebooks: Notebook[]
-  activeNotebookId: number | null
-  tab: ModuleTab
+  /** Where new notes and decks are stored. */
+  homeNotebookId: number | null
+  view: View
   selectedNoteId: number | null
-  selectedTaskId: number | null
   selectedDeckId: number | null
+  /** The deck whose review session Study is showing. Any navigation leaves the session. */
+  reviewingDeckId: number | null
   paletteOpen: boolean
   settingsOpen: boolean
   toast: Toast | null
 
   init(): Promise<void>
-  refreshNotebooks(): Promise<void>
   /** Re-read the calendar day, e.g. after midnight or when the window returns. */
   syncDay(): void
   setTheme(t: Theme): void
-  setActiveNotebook(id: number): void
-  setTab(tab: ModuleTab): void
-  openNote(notebookId: number, noteId: number): void
-  openTask(notebookId: number, taskId: number): void
-  setSelectedNote(id: number | null): void
-  /** Undo a page delete and open the page again in its own notebook. */
-  restoreNote(notebookId: number, noteId: number): Promise<void>
-  setSelectedTask(id: number | null): void
-  setSelectedDeck(id: number | null): void
-  openDeck(notebookId: number, deckId: number): void
-  /** The deck whose review session Study is showing. Any navigation leaves the session. */
-  reviewingDeckId: number | null
-  setReviewingDeck(id: number | null): void
-  /** Go straight into a deck's review session, from anywhere. */
-  reviewDeck(notebookId: number, deckId: number): void
+  setView(v: View): void
+  openNote(noteId: number): void
+  /** Makes a note and opens it. */
+  newNote(): Promise<void>
+  /** Undo a note delete and open it again. */
+  restoreNote(noteId: number): Promise<void>
+  openDeck(deckId: number | null): void
+  reviewDeck(deckId: number | null): void
   setPaletteOpen(v: boolean): void
   setSettingsOpen(v: boolean): void
   showToast(t: Omit<Toast, 'id'>): void
@@ -68,13 +61,11 @@ interface AppState {
 export const useApp = create<AppState>((set, get) => ({
   ready: false,
   today: localDay(),
-  theme: 'dark',
+  theme: 'light',
   fsrsParams: parseParams(null),
-  notebooks: [],
-  activeNotebookId: null,
-  tab: 'today',
+  homeNotebookId: null,
+  view: 'today',
   selectedNoteId: null,
-  selectedTaskId: null,
   selectedDeckId: null,
   reviewingDeckId: null,
   paletteOpen: false,
@@ -82,26 +73,12 @@ export const useApp = create<AppState>((set, get) => ({
   toast: null,
 
   init: async () => {
-    const [settings, notebooks] = await Promise.all([api.settings.all(), api.notebooks.list()])
+    const [settings, home] = await Promise.all([api.settings.all(), api.notebooks.home()])
     set({
       ready: true,
-      theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
+      theme: settings['theme'] === 'dark' ? 'dark' : 'light',
       fsrsParams: parseParams(settings['fsrs_params']),
-      notebooks,
-      activeNotebookId: notebooks[0]?.id ?? null
-    })
-  },
-
-  refreshNotebooks: async () => {
-    const notebooks = await api.notebooks.list()
-    const { activeNotebookId } = get()
-    const stillThere = notebooks.some((n) => n.id === activeNotebookId)
-    // When the active notebook was deleted, its notes/tasks/decks are gone too, so drop any
-    // selection into them (mirrors setActiveNotebook) so MainPane can't render a phantom item.
-    set({
-      notebooks,
-      activeNotebookId: stillThere ? activeNotebookId : (notebooks[0]?.id ?? null),
-      ...(stillThere ? {} : { selectedNoteId: null, selectedTaskId: null, selectedDeckId: null, reviewingDeckId: null })
+      homeNotebookId: home
     })
   },
 
@@ -115,36 +92,28 @@ export const useApp = create<AppState>((set, get) => ({
     void api.settings.set('theme', theme)
   },
 
-  setActiveNotebook: (id) =>
-    set({ activeNotebookId: id, selectedNoteId: null, selectedTaskId: null, selectedDeckId: null, reviewingDeckId: null }),
-  setTab: (tab) => set((s) => ({ tab, reviewingDeckId: tab === s.tab ? s.reviewingDeckId : null })),
-  openNote: (notebookId, noteId) =>
-    set({ activeNotebookId: notebookId, tab: 'notes', selectedNoteId: noteId, reviewingDeckId: null, paletteOpen: false }),
-  openTask: (notebookId, taskId) =>
-    set({ activeNotebookId: notebookId, tab: 'tasks', selectedTaskId: taskId, reviewingDeckId: null, paletteOpen: false }),
-  setSelectedNote: (selectedNoteId) => set({ selectedNoteId }),
-  restoreNote: async (notebookId, noteId) => {
+  setView: (view) => set({ view, reviewingDeckId: null, paletteOpen: false }),
+  openNote: (noteId) => set({ view: 'notes', selectedNoteId: noteId, reviewingDeckId: null, paletteOpen: false }),
+  newNote: async () => {
+    const home = get().homeNotebookId ?? (await api.notebooks.home())
+    const note = await api.notes.create({ notebook_id: home })
+    bumpData('notes')
+    get().openNote(note.id)
+  },
+  restoreNote: async (noteId) => {
     await api.notes.restore(noteId)
     bumpData('notes')
-    // By now the user may be in another notebook: a bare selection would point at a page
-    // that list does not hold.
-    get().openNote(notebookId, noteId)
+    get().openNote(noteId)
   },
-  setSelectedTask: (selectedTaskId) => set({ selectedTaskId }),
-  setSelectedDeck: (selectedDeckId) => set({ selectedDeckId }),
-  openDeck: (notebookId, deckId) =>
-    set({ activeNotebookId: notebookId, tab: 'study', selectedDeckId: deckId, reviewingDeckId: null, paletteOpen: false }),
-  setReviewingDeck: (reviewingDeckId) => set({ reviewingDeckId }),
-  reviewDeck: (notebookId, deckId) =>
-    set({ activeNotebookId: notebookId, tab: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
+  openDeck: (deckId) => set({ view: 'study', selectedDeckId: deckId, reviewingDeckId: null, paletteOpen: false }),
+  reviewDeck: (deckId) => set({ view: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
 
   showToast: (t) => {
     const id = ++toastSeq
     set({ toast: { ...t, id } })
-    // Auto-dismiss, but only if this toast is still the one on screen; a newer toast
-    // must not be cut short by an older one's timer.
+    // Only the toast still on screen may close itself; a newer one keeps its full time.
     setTimeout(() => {
       if (get().toast?.id === id) set({ toast: null })
     }, t.durationMs ?? 6000)
@@ -184,13 +153,3 @@ export function watchDay(target: EventTarget = window): () => void {
 
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
-
-/**
- * Change a task and refresh what shows it. The main process writes a renamed or ticked
- * checkbox task back into its note, so an open page reloads too, once that write is done.
- */
-export async function updateTask(task: { id: number; note_id: number | null }, patch: Record<string, unknown>): Promise<void> {
-  await api.tasks.update(task.id, patch)
-  bumpData('tasks')
-  if (task.note_id !== null) bumpData('notes')
-}

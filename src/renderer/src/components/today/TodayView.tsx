@@ -1,267 +1,131 @@
 import { useEffect, useState } from 'react'
-import { Layers, ArrowRight, Plus, CheckSquare, FileText } from 'lucide-react'
-import { format, isToday } from 'date-fns'
+import { Layers, Plus } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { ramp, isColorKey, softTint } from '@/lib/colors'
-import { onActivateKey } from '@/lib/keys'
+import { localDay } from '@shared/day'
 import { Inky } from '@/components/Inky'
-import type { Deck, Task, Note, Notebook } from '@shared/types'
+import { Button } from '@/components/ui'
+import type { Deck, OpenTask } from '@shared/types'
 
 const api = window.inkling
 
-function greeting(): string {
-  const h = new Date().getHours()
-  if (h < 5) return 'Up late'
-  if (h < 12) return 'Good morning'
-  if (h < 18) return 'Good afternoon'
-  return 'Good evening'
-}
+const longDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+const shortDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
 
-/** The wall clock, re-read once a minute, so a row flips to overdue without a data change. */
-function useNow(intervalMs = 60_000): number {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs)
-    return () => clearInterval(id)
-  }, [intervalMs])
-  return now
-}
-
-/**
- * The daily plan: due flashcards and open tasks, each with a one-click start.
- */
+/** What is open across all notes, and which decks have cards due. */
 export function TodayView(): React.JSX.Element {
-  const app = useApp()
-  const now = useNow()
-  const version = useVersion('decks') + useVersion('tasks')
+  const today = useApp((s) => s.today)
+  const version = useVersion('tasks') + useVersion('notes') + useVersion('decks')
+  const [tasks, setTasks] = useState<OpenTask[]>([])
   const [decks, setDecks] = useState<Deck[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
   const [loaded, setLoaded] = useState(false)
-  // tasks mid-completion: keeps the checkbox visibly ticked until the refetch removes the row
-  const [completing, setCompleting] = useState<Set<number>>(new Set())
-  const [recent, setRecent] = useState<Note[]>([])
-  const notesVersion = useVersion('notes')
+  // Ticked rows stay on screen, struck through, until the next visit.
+  const [ticked, setTicked] = useState<Set<number>>(new Set())
 
   useEffect(() => {
-    // Overlapping fetches can resolve out of order; only the newest may write state.
     let stale = false
-    void Promise.all([api.decks.list(), api.tasks.smart('today')]).then(([d, t]) => {
+    void Promise.all([api.tasks.open(), api.decks.list()]).then(([t, d]) => {
       if (stale) return
-      setDecks(d)
-      setTasks(t)
+      setTasks((prev) => [...t, ...prev.filter((p) => ticked.has(p.id) && !t.some((x) => x.id === p.id))])
+      setDecks(d.filter((x) => x.due_count > 0))
       setLoaded(true)
     })
     return () => {
       stale = true
     }
-    // app.today: "due today" is a new list after midnight
-  }, [version, app.today])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, today])
 
-  useEffect(() => {
-    if (app.activeNotebookId === null) return
-    void api.notes.list(app.activeNotebookId).then((pages) => {
-      setRecent([...pages].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4))
+  const toggle = (t: OpenTask): void => {
+    const done = !ticked.has(t.id)
+    setTicked((prev) => {
+      const next = new Set(prev)
+      if (done) next.add(t.id)
+      else next.delete(t.id)
+      return next
     })
-  }, [app.activeNotebookId, notesVersion])
-
-  const nbOf = (id: number): Notebook | undefined => app.notebooks.find((n) => n.id === id)
-  const active = nbOf(app.activeNotebookId ?? -1)
-  const inkyColor = isColorKey(active?.color) ? active.color : 'teal'
-  const dueDecks = decks.filter((d) => d.due_count > 0)
-  const openTasks = tasks.filter((t) => t.status !== 'done')
-  const planCount = dueDecks.length + openTasks.length
-  const cleared = loaded && planCount === 0
-
-  const completeTask = (t: Task): void => {
-    setCompleting((prev) => new Set(prev).add(t.id))
-    void api.tasks.update(t.id, { status: 'done' }).then(() => {
-      bumpData('tasks')
-      if (t.note_id !== null) bumpData('notes')
-    })
+    void api.tasks.setDone(t.id, done).then(() => bumpData('notes'))
   }
 
-  const dueLabel = (t: Task): { text: string; overdue: boolean } => {
-    if (!t.due_date) return { text: 'today', overdue: false }
-    const due = new Date(t.due_date)
-    if (!isToday(due) && due.getTime() < now) return { text: `overdue since ${format(due, 'EEE d MMM')}`, overdue: true }
-    const hm = format(due, 'HH:mm')
-    return { text: hm === '00:00' ? 'today' : `due ${hm}`, overdue: false }
-  }
-
-  const newPage = async (): Promise<void> => {
-    if (app.activeNotebookId === null) return
-    const note = await api.notes.create({ notebook_id: app.activeNotebookId })
-    bumpData('notes')
-    app.openNote(app.activeNotebookId, note.id)
-  }
+  const empty = loaded && tasks.length === 0 && decks.length === 0
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-2xl flex-col px-6 pb-16 pt-10">
-        <div className="fade-up mb-6 flex items-center gap-4">
-          <Inky color={inkyColor} size={76} />
-          <div>
-            <h1 className="text-[28px] font-bold leading-tight">{greeting()}!</h1>
-            <p className="text-sm text-muted">
-              {format(new Date(), 'EEEE, MMMM d')}
-            </p>
-            <p className="mt-0.5 text-sm text-faint">
-              {cleared
-                ? 'Nothing queued. The day is yours.'
-                : loaded
-                  ? `${planCount} small win${planCount === 1 ? '' : 's'} queued for today.`
-                  : 'Putting your plan together…'}
-            </p>
-          </div>
-        </div>
+      <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
+        <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Today</h1>
+        <p className="mt-1 text-sm text-muted">{longDate.format(new Date())}</p>
 
-        {cleared && (
-          <>
-            <div className="pop-in flex items-center gap-2 rounded-lg bg-raised px-3 py-2 text-sm">
-              <span className="font-semibold">Plan cleared.</span>
-              <span className="text-muted">Nothing due. Get ahead, or enjoy it.</span>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              <QuickAction icon={<Plus size={18} />} label="New page" onClick={() => void newPage()} />
-              <QuickAction
-                icon={<Layers size={18} />}
-                label="Build a deck"
-                onClick={() => {
-                  app.setSelectedDeck(null)
-                  app.setTab('study')
-                }}
-              />
-              <QuickAction icon={<CheckSquare size={18} />} label="Add a task" onClick={() => app.setTab('tasks')} />
-            </div>
-          </>
+        {empty && (
+          <div className="mt-16 flex flex-col items-center text-center">
+            <Inky size={44} className="mb-4" />
+            <p className="text-[15px] text-ink">Nothing open. Enjoy the calm.</p>
+            <p className="mt-1 text-sm text-muted">To-dos you write in a note with [] show up here.</p>
+            <Button variant="default" className="mt-5" onClick={() => void useApp.getState().newNote()}>
+              <Plus size={15} /> New note
+            </Button>
+          </div>
         )}
 
-        <div className="space-y-2">
-          {dueDecks.map((d) => {
-            const nb = nbOf(d.notebook_id)
-            return (
-              <PlanCard
-                key={`d${d.id}`}
-                bubble={<Layers size={18} />}
-                tint={softTint(nb?.color, app.theme)}
-                title={`Review ${d.name}`}
-                sub={`${d.due_count} card${d.due_count === 1 ? '' : 's'} due · ${nb?.name ?? 'notebook'}`}
-                actionLabel="Review"
-                onAction={() => app.reviewDeck(d.notebook_id, d.id)}
-              />
-            )
-          })}
+        {tasks.length > 0 && (
+          <Section title="To-do" count={tasks.length - ticked.size}>
+            {tasks.map((t) => {
+              const done = ticked.has(t.id)
+              const due = t.due_date ? new Date(t.due_date) : null
+              const overdue = !!due && !done && localDay(due) < today
+              return (
+                <li key={t.id} className="flex items-center gap-3 border-b border-edge py-2.5">
+                  <input
+                    type="checkbox"
+                    className="check"
+                    checked={done}
+                    onChange={() => toggle(t)}
+                    aria-label={done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`}
+                  />
+                  <span className={`min-w-0 flex-1 truncate text-[15px] ${done ? 'text-faint line-through' : ''}`}>{t.title}</span>
+                  {due && <span className={`shrink-0 text-xs ${overdue ? 'text-danger' : 'text-faint'}`}>{shortDate.format(due)}</span>}
+                  {t.note_id !== null && (
+                    <button
+                      type="button"
+                      onClick={() => useApp.getState().openNote(t.note_id!)}
+                      className="max-w-[40%] shrink-0 truncate rounded px-1.5 py-0.5 text-xs text-faint transition-colors hover:bg-hover hover:text-muted"
+                    >
+                      {t.note_title?.trim() || 'Untitled'}
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </Section>
+        )}
 
-          {openTasks.map((t) => {
-            const nb = nbOf(t.notebook_id)
-            const due = dueLabel(t)
-            return (
-              <div
-                key={`t${t.id}`}
-                className="plan-card group flex cursor-pointer items-center gap-3 rounded-lg border border-edge bg-raised px-4 py-3"
-                role="button"
-                tabIndex={0}
-                onClick={() => app.openTask(t.notebook_id, t.id)}
-                onKeyDown={onActivateKey(() => app.openTask(t.notebook_id, t.id))}
-              >
-                <input
-                  type="checkbox"
-                  checked={completing.has(t.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={() => completeTask(t)}
-                  className="h-4 w-4 shrink-0 accent-[var(--accent)]"
-                  title="Mark done"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{t.title}</div>
-                  <div className="text-xs" style={due.overdue ? { color: '#e5484d' } : undefined}>
-                    <span className={due.overdue ? 'font-semibold' : 'text-faint'}>{due.text}</span>
-                    {nb ? <span className="text-faint"> · {nb.name}</span> : null}
-                  </div>
-                </div>
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: ramp(nb?.color)[500] }} />
-              </div>
-            )
-          })}
-        </div>
-
-        {recent.length > 0 && (
-          <div className="mt-8">
-            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-faint">Jump back in</div>
-            <div className="space-y-0.5">
-              {recent.map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  onClick={() => app.openNote(n.notebook_id, n.id)}
-                  className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
-                >
-                  <FileText size={16} className="shrink-0" />
-                  <span className="truncate">{n.title || 'Untitled'}</span>
-                  <span className="ml-auto shrink-0 text-xs text-faint">{format(new Date(n.updated_at), 'd MMM')}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+        {decks.length > 0 && (
+          <Section title="Study" count={decks.reduce((n, d) => n + d.due_count, 0)}>
+            {decks.map((d) => (
+              <li key={d.id} className="flex items-center gap-3 border-b border-edge py-2.5">
+                <Layers size={16} className="shrink-0 text-faint" />
+                <span className="min-w-0 flex-1 truncate text-[15px]">{d.name}</span>
+                <span className="shrink-0 text-xs text-faint">
+                  {d.due_count} card{d.due_count === 1 ? '' : 's'} due
+                </span>
+                <Button variant="ghost" className="h-7 px-2.5 text-accent-text" onClick={() => useApp.getState().reviewDeck(d.id)}>
+                  Review
+                </Button>
+              </li>
+            ))}
+          </Section>
         )}
       </div>
     </div>
   )
 }
 
-function PlanCard({
-  bubble,
-  tint,
-  title,
-  sub,
-  actionLabel,
-  onAction
-}: {
-  bubble: React.ReactNode
-  tint: { bg: string; text: string }
-  title: string
-  sub: string
-  actionLabel: string
-  onAction: () => void
-}): React.JSX.Element {
+function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }): React.JSX.Element {
   return (
-    <div
-      className="plan-card group flex cursor-pointer items-center gap-3 rounded-lg border border-edge bg-raised px-4 py-3"
-      role="button"
-      tabIndex={0}
-      onClick={onAction}
-      onKeyDown={onActivateKey(onAction)}
-    >
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg"
-        style={{ background: tint.bg, color: tint.text }}
-      >
-        {bubble}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{title}</div>
-        <div className="truncate text-xs text-faint">{sub}</div>
-      </div>
-      <span
-        className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-        style={{ background: 'var(--accent)' }}
-      >
-        {actionLabel} <ArrowRight size={12} />
-      </span>
-    </div>
+    <section className="mt-10">
+      <h2 className="mb-1 flex items-baseline gap-2 border-b border-edge pb-2 text-sm font-medium text-muted">
+        {title}
+        {count > 0 && <span className="text-xs tabular-nums text-faint">{count}</span>}
+      </h2>
+      <ul>{children}</ul>
+    </section>
   )
 }
-
-function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="plan-card flex h-9 items-center justify-center gap-2 rounded-lg bg-raised px-3 text-xs font-medium text-muted hover:text-ink"
-    >
-      {icon}
-      {label}
-    </button>
-  )
-}
-

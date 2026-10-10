@@ -1,377 +1,156 @@
 import { useEffect, useState } from 'react'
-import {
-  FileText,
-  CheckSquare,
-  GraduationCap,
-  Search,
-  Plus,
-  Download,
-  Trash2,
-  MoreHorizontal,
-  Sun
-} from 'lucide-react'
-import { format } from 'date-fns'
-import { useApp, useVersion, bumpData } from '@/stores/app'
+import { FileText, Layers, Plus, Settings, Sun, Trash2 } from 'lucide-react'
+import { useApp, useVersion, bumpData, type View } from '@/stores/app'
 import { onActivateKey } from '@/lib/keys'
-import { RAMPS, COLOR_KEYS, isColorKey } from '@/lib/colors'
-import { Modal, Field, inputCls, Button, IconBtn } from '@/components/ui'
-import { UserBar } from '@/components/shell/UserBar'
-import type { Note, Deck, Task, ModuleTab, ColorKey, ImportSummary } from '@shared/types'
+import type { Note } from '@shared/types'
 
 const api = window.inkling
 
-const TABS: Array<{ id: ModuleTab; icon: React.JSX.Element; label: string }> = [
-  { id: 'today', icon: <Sun size={16} />, label: 'Today' },
-  { id: 'notes', icon: <FileText size={16} />, label: 'Notes' },
-  { id: 'tasks', icon: <CheckSquare size={16} />, label: 'Tasks' },
-  { id: 'study', icon: <GraduationCap size={16} />, label: 'Study' }
-]
-
+/** One quiet column: three places to go, then every note. */
 export function Sidebar(): React.JSX.Element {
-  const app = useApp()
-  const notebook = app.notebooks.find((n) => n.id === app.activeNotebookId)
-  const [editing, setEditing] = useState(false)
+  const view = useApp((s) => s.view)
+  const today = useApp((s) => s.today)
+  const decksVersion = useVersion('decks')
+  const [due, setDue] = useState(0)
+
+  useEffect(() => {
+    let stale = false
+    void api.decks.list().then((decks) => !stale && setDue(decks.reduce((n, d) => n + d.due_count, 0)))
+    return () => {
+      stale = true
+    }
+  }, [decksVersion, today])
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col rounded-tl-xl border-l border-t border-edge bg-panel">
-      <div className="flex items-center justify-between px-3 pb-1 pt-3">
-        <h1 className="min-w-0 truncate text-base font-bold">{notebook?.name ?? 'Inkling'}</h1>
-        {notebook && (
-          <IconBtn title="Notebook options" onClick={() => setEditing(true)}>
-            <MoreHorizontal size={16} />
-          </IconBtn>
-        )}
-      </div>
-
-      <nav className="space-y-0.5 px-2 pb-2 pt-1">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => app.setTab(t.id)}
-            className={`flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-sm font-medium transition-colors ${
-              app.tab === t.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
-            }`}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
+    <aside className="flex shrink-0 flex-col border-r border-edge bg-panel" style={{ width: 'var(--sidebar-w)' }}>
+      <nav className="space-y-px px-2 pt-3">
+        <NavRow view="today" current={view} icon={<Sun size={16} />} label="Today" />
+        <NavRow view="study" current={view} icon={<Layers size={16} />} label="Study" count={due} />
+        <button
+          type="button"
+          onClick={() => useApp.getState().setSettingsOpen(true)}
+          className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
+        >
+          <Settings size={16} />
+          Settings
+        </button>
       </nav>
 
-      <button
-        type="button"
-        onClick={() => app.setPaletteOpen(true)}
-        className="mx-2 mb-2 flex items-center gap-2 rounded-lg bg-app px-2 py-1.5 text-sm text-faint transition-colors hover:text-muted"
-      >
-        <Search size={16} />
-        Search everything…
-        <span className="ml-auto rounded-sm border border-edge px-1 text-[11px]">Ctrl K</span>
-      </button>
+      <div className="mx-4 mb-2 mt-3 border-t border-edge" />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        {notebook ? (
-          <>
-            {app.tab === 'today' && <TodaySidebar />}
-            {app.tab === 'notes' && <NotesList notebookId={notebook.id} />}
-            {app.tab === 'study' && <StudySidebar notebookId={notebook.id} />}
-          </>
-        ) : (
-          <p className="px-2 py-4 text-sm text-muted">Create a notebook to get going. The + button on the left is waiting.</p>
-        )}
+      <div className="flex items-center justify-between pb-1 pl-4 pr-2">
+        <span className="text-xs font-medium text-faint">Notes</span>
+        <button
+          type="button"
+          title="New note (Ctrl+N)"
+          aria-label="New note"
+          onClick={() => void useApp.getState().newNote()}
+          className="flex h-6 w-6 items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-ink"
+        >
+          <Plus size={15} />
+        </button>
       </div>
 
-      <UserBar />
-
-      {editing && notebook && <NotebookModal notebookId={notebook.id} onClose={() => setEditing(false)} />}
+      <NotesList />
     </aside>
   )
 }
 
-/* ------------------------------- Notes list ------------------------------- */
-
-function NotesList({ notebookId }: { notebookId: number }): React.JSX.Element {
-  const { selectedNoteId, setSelectedNote } = useApp()
-  const version = useVersion('notes')
-  const [pages, setPages] = useState<Note[]>([])
-
-  useEffect(() => {
-    void api.notes.list(notebookId).then(setPages)
-  }, [notebookId, version])
-
-  const newPage = async (): Promise<void> => {
-    const note = await api.notes.create({ notebook_id: notebookId })
-    bumpData('notes')
-    setSelectedNote(note.id)
-  }
-
+function NavRow({
+  view,
+  current,
+  icon,
+  label,
+  count
+}: {
+  view: View
+  current: View
+  icon: React.JSX.Element
+  label: string
+  count?: number
+}): React.JSX.Element {
+  const active = view === current
   return (
-    <div className="fade-up">
-      <button
-        type="button"
-        onClick={() => void newPage()}
-        className="mb-2 flex w-full items-center justify-center gap-1 rounded-lg bg-raised py-1.5 text-xs font-medium transition-all hover:bg-active active:scale-95"
-      >
-        <Plus size={14} /> New page
-      </button>
-
-      <SectionLabel>Pages</SectionLabel>
-      {pages.length === 0 && <p className="px-2 py-2 text-xs text-faint">No pages yet. Hit “New page” above.</p>}
-      {pages.map((n) => (
-        <div
-          key={n.id}
-          className={`group flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-            selectedNoteId === n.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
-          }`}
-          role="button"
-          tabIndex={0}
-          onClick={() => setSelectedNote(n.id)}
-          onKeyDown={onActivateKey(() => setSelectedNote(n.id))}
-        >
-          <span className="truncate">{n.title || 'Untitled'}</span>
-          <span className="ml-auto hidden shrink-0 gap-0.5 group-hover:flex group-focus-visible:flex group-has-[:focus-visible]:flex">
-            <IconBtn
-              title="Delete page"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (selectedNoteId === n.id) setSelectedNote(null)
-                void api.notes.remove(n.id).then(() => {
-                  bumpData('notes')
-                  useApp.getState().showToast({
-                    message: `Deleted “${n.title?.trim() || 'Untitled'}”`,
-                    actionLabel: 'Undo',
-                    onAction: () => void useApp.getState().restoreNote(n.notebook_id, n.id)
-                  })
-                })
-              }}
-            >
-              <Trash2 size={14} />
-            </IconBtn>
-          </span>
-        </div>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={() => useApp.getState().setView(view)}
+      aria-current={active ? 'page' : undefined}
+      className={`flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors ${
+        active ? 'bg-active font-medium text-ink' : 'text-muted hover:bg-hover hover:text-ink'
+      }`}
+    >
+      {icon}
+      {label}
+      {!!count && <span className="ml-auto text-xs tabular-nums text-faint">{count}</span>}
+    </button>
   )
 }
 
-/* ------------------------------ Today sidebar ------------------------------ */
-
-function TodaySidebar(): React.JSX.Element {
-  const version = useVersion('tasks')
-  const { openTask } = useApp()
-  const [dueSoon, setDueSoon] = useState<Task[]>([])
+function NotesList(): React.JSX.Element {
+  const view = useApp((s) => s.view)
+  const selectedNoteId = useApp((s) => s.selectedNoteId)
+  const version = useVersion('notes')
+  const [notes, setNotes] = useState<Note[]>([])
 
   useEffect(() => {
-    void api.tasks.smart('week').then((tasks) => setDueSoon(tasks.slice(0, 12)))
+    let stale = false
+    void api.notes.list().then((n) => !stale && setNotes(n))
+    return () => {
+      stale = true
+    }
   }, [version])
 
-  return (
-    <div className="fade-up">
-      <SectionLabel>Due this week</SectionLabel>
-      {dueSoon.length === 0 && <div className="rounded-lg bg-sunken px-3 py-3 text-xs text-faint">Nothing due this week. Enjoy it.</div>}
-      {dueSoon.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => openTask(t.notebook_id, t.id)}
-          className="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-muted transition-colors hover:bg-hover"
-        >
-          <span className="block truncate text-ink">{t.title}</span>
-          <span className="block text-xs text-faint">{t.due_date ? format(new Date(t.due_date), 'EEE d MMM') : ''}</span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-/* ------------------------------ Study sidebar ------------------------------ */
-
-function StudySidebar({ notebookId }: { notebookId: number }): React.JSX.Element {
-  const { selectedDeckId, setSelectedDeck } = useApp()
-  const version = useVersion('decks')
-  const [decks, setDecks] = useState<Deck[]>([])
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
-  const [importing, setImporting] = useState(false)
-
-  useEffect(() => {
-    void api.decks.list(notebookId).then(setDecks)
-  }, [notebookId, version])
-
-  const createDeck = async (): Promise<void> => {
-    if (!name.trim()) return
-    const deck = await api.decks.create(notebookId, name.trim())
-    bumpData('decks')
-    setSelectedDeck(deck.id)
-    setAdding(false)
-    setName('')
-  }
-
-  const importDeck = async (): Promise<void> => {
-    setImporting(true)
-    try {
-      const result = await api.app.importDeck(notebookId)
-      if (!result) return
-      if ('error' in result) {
-        useApp.getState().showToast({ message: `Could not import that file. ${result.error}` })
-        return
-      }
-      bumpData('decks')
-      if (result.deckId !== null) useApp.getState().openDeck(notebookId, result.deckId)
-      useApp.getState().showToast({ message: importMessage(result), durationMs: 8000 })
-    } finally {
-      setImporting(false)
-    }
+  const remove = (n: Note): void => {
+    const app = useApp.getState()
+    if (app.selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
+    void api.notes.remove(n.id).then(() => {
+      bumpData('notes')
+      bumpData('tasks')
+      app.showToast({
+        message: `Deleted "${n.title?.trim() || 'Untitled'}"`,
+        actionLabel: 'Undo',
+        onAction: () => {
+          bumpData('tasks')
+          void useApp.getState().restoreNote(n.id)
+        }
+      })
+    })
   }
 
   return (
-    <div className="fade-up">
-      <button
-        type="button"
-        onClick={() => setSelectedDeck(null)}
-        className={`mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-          selectedDeckId === null ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
-        }`}
-      >
-        <GraduationCap size={16} /> Study home
-      </button>
-      <SectionLabel>Decks</SectionLabel>
-      {decks.map((d) => (
-        <button
-          key={d.id}
-          type="button"
-          onClick={() => setSelectedDeck(d.id)}
-          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-            selectedDeckId === d.id ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
-          }`}
-        >
-          <span className="truncate">{d.name}</span>
-          {d.due_count > 0 && (
-            <span className="ml-auto rounded-full px-1.5 text-[11px] font-semibold text-white" style={{ background: 'var(--accent)' }}>
-              {d.due_count}
-            </span>
-          )}
-        </button>
-      ))}
-      {adding ? (
-        <input
-          autoFocus
-          className={`${inputCls} mt-1`}
-          value={name}
-          placeholder="Deck name…"
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void createDeck()
-            if (e.key === 'Escape') setAdding(false)
-          }}
-          onBlur={() => setAdding(false)}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-faint transition-colors hover:bg-hover hover:text-ink"
-        >
-          <Plus size={16} /> New deck
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={() => void importDeck()}
-        disabled={importing}
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-faint transition-colors hover:bg-hover hover:text-ink disabled:opacity-60"
-      >
-        <Download size={16} /> {importing ? 'Importing…' : 'Import deck…'}
-      </button>
-    </div>
-  )
-}
-
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
-
-/** The toast after an Anki import: what came in, then what stayed out. */
-function importMessage(r: ImportSummary): string {
-  const s = r.skipped
-  if (r.cards === 0) return s.duplicates > 0 ? 'Nothing new. Every card in that file is here already.' : 'That file has no cards to import.'
-  const parts = [
-    `Imported ${plural(r.cards, 'card')}${r.reviews > 0 ? ` with ${plural(r.reviews, 'review')}` : ''}.`
-  ]
-  const left = [
-    s.suspended > 0 && `${s.suspended} suspended`,
-    s.imageOcclusion > 0 && `${s.imageOcclusion} image occlusion`,
-    s.duplicates > 0 && `${s.duplicates} already here`,
-    s.mediaOnly > 0 && `${s.mediaOnly} with only a picture or sound as the question`,
-    s.unusable > 0 && `${s.unusable} empty`
-  ].filter(Boolean)
-  if (left.length > 0) parts.push(`Skipped ${left.join(', ')}.`)
-  if (s.media > 0) parts.push(`${plural(s.media, 'image or sound', 'images and sounds')} left out.`)
-  return parts.join(' ')
-}
-
-/* --------------------------------- Shared --------------------------------- */
-
-function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }): React.JSX.Element {
-  return <div className={`px-2 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-faint ${className}`}>{children}</div>
-}
-
-function NotebookModal({ notebookId, onClose }: { notebookId: number; onClose: () => void }): React.JSX.Element {
-  const { notebooks, refreshNotebooks } = useApp()
-  const nb = notebooks.find((n) => n.id === notebookId)!
-  const [name, setName] = useState(nb.name)
-  const [color, setColor] = useState<ColorKey>(isColorKey(nb.color) ? nb.color : 'teal')
-  const [confirmDelete, setConfirmDelete] = useState(false)
-
-  const save = async (): Promise<void> => {
-    await api.notebooks.update(notebookId, { name: name.trim() || nb.name, color })
-    await refreshNotebooks()
-    onClose()
-  }
-  const remove = async (): Promise<void> => {
-    await api.notebooks.remove(notebookId)
-    await refreshNotebooks()
-    bumpData('notes')
-    bumpData('tasks')
-    bumpData('decks')
-    onClose()
-  }
-  return (
-    <Modal title="Notebook settings" onClose={onClose}>
-      <Field label="Name">
-        <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
-      </Field>
-      <Field label="Color">
-        <div className="flex gap-2">
-          {COLOR_KEYS.map((c) => (
+    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+      {notes.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
+      {notes.map((n) => {
+        const active = view === 'notes' && selectedNoteId === n.id
+        const open = (): void => useApp.getState().openNote(n.id)
+        return (
+          <div
+            key={n.id}
+            role="button"
+            tabIndex={0}
+            onClick={open}
+            onKeyDown={onActivateKey(open)}
+            className={`group flex h-8 cursor-pointer items-center gap-2.5 rounded-md pl-2.5 pr-1 text-sm transition-colors ${
+              active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
+            }`}
+          >
+            <FileText size={15} className="shrink-0 text-faint" />
+            <span className="min-w-0 flex-1 truncate">{n.title?.trim() || 'Untitled'}</span>
             <button
-              key={c}
               type="button"
-              title={c}
-              onClick={() => setColor(c)}
-              className={`h-8 w-8 rounded-full transition-transform ${color === c ? 'scale-110 ring-2' : 'hover:scale-105'}`}
-              style={{ background: RAMPS[c][500], ['--tw-ring-color' as never]: RAMPS[c][700] }}
-            />
-          ))}
-        </div>
-      </Field>
-      <div className="mt-4 flex items-center justify-between">
-        {confirmDelete ? (
-          <Button variant="danger" onClick={() => void remove()}>
-            Really delete everything?
-          </Button>
-        ) : (
-          <Button variant="ghost" onClick={() => setConfirmDelete(true)}>
-            <Trash2 size={14} /> Delete notebook
-          </Button>
-        )}
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={() => void save()}>
-            Save
-          </Button>
-        </div>
-      </div>
-    </Modal>
+              title="Delete note"
+              aria-label={`Delete ${n.title?.trim() || 'Untitled'}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                remove(n)
+              }}
+              className="hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-faint hover:bg-hover hover:text-danger group-hover:flex group-focus-within:flex"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )
+      })}
+    </div>
   )
 }
