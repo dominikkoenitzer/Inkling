@@ -54,6 +54,38 @@ If Windows says it protected your PC, click **More info**, then **Run anyway**. 
 
 Everything stays on your computer, in one SQLite file in `%APPDATA%\Inkling` (Windows), `~/Library/Application Support/Inkling` (macOS) or `~/.config/Inkling` (Linux). Each time Inkling starts, a copy goes into `backups/` next to it, and the last five are kept. Any note can be saved as Markdown from the button above it.
 
+## Use it with an AI assistant
+
+Inkling has a small MCP server built in. Connect it to an AI assistant on your computer and the assistant can look through your notes, write new ones and keep your to-dos and flashcards going.
+
+Add Inkling to your MCP client's list of servers, with the path where Inkling is installed. On Windows:
+
+```json
+{
+  "mcpServers": {
+    "inkling": {
+      "command": "C:\\Users\\<you>\\AppData\\Local\\Programs\\Inkling\\Inkling.exe",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+On macOS the command is `/Applications/Inkling.app/Contents/MacOS/Inkling`, on Linux the full path to your `Inkling.AppImage`. Write the path out in full, most clients do not expand `%LOCALAPPDATA%` or `~`.
+
+What the assistant can do:
+
+- search notes, to-dos and decks, list your notes and read any of them as Markdown
+- make a new note, or add to the end of one, in Markdown. Headings, lists, bold, italic, links, code and quotes all come through, and a `- [ ]` line becomes a real to-do on Today
+- list your open to-dos, tick them off or open them again
+- list your decks with the cards due, and add flashcards, cloze cards too
+
+What it cannot do: delete anything, rewrite or remove what a note already says, review cards or touch your settings. Those stay with you.
+
+Open Inkling once before you connect it, so it can set up your data. After an update, open it once more before the assistant carries on. Inkling can stay open while the assistant works; switch back to it and the changes are there.
+
+Nothing leaves your computer. The assistant app starts Inkling itself and they talk over standard input and output: no network, no account, no server somewhere else.
+
 ## Build it yourself
 
 You need [Git](https://git-scm.com), [Bun](https://bun.sh) and [Node.js](https://nodejs.org) 22 or newer. On Windows:
@@ -84,6 +116,7 @@ bun run typecheck   # TypeScript
 bun run lint        # ESLint
 bun run build       # production bundle into out/
 bun run smoke       # starts the built app off screen and checks notes, to-dos, search and reviews
+bun run mcp         # runs the MCP server from the built app, on stdin and stdout
 bun run dist        # Windows installer into release/
 ```
 
@@ -92,7 +125,7 @@ bun run dist        # Windows installer into release/
 Electron with React 19, TypeScript, Tailwind CSS 4 and TipTap for the editor. Data goes through typed repositories over better-sqlite3 with FTS5 search. Spaced repetition is an FSRS-6 scheduler in `src/shared/fsrs.ts`.
 
 ```
-src/main       main process: database, migrations and backups, IPC, the data repositories
+src/main       main process: database, migrations and backups, IPC, the data repositories, the MCP server
 src/preload    the bridge the app talks through (window.inkling, typed in src/shared/api.ts)
 src/renderer   the React app: shell, today, notes, study
 src/shared     types and the pure logic both sides use: FSRS, cloze, Markdown export
