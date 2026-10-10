@@ -9,6 +9,7 @@ import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers
 import { useApp, bumpData } from '@/stores/app'
 import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
+import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn } from '@/components/ui'
 import type { Note, NoteTaskItem } from '@shared/types'
 
@@ -277,23 +278,6 @@ function assignNodeIds(
     view.dispatch(tr)
     syncingRef.current = false
   }
-}
-
-/** The same stamping as `assignNodeIds`, on plain JSON: task items in document order. */
-function stampTaskIds(doc: Record<string, unknown>, ids: number[]): Record<string, unknown> {
-  let i = 0
-  const walk = (n: unknown): unknown => {
-    if (!n || typeof n !== 'object') return n
-    const node = n as { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }
-    const next: typeof node = { ...node }
-    if (node.type === 'taskItem') {
-      const want = ids[i++]
-      if (want !== undefined && want > 0) next.attrs = { ...node.attrs, taskId: want }
-    }
-    if (Array.isArray(node.content)) next.content = node.content.map(walk)
-    return next
-  }
-  return walk(doc) as Record<string, unknown>
 }
 
 function safeParse(content: string): object {

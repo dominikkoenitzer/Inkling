@@ -1,6 +1,6 @@
 /** Small shared parsing helpers: note card lines, note task extraction, fuzzy match. */
 import { hasCloze, separatorIndex } from '@shared/cloze'
-import type { NoteCardLine, NoteTaskItem } from '@shared/types'
+import type { NoteCardLine } from '@shared/types'
 
 /* ---- `Term :: Definition` and cloze lines inside a note → flashcards (§7) ---- */
 
@@ -68,35 +68,4 @@ export function extractNoteCardLines(doc: Record<string, unknown>): NoteCardLine
 }
 
 /* ---- Task items inside a note's TipTap JSON (checkbox → real task, §7) ---- */
-export function extractNoteTaskItems(doc: Record<string, unknown>): NoteTaskItem[] {
-  const items: NoteTaskItem[] = []
-  const textOf = (n: { text?: string; content?: unknown[] }): string => {
-    const parts: string[] = []
-    const walk = (m: { text?: string; content?: unknown[] }): void => {
-      if (typeof m.text === 'string') parts.push(m.text)
-      if (Array.isArray(m.content)) {
-        m.content.forEach((c) => {
-          // don't descend into a nested checklist; that child taskItem is its own task,
-          // its text must not be folded into this item's title
-          const type = (c as { type?: string }).type
-          if (type === 'taskList' || type === 'taskItem') return
-          walk(c as never)
-        })
-      }
-    }
-    walk(n)
-    return parts.join('')
-  }
-  const walk = (n: { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }): void => {
-    if (n.type === 'taskItem') {
-      items.push({
-        taskId: typeof n.attrs?.taskId === 'number' ? (n.attrs.taskId as number) : null,
-        checked: !!n.attrs?.checked,
-        title: textOf(n as never)
-      })
-    }
-    if (Array.isArray(n.content)) n.content.forEach((c) => walk(c as never))
-  }
-  walk(doc as never)
-  return items
-}
+export { extractNoteTaskItems } from '@shared/noteTasks'
