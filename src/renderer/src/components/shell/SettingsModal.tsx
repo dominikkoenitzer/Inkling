@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Moon, Database, Keyboard, Sparkles } from 'lucide-react'
+import { Moon, Sparkles } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { DEFAULT_PARAMS } from '@shared/fsrs'
 import type { OptimiseOutcome } from '@shared/types'
@@ -27,19 +27,6 @@ export function SettingsModal(): React.JSX.Element {
 
         <Row icon={<Sparkles size={16} />} label="Your reviews" hint="Fit the scheduler to how you actually remember.">
           <Optimise />
-        </Row>
-
-        <Row icon={<Keyboard size={16} />} label="Shortcuts" hint="">
-          <div className="space-y-1 text-xs text-muted">
-            <div><Kbd>Ctrl K</Kbd> command palette & search</div>
-            <div><Kbd>Space</Kbd> reveal flashcard · <Kbd>1–4</Kbd> grade it</div>
-          </div>
-        </Row>
-
-        <Row icon={<Database size={16} />} label="Your data" hint="">
-          <p className="text-xs text-muted">
-            Everything lives on this machine in a local SQLite database, fully offline. The last 5 backups are kept automatically next to it.
-          </p>
         </Row>
 
         <div className="flex items-center gap-2 border-t border-edge pt-4 text-xs text-faint">
@@ -107,8 +94,4 @@ function Row({ icon, label, hint, children }: { icon: React.ReactNode; label: st
       <div>{children}</div>
     </div>
   )
-}
-
-function Kbd({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <kbd className="rounded-sm border border-edge bg-sunken px-1 py-0.5 text-[11px]">{children}</kbd>
 }
