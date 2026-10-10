@@ -3,7 +3,7 @@
   "packageManager": "bun@1.4.2",
   "productName": "Inkling",
   "version": "0.7.0",
-  "description": "Notes, tasks, schedule and study, together",
+  "description": "A calm place for your notes, to-dos and flashcards",
   "main": "out/main/index.js",
   "author": "Inkling",
   "license": "MIT",
