@@ -7,7 +7,6 @@
 export * from './flashcards'
 export * from './focus'
 export * from './grades'
-export { importAnkiFile } from './imports'
 export * from './notebooks'
 export * from './notes'
 export * from './onboarding'

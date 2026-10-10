@@ -13,8 +13,7 @@ import type {
   Grade,
   StatsOverview,
   ActivityDay,
-  OptimiseOutcome,
-  ImportSummary
+  OptimiseOutcome
 } from './types'
 import type { GradingSystem } from './grades'
 
@@ -97,7 +96,5 @@ export interface InklingApi {
   app: {
     setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>
     saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null; error?: string }>
-    /** Asks for an Anki .apkg or .colpkg and imports it into the notebook. Null when cancelled. */
-    importDeck(notebookId: number): Promise<ImportSummary | { error: string } | null>
   }
 }
