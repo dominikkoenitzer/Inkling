@@ -16,22 +16,34 @@ interface Item {
 /** Ctrl+K: search notes, to-dos and decks, or start a new note. */
 export function CommandPalette(): React.JSX.Element {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
+  // Results remember the query they answer, so Enter never acts on an older one.
+  const [results, setResults] = useState<{ query: string; hits: SearchResult[] }>({ query: '', hits: [] })
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const close = (): void => useApp.getState().setPaletteOpen(false)
 
-  useEffect(() => inputRef.current?.focus(), [])
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // Focus the box, and give focus back to where it was when the palette closes.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    inputRef.current?.focus()
+    return () => {
+      if (opener?.isConnected) opener.focus()
+    }
+  }, [])
 
   useEffect(() => {
     const q = query.trim()
     if (!q) return
-    const t = setTimeout(() => void api.search.query(q).then(setResults), 120)
+    const t = setTimeout(() => void api.search.query(q).then((hits) => setResults({ query: q, hits })), 120)
     return () => clearTimeout(t)
   }, [query])
 
   const app = useApp.getState()
-  const found: Item[] = (query.trim() ? results : []).map((r) => ({
+  const q = query.trim()
+  const pending = q !== '' && results.query !== q
+  const found: Item[] = (q && !pending ? results.hits : []).map((r) => ({
     key: `${r.source_type}-${r.source_id}`,
     icon: r.source_type === 'note' ? <FileText size={16} /> : r.source_type === 'task' ? <CheckSquare size={16} /> : <Layers size={16} />,
     label: r.title || 'Untitled',
@@ -44,17 +56,22 @@ export function CommandPalette(): React.JSX.Element {
   ]
   const clamped = Math.min(selected, items.length - 1)
 
+  useEffect(() => {
+    listRef.current?.querySelectorAll('button')[clamped]?.scrollIntoView({ block: 'nearest' })
+  }, [clamped])
+
   const onKey = (e: React.KeyboardEvent): void => {
     if (e.key === 'Escape') close()
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setSelected((s) => Math.min(s + 1, items.length - 1))
+      setSelected(Math.min(clamped + 1, items.length - 1))
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setSelected((s) => Math.max(s - 1, 0))
+      setSelected(Math.max(clamped - 1, 0))
     }
-    if (e.key === 'Enter') items[clamped]?.run()
+    // While the answer for what was just typed is on its way, Enter waits for it.
+    if (e.key === 'Enter' && !pending) items[clamped]?.run()
   }
 
   return (
@@ -62,7 +79,11 @@ export function CommandPalette(): React.JSX.Element {
       <div
         className="w-[560px] overflow-hidden rounded-lg border border-edge bg-raised"
         style={{ boxShadow: 'var(--shadow)' }}
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          e.stopPropagation()
+          // Clicking the panel itself keeps the search box focused, so the keys keep working.
+          if (e.target !== inputRef.current) e.preventDefault()
+        }}
       >
         <div className="flex items-center gap-2.5 border-b border-edge px-4">
           <Search size={16} className="shrink-0 text-faint" />
@@ -78,8 +99,8 @@ export function CommandPalette(): React.JSX.Element {
             className="h-12 flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
         </div>
-        <div className="max-h-[46vh] overflow-y-auto p-1.5">
-          {query.trim() && found.length === 0 && <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>}
+        <div ref={listRef} className="max-h-[46vh] overflow-y-auto p-1.5">
+          {q && !pending && found.length === 0 && <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>}
           {items.map((item, i) => (
             <button
               key={item.key}

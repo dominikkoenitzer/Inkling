@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trash2, Plus, ArrowLeft, Layers } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { hasCloze } from '@shared/cloze'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, inputCls } from '@/components/ui'
-import { onActivateKey } from '@/lib/keys'
 import { ReviewSession } from './ReviewSession'
 import type { Deck, Card } from '@shared/types'
 
@@ -18,6 +17,7 @@ export function StudyView(): React.JSX.Element {
   const [decks, setDecks] = useState<Deck[] | null>(null)
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  const creating = useRef(false)
 
   useEffect(() => {
     let stale = false
@@ -33,17 +33,22 @@ export function StudyView(): React.JSX.Element {
   if (reviewing) return <ReviewSession deck={reviewing} onDone={() => useApp.getState().reviewDeck(null)} />
 
   const selected = decks.find((d) => d.id === selectedDeckId)
-  if (selected) return <DeckDetail deck={selected} />
+  if (selected) return <DeckDetail key={selected.id} deck={selected} />
 
   const create = async (): Promise<void> => {
     const n = name.trim()
-    if (!n) return
-    const home = useApp.getState().homeNotebookId ?? (await api.notebooks.home())
-    const deck = await api.decks.create(home, n)
-    bumpData('decks')
-    setAdding(false)
-    setName('')
-    useApp.getState().openDeck(deck.id)
+    if (!n || creating.current) return
+    creating.current = true
+    try {
+      const home = useApp.getState().homeNotebookId ?? (await api.notebooks.home())
+      const deck = await api.decks.create(home, n)
+      bumpData('decks')
+      setAdding(false)
+      setName('')
+      useApp.getState().openDeck(deck.id)
+    } finally {
+      creating.current = false
+    }
   }
 
   return (
@@ -66,7 +71,10 @@ export function StudyView(): React.JSX.Element {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void create()
-              if (e.key === 'Escape') setAdding(false)
+              if (e.key === 'Escape') {
+                setAdding(false)
+                setName('')
+              }
             }}
             onBlur={() => !name.trim() && setAdding(false)}
           />
@@ -82,38 +90,31 @@ export function StudyView(): React.JSX.Element {
           </div>
         ) : (
           <ul className="mt-8 border-t border-edge">
-            {decks.map((d) => {
-              const open = (): void => useApp.getState().openDeck(d.id)
-              return (
-                <li
-                  key={d.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={open}
-                  onKeyDown={onActivateKey(open)}
-                  className="flex cursor-pointer items-center gap-3 border-b border-edge px-1 py-3 transition-colors hover:bg-hover"
+            {decks.map((d) => (
+              <li key={d.id} className="flex items-center gap-1 border-b border-edge">
+                <button
+                  type="button"
+                  onClick={() => useApp.getState().openDeck(d.id)}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-3 text-left transition-colors hover:bg-hover"
                 >
                   <Layers size={16} className="shrink-0 text-faint" />
                   <span className="min-w-0 flex-1 truncate text-[15px]">{d.name}</span>
-                  <span className="shrink-0 text-xs text-faint">
+                  <span className="shrink-0 pr-2 text-xs text-faint">
                     {d.card_count} card{d.card_count === 1 ? '' : 's'}
                     {d.due_count > 0 && <span className="text-accent-text"> · {d.due_count} due</span>}
                   </span>
-                  {d.due_count > 0 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        useApp.getState().reviewDeck(d.id)
-                      }}
-                      className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-accent-soft"
-                    >
-                      Review
-                    </button>
-                  )}
-                </li>
-              )
-            })}
+                </button>
+                {d.due_count > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => useApp.getState().reviewDeck(d.id)}
+                    className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-accent-soft"
+                  >
+                    Review
+                  </button>
+                )}
+              </li>
+            ))}
           </ul>
         )}
       </div>
@@ -132,18 +133,28 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
-    void api.decks.cards(deck.id).then(setCards)
+    let stale = false
+    void api.decks.cards(deck.id).then((c) => !stale && setCards(c))
+    return () => {
+      stale = true
+    }
   }, [deck.id, version])
+  const adding = useRef(false)
 
   // A cloze front is a whole card on its own; the back is then an optional extra.
   const canAdd = !!front.trim() && (!!back.trim() || hasCloze(front))
 
   const add = async (): Promise<void> => {
-    if (!canAdd) return
-    await api.decks.addCard(deck.id, front.trim(), back.trim())
-    setFront('')
-    setBack('')
-    bumpData('decks')
+    if (!canAdd || adding.current) return
+    adding.current = true
+    try {
+      await api.decks.addCard(deck.id, front.trim(), back.trim())
+      setFront('')
+      setBack('')
+      bumpData('decks')
+    } finally {
+      adding.current = false
+    }
   }
 
   const rename = (): void => {
@@ -221,9 +232,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
         ) : (
           <ul className="mt-6 border-t border-edge">
             {cards.map((c) => (
-              // Keyed by text too: editing a cloze card rewrites its siblings, and a row still
-              // holding the old text would write it back on its next blur.
-              <CardRow key={`${c.id}:${c.front}:${c.back}`} card={c} />
+              <CardRow key={c.id} card={c} />
             ))}
           </ul>
         )}
@@ -235,19 +244,37 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 function CardRow({ card }: { card: Card }): React.JSX.Element {
   const [front, setFront] = useState(card.front)
   const [back, setBack] = useState(card.back)
+  const editing = useRef(false)
+
+  // Editing a cloze card rewrites its siblings: take their new text unless this row is in use.
+  useEffect(() => {
+    if (editing.current) return
+    setFront(card.front)
+    setBack(card.back)
+  }, [card.front, card.back])
 
   const save = (): void => {
-    if (front !== card.front || back !== card.back) {
-      void api.decks.updateCard(card.id, front, back).then(() => bumpData('decks'))
+    editing.current = false
+    const f = front.trim()
+    const b = back.trim()
+    // Same rule as adding a card: a front, and a back unless the front is a cloze.
+    if (!f || (!b && !hasCloze(f))) {
+      setFront(card.front)
+      setBack(card.back)
+      return
+    }
+    if (f !== card.front || b !== card.back) {
+      void api.decks.updateCard(card.id, f, b).then(() => bumpData('decks'))
     }
   }
 
   const due = new Date(card.next_review_date) <= new Date()
+  const field = 'min-w-0 rounded px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-hover'
 
   return (
-    <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-3 border-b border-edge py-2">
-      <input className="bg-transparent text-sm" value={front} onChange={(e) => setFront(e.target.value)} onBlur={save} aria-label="Front" />
-      <input className="bg-transparent text-sm text-muted" value={back} onChange={(e) => setBack(e.target.value)} onBlur={save} aria-label="Back" />
+    <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
+      <input className={field} value={front} onFocus={() => (editing.current = true)} onChange={(e) => setFront(e.target.value)} onBlur={save} aria-label="Front" />
+      <input className={`${field} text-muted`} value={back} onFocus={() => (editing.current = true)} onChange={(e) => setBack(e.target.value)} onBlur={save} aria-label="Back" />
       <div className="flex items-center gap-1">
         <span className="w-14 text-right text-xs text-faint">{due ? 'due' : `in ${card.interval_days}d`}</span>
         <button

@@ -89,6 +89,20 @@ export function Modal({
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
+      // Tab stays inside the dialog.
+      if (e.key === 'Tab' && panelRef.current) {
+        const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])'))
+        if (items.length === 0) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === panelRef.current)) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -156,15 +170,6 @@ export function Toaster(): React.JSX.Element | null {
         </IconBtn>
       </div>
     </div>
-  )
-}
-
-export function Field({ label, children }: { label: string; children: ReactNode }): React.JSX.Element {
-  return (
-    <label className="mb-4 block">
-      <div className="mb-1.5 text-sm text-muted">{label}</div>
-      {children}
-    </label>
   )
 }
 

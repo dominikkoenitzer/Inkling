@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Search } from 'lucide-react'
-import { useApp, watchDay } from '@/stores/app'
+import { useApp, watchDay, bumpData } from '@/stores/app'
 import { Sidebar } from '@/components/shell/Sidebar'
 import { MainPane } from '@/components/shell/MainPane'
 import { CommandPalette } from '@/components/shell/CommandPalette'
@@ -12,6 +12,7 @@ const api = window.inkling
 
 export default function App(): React.JSX.Element {
   const ready = useApp((s) => s.ready)
+  const failed = useApp((s) => s.failed)
   const theme = useApp((s) => s.theme)
   const paletteOpen = useApp((s) => s.paletteOpen)
   const settingsOpen = useApp((s) => s.settingsOpen)
@@ -24,6 +25,12 @@ export default function App(): React.JSX.Element {
   // Roll "today" over at midnight and when the window comes back.
   useEffect(() => watchDay(), [])
 
+  // Cards answered "Again" come due again within minutes: recount every few minutes.
+  useEffect(() => {
+    const id = setInterval(() => bumpData('decks'), 5 * 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   // Only once the saved theme is known: the window already opened in it.
   useEffect(() => {
     if (!ready) return
@@ -34,7 +41,7 @@ export default function App(): React.JSX.Element {
   // Ctrl+K search, Ctrl+N new note, Ctrl+, settings.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.repeat) return
       const key = e.key.toLowerCase()
       const app = useApp.getState()
       if (key === 'k') {
@@ -52,6 +59,13 @@ export default function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  if (failed) {
+    return (
+      <div className="flex h-full items-center justify-center p-8 text-center text-sm" style={{ background: '#fbfaf8', color: '#625d56' }}>
+        Inkling could not open its data. Close it and start it again.
+      </div>
+    )
+  }
   if (!ready) return <div className="h-full bg-app" />
 
   return (

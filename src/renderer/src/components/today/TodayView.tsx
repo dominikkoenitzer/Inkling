@@ -23,12 +23,22 @@ export function TodayView(): React.JSX.Element {
 
   useEffect(() => {
     let stale = false
-    void Promise.all([api.tasks.open(), api.decks.list()]).then(([t, d]) => {
-      if (stale) return
-      setTasks((prev) => [...t, ...prev.filter((p) => ticked.has(p.id) && !t.some((x) => x.id === p.id))])
-      setDecks(d.filter((x) => x.due_count > 0))
-      setLoaded(true)
-    })
+    Promise.all([api.tasks.open(), api.decks.list()]).then(
+      ([t, d]) => {
+        if (stale) return
+        // Rows keep their place while you work through the list: known rows update in
+        // place, ticked ones stay, new ones join at the end.
+        setTasks((prev) => {
+          const fresh = new Map(t.map((x) => [x.id, x]))
+          const kept = prev.filter((p) => fresh.has(p.id) || ticked.has(p.id)).map((p) => fresh.get(p.id) ?? p)
+          const known = new Set(kept.map((p) => p.id))
+          return [...kept, ...t.filter((x) => !known.has(x.id))]
+        })
+        setDecks(d.filter((x) => x.due_count > 0))
+        setLoaded(true)
+      },
+      () => !stale && setLoaded(true)
+    )
     return () => {
       stale = true
     }

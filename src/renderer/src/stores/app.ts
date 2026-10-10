@@ -16,6 +16,7 @@ export interface Toast {
   durationMs?: number
 }
 let toastSeq = 0
+let creatingNote = false
 
 /** Milliseconds from `now` to the next local midnight, by the calendar (23 or 25 h across DST). */
 export function msUntilNextLocalDay(now: Date = new Date()): number {
@@ -24,6 +25,8 @@ export function msUntilNextLocalDay(now: Date = new Date()): number {
 
 interface AppState {
   ready: boolean
+  /** Set when the data could not be read at start. */
+  failed: boolean
   /** localDay() of the day the UI is showing; moves at local midnight and on focus. */
   today: string
   theme: Theme
@@ -60,6 +63,7 @@ interface AppState {
 
 export const useApp = create<AppState>((set, get) => ({
   ready: false,
+  failed: false,
   today: localDay(),
   theme: 'light',
   fsrsParams: parseParams(null),
@@ -73,13 +77,18 @@ export const useApp = create<AppState>((set, get) => ({
   toast: null,
 
   init: async () => {
-    const [settings, home] = await Promise.all([api.settings.all(), api.notebooks.home()])
-    set({
-      ready: true,
-      theme: settings['theme'] === 'dark' ? 'dark' : 'light',
-      fsrsParams: parseParams(settings['fsrs_params']),
-      homeNotebookId: home
-    })
+    try {
+      const [settings, home] = await Promise.all([api.settings.all(), api.notebooks.home()])
+      set({
+        ready: true,
+        theme: settings['theme'] === 'dark' ? 'dark' : 'light',
+        fsrsParams: parseParams(settings['fsrs_params']),
+        homeNotebookId: home
+      })
+    } catch (err) {
+      console.error('could not load settings', err)
+      set({ failed: true })
+    }
   },
 
   syncDay: () => {
@@ -92,13 +101,21 @@ export const useApp = create<AppState>((set, get) => ({
     void api.settings.set('theme', theme)
   },
 
-  setView: (view) => set({ view, reviewingDeckId: null, paletteOpen: false }),
+  setView: (view) => set({ view, selectedDeckId: null, reviewingDeckId: null, paletteOpen: false }),
   openNote: (noteId) => set({ view: 'notes', selectedNoteId: noteId, reviewingDeckId: null, paletteOpen: false }),
   newNote: async () => {
-    const home = get().homeNotebookId ?? (await api.notebooks.home())
-    const note = await api.notes.create({ notebook_id: home })
-    bumpData('notes')
-    get().openNote(note.id)
+    // One at a time: a held Ctrl+N or a double Enter makes one note, not a pile.
+    if (creatingNote) return
+    creatingNote = true
+    try {
+      const home = get().homeNotebookId ?? (await api.notebooks.home())
+      const note = await api.notes.create({ notebook_id: home })
+      bumpData('notes')
+      set({ paletteOpen: false, settingsOpen: false })
+      get().openNote(note.id)
+    } finally {
+      creatingNote = false
+    }
   },
   restoreNote: async (noteId) => {
     await api.notes.restore(noteId)
@@ -107,8 +124,9 @@ export const useApp = create<AppState>((set, get) => ({
   },
   openDeck: (deckId) => set({ view: 'study', selectedDeckId: deckId, reviewingDeckId: null, paletteOpen: false }),
   reviewDeck: (deckId) => set({ view: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
-  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
-  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  // One overlay at a time.
+  setPaletteOpen: (paletteOpen) => set(paletteOpen ? { paletteOpen, settingsOpen: false } : { paletteOpen }),
+  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, paletteOpen: false } : { settingsOpen }),
 
   showToast: (t) => {
     const id = ++toastSeq

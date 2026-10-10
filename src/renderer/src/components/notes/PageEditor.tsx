@@ -21,6 +21,8 @@ const LinkedTaskItem = TaskItem.extend({
       ...this.parent?.(),
       taskId: {
         default: null,
+        // A new line made by Enter is a new task, not a second copy of this one.
+        keepOnSplit: false,
         parseHTML: (el) => {
           const v = (el as HTMLElement).getAttribute('data-task-id')
           return v ? Number(v) : null
@@ -65,7 +67,13 @@ function itemsEqual(a: NoteTaskItem[], b: NoteTaskItem[]): boolean {
 export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const [title, setTitle] = useState('')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
-  const [flashMsg, setFlashMsg] = useState<string | null>(null)
+  const [flashMsg, setFlash] = useState<string | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const setFlashMsg = (msg: string | null, ms = 3000): void => {
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    setFlash(msg)
+    if (msg) flashTimer.current = setTimeout(() => setFlash(null), ms)
+  }
 
   const syncingRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -74,6 +82,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const titleRef = useRef('')
 
   const editor = useEditor({
+    // Read-only until the note has loaded, so nothing typed early is overwritten.
+    editable: false,
     extensions: [
       // StarterKit v3 bundles Underline and Link; configure them here rather than registering twice.
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: true } }),
@@ -95,24 +105,27 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   }
 
   const doSave = async (): Promise<void> => {
-    if (!editor || editor.isDestroyed || notebookIdRef.current === null) return
+    const notebookId = notebookIdRef.current
+    if (!editor || editor.isDestroyed || notebookId === null) return
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
-    const json = editor.getJSON() as Record<string, unknown>
+    // Read everything now: on unmount the editor is gone by the time the IPC answers.
+    let json = editor.getJSON() as Record<string, unknown>
+    const title = titleRef.current || null
     const items = extractNoteTaskItems(json)
     if (!itemsEqual(items, lastItemsRef.current)) {
-      const ids = await api.notes.syncTasks(noteId, notebookIdRef.current, items)
-      assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
-      lastItemsRef.current = extractNoteTaskItems(editor.getJSON() as Record<string, unknown>)
+      const ids = await api.notes.syncTasks(noteId, notebookId, items)
+      if (!editor.isDestroyed) {
+        assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
+        json = editor.getJSON() as Record<string, unknown>
+      }
+      lastItemsRef.current = extractNoteTaskItems(json)
       bumpData('tasks')
     }
 
-    const saved = await api.notes.update(noteId, {
-      title: titleRef.current || null,
-      content: JSON.stringify(editor.getJSON())
-    })
+    const saved = await api.notes.update(noteId, { title, content: JSON.stringify(json) })
     if (!saved) return // note was deleted out from under us
     setSavedAt(new Date())
     bumpData('notes')
@@ -123,9 +136,15 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     if (!editor) return
     let alive = true
     void api.notes.get(noteId).then((note: Note | null) => {
-      if (!alive || !note || editor.isDestroyed) return
+      if (!alive || editor.isDestroyed) return
+      if (!note || note.deleted_at) {
+        useApp.setState({ selectedNoteId: null })
+        return
+      }
       syncingRef.current = true
-      editor.commands.setContent(safeParse(note.content))
+      // Kept out of the undo history, or Ctrl+Z right after opening would empty the note.
+      editor.chain().setMeta('addToHistory', false).setContent(safeParse(note.content), { emitUpdate: false }).run()
+      editor.setEditable(true, false)
       syncingRef.current = false
       setTitle(note.title ?? '')
       titleRef.current = note.title ?? ''
@@ -137,14 +156,16 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     }
   }, [editor, noteId])
 
-  // Flush a pending save on unmount and when the window loses focus.
+  // Flush a pending save on unmount, when the window loses focus and when it closes.
   useEffect(() => {
     const flush = (): void => {
       if (timerRef.current) void doSave()
     }
     window.addEventListener('blur', flush)
+    window.addEventListener('beforeunload', flush)
     return () => {
       window.removeEventListener('blur', flush)
+      window.removeEventListener('beforeunload', flush)
       flush()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,8 +175,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     if (!editor || notebookIdRef.current === null) return
     const lines = extractNoteCardLines(editor.getJSON() as Record<string, unknown>)
     if (lines.length === 0) {
-      setFlashMsg('Write a line like “Term :: Definition” first.')
-      setTimeout(() => setFlashMsg(null), 3500)
+      setFlashMsg('Write a line like “Term :: Definition” first.', 3500)
       return
     }
     // The note's own deck: made on the first run, updated in place on every later one.
@@ -182,11 +202,9 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
     const res = await api.app.saveFile(`${base}.md`, md)
     if (res.saved) {
-      setFlashMsg('Saved as Markdown')
-      setTimeout(() => setFlashMsg(null), 2500)
+      setFlashMsg('Saved as Markdown', 2500)
     } else if (res.error) {
-      setFlashMsg('Could not save the file.')
-      setTimeout(() => setFlashMsg(null), 3500)
+      setFlashMsg('Could not save the file.', 3500)
     }
   }
 
@@ -308,38 +326,40 @@ function Toolbar({
     }
   }, [editor])
 
-  const c = editor.chain().focus()
+  // A fresh chain per click: a chain runs as it is built, so one made during render would
+  // pull focus into the editor on every repaint.
+  const run = (f: (c: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>): (() => void) => () => void f(editor.chain().focus()).run()
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-wrap items-center gap-0.5 px-8 pt-3">
-      <ToolbarButton icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={() => c.toggleBold().run()} />
-      <ToolbarButton icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={() => c.toggleItalic().run()} />
+      <ToolbarButton icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={run((c) => c.toggleBold())} />
+      <ToolbarButton icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={run((c) => c.toggleItalic())} />
       <Divider />
       <ToolbarButton
         icon={<Heading1 size={16} />}
         title="Heading 1 (or type #)"
         active={editor.isActive('heading', { level: 1 })}
-        action={() => c.toggleHeading({ level: 1 }).run()}
+        action={run((c) => c.toggleHeading({ level: 1 }))}
       />
       <ToolbarButton
         icon={<Heading2 size={16} />}
         title="Heading 2"
         active={editor.isActive('heading', { level: 2 })}
-        action={() => c.toggleHeading({ level: 2 }).run()}
+        action={run((c) => c.toggleHeading({ level: 2 }))}
       />
       <Divider />
-      <ToolbarButton icon={<List size={16} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={() => c.toggleBulletList().run()} />
+      <ToolbarButton icon={<List size={16} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={run((c) => c.toggleBulletList())} />
       <ToolbarButton
         icon={<ListOrdered size={16} />}
         title="Numbered list (or type 1.)"
         active={editor.isActive('orderedList')}
-        action={() => c.toggleOrderedList().run()}
+        action={run((c) => c.toggleOrderedList())}
       />
       <ToolbarButton
         icon={<ListChecks size={16} />}
         title="Task list (or type []). Items become real tasks"
         active={editor.isActive('taskList')}
-        action={() => c.toggleTaskList().run()}
+        action={run((c) => c.toggleTaskList())}
       />
       <Divider />
       <IconBtn title="Make or update flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1.5 px-2 text-sm">

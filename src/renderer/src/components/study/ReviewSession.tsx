@@ -24,7 +24,12 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   const [reviewed, setReviewed] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const gradingRef = useRef(false)
+  // The position last graded: a second key press before the next card renders must not grade again.
+  const gradedAt = useRef(-1)
   const fsrsParams = useApp((s) => s.fsrsParams)
+
+  // Leaving by any route (sidebar, palette, a new note) still refreshes the due counts.
+  useEffect(() => () => bumpData('decks'), [])
 
   useEffect(() => {
     void api.decks.dueCards(deck.id).then((cards) => {
@@ -41,8 +46,9 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   const grade = async (g: ReviewGrade): Promise<void> => {
     if (gradingRef.current) return // ignore a second grade while the review IPC is in flight
     const card = queue[index]
-    if (!card) return // nothing to grade (e.g. keypress on the completion screen)
+    if (!card || gradedAt.current === index) return // nothing to grade, or already graded
     gradingRef.current = true
+    gradedAt.current = index
     try {
       const updated = await api.decks.review(card.id, g)
       setReviewed((r) => r + 1)
@@ -65,7 +71,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
       // Typing "Chapter 2" in a field, or Esc in the palette, must not reveal, grade or end.
       const app = useApp.getState()
       const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
-      if (ignoresShortcut(e, overlayOpen)) return
+      if (ignoresShortcut(e, overlayOpen) || e.repeat) return
       if (!queue[index]) {
         // completion / empty screen: only Esc is live; ignore Space/number grades
         if (e.key === 'Escape') finish()

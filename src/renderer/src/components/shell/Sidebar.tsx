@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FileText, Layers, Plus, Settings, Sun, Trash2 } from 'lucide-react'
 import { useApp, useVersion, bumpData, type View } from '@/stores/app'
-import { onActivateKey } from '@/lib/keys'
 import type { Note } from '@shared/types'
 
 const api = window.inkling
@@ -86,6 +85,10 @@ function NavRow({
   )
 }
 
+// Notes deleted while one undo toast is up: its Undo brings all of them back.
+let undoable: number[] = []
+let undoableUntil = 0
+
 function NotesList(): React.JSX.Element {
   const view = useApp((s) => s.view)
   const selectedNoteId = useApp((s) => s.selectedNoteId)
@@ -100,21 +103,36 @@ function NotesList(): React.JSX.Element {
     }
   }, [version])
 
-  const remove = (n: Note): void => {
+  const remove = (n: Note, row: HTMLElement | null): void => {
     const app = useApp.getState()
+    // Keep the keyboard in the list: the next row, or the one before, takes focus.
+    const next = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('button') as HTMLElement | null
     if (app.selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
-    void api.notes.remove(n.id).then(() => {
-      bumpData('notes')
-      bumpData('tasks')
-      app.showToast({
-        message: `Deleted "${n.title?.trim() || 'Untitled'}"`,
-        actionLabel: 'Undo',
-        onAction: () => {
-          bumpData('tasks')
-          void useApp.getState().restoreNote(n.id)
-        }
+    // Let the open editor flush its last edit before the note goes.
+    setTimeout(() => {
+      void api.notes.remove(n.id).then(() => {
+        bumpData('notes')
+        bumpData('tasks')
+        const now = Date.now()
+        if (now > undoableUntil) undoable = []
+        undoable = [...undoable, n.id]
+        undoableUntil = now + 6000
+        const ids = undoable
+        app.showToast({
+          message: ids.length === 1 ? `Deleted "${n.title?.trim() || 'Untitled'}"` : `Deleted ${ids.length} notes`,
+          actionLabel: 'Undo',
+          onAction: () => {
+            undoable = []
+            void Promise.all(ids.map((id) => api.notes.restore(id))).then(() => {
+              bumpData('notes')
+              bumpData('tasks')
+              useApp.getState().openNote(ids[ids.length - 1])
+            })
+          }
+        })
       })
-    })
+    }, 50)
+    next?.focus()
   }
 
   return (
@@ -122,29 +140,29 @@ function NotesList(): React.JSX.Element {
       {notes.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
       {notes.map((n) => {
         const active = view === 'notes' && selectedNoteId === n.id
-        const open = (): void => useApp.getState().openNote(n.id)
+        const title = n.title?.trim() || 'Untitled'
         return (
           <div
             key={n.id}
-            role="button"
-            tabIndex={0}
-            onClick={open}
-            onKeyDown={onActivateKey(open)}
-            className={`group flex h-8 cursor-pointer items-center gap-2.5 rounded-md pl-2.5 pr-1 text-sm transition-colors ${
+            className={`group flex h-8 items-center rounded-md pr-1 text-sm transition-colors ${
               active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
             }`}
           >
-            <FileText size={15} className="shrink-0 text-faint" />
-            <span className="min-w-0 flex-1 truncate">{n.title?.trim() || 'Untitled'}</span>
+            <button
+              type="button"
+              onClick={() => useApp.getState().openNote(n.id)}
+              aria-current={active ? 'page' : undefined}
+              className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-2.5 text-left"
+            >
+              <FileText size={15} className="shrink-0 text-faint" />
+              <span className="min-w-0 flex-1 truncate">{title}</span>
+            </button>
             <button
               type="button"
               title="Delete note"
-              aria-label={`Delete ${n.title?.trim() || 'Untitled'}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                remove(n)
-              }}
-              className="hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-faint hover:bg-hover hover:text-danger group-hover:flex group-focus-within:flex"
+              aria-label={`Delete ${title}`}
+              onClick={(e) => remove(n, (e.currentTarget.parentElement as HTMLElement | null) ?? null)}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
             >
               <Trash2 size={14} />
             </button>

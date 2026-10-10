@@ -45,7 +45,6 @@
   --font-base: 15px;
   --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
-  --titlebar-h: 44px;
   --sidebar-w: 248px;
 }
 
@@ -58,8 +57,8 @@
   --bg-hover: rgba(40, 36, 30, 0.05);
   --bg-active: rgba(40, 36, 30, 0.08);
   --text-primary: #1f1d1a;
-  --text-muted: #6b665e;
-  --text-faint: #9e988e;
+  --text-muted: #625d56;
+  --text-faint: #736d65;
   --border: #e8e4dd;
   --accent: #4155b9;
   --accent-soft: rgba(65, 85, 185, 0.1);
@@ -79,8 +78,8 @@
   --bg-hover: rgba(255, 250, 240, 0.05);
   --bg-active: rgba(255, 250, 240, 0.08);
   --text-primary: #ece9e3;
-  --text-muted: #a39f97;
-  --text-faint: #6f6b64;
+  --text-muted: #aeaaa2;
+  --text-faint: #948f87;
   --border: #2c2a27;
   --accent: #8b9bf0;
   --accent-soft: rgba(139, 155, 240, 0.14);
