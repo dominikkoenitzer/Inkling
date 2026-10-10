@@ -160,3 +160,15 @@ describe('search with a trashed note full of to-dos', () => {
     expect(searchQuery('alpha').map((r) => [r.source_type, r.note_id])).toEqual([['note', live.id]])
   })
 })
+
+describe('setTaskDone with a pasted copy of a line', () => {
+  it('ticks only the first line that carries the id', () => {
+    const { noteId, ids } = linkedNote()
+    raw.prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(docOf(list(item(ids[0], 'Buy agar'), item(ids[0], 'Buy agar'), item(ids[1], 'Book the lab'))), noteId)
+
+    setTaskDone(ids[0], true)
+
+    const checked = JSON.parse(content(noteId)).content[0].content.map((i: Node) => i.attrs?.checked)
+    expect(checked).toEqual([true, false, false])
+  })
+})
