@@ -10,13 +10,11 @@ import type {
   NoteCardLine,
   ColorKey,
   ReviewGrade,
-  Grade,
   StatsOverview,
   ActivityDay,
   OptimiseOutcome,
   ImportSummary
 } from './types'
-import type { GradingSystem } from './grades'
 
 export interface InklingApi {
   notebooks: {
@@ -86,13 +84,6 @@ export interface InklingApi {
   stats: {
     overview(windowDays?: number): Promise<StatsOverview>
     activity(days?: number): Promise<ActivityDay[]>
-  }
-  grades: {
-    list(notebookId: number): Promise<Grade[]>
-    all(): Promise<Grade[]>
-    create(input: { notebook_id: number; title: string; score: number; max: number; weight: number; system?: GradingSystem }): Promise<Grade>
-    update(id: number, patch: Partial<Pick<Grade, 'title' | 'score' | 'max' | 'weight'>>): Promise<Grade>
-    remove(id: number): Promise<void>
   }
   app: {
     setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>

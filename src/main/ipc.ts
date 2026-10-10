@@ -59,12 +59,6 @@ export function registerIpc(): void {
   handle('stats.overview', repos.statsOverview)
   handle('stats.activity', repos.activity)
 
-  handle('grades.list', repos.listGrades)
-  handle('grades.all', repos.listAllGrades)
-  handle('grades.create', repos.createGrade)
-  handle('grades.update', repos.updateGrade)
-  handle('grades.remove', repos.removeGrade)
-
   ipcMain.handle('app.setTitlebar', (event, colors: { color: string; symbolColor: string }) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     try {

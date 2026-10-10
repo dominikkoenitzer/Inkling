@@ -66,13 +66,6 @@ const api: InklingApi = {
     overview: invoke('stats.overview'),
     activity: invoke('stats.activity')
   },
-  grades: {
-    list: invoke('grades.list'),
-    all: invoke('grades.all'),
-    create: invoke('grades.create'),
-    update: invoke('grades.update'),
-    remove: invoke('grades.remove')
-  },
   app: {
     setTitlebar: invoke('app.setTitlebar'),
     saveFile: invoke('app.saveFile'),

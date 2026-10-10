@@ -1,9 +1,8 @@
-import type { GradingSystem } from './grades'
 import type { CardState } from './fsrs'
 
 export type ColorKey = 'teal' | 'coral' | 'amber' | 'pink' | 'gray'
 export type TaskStatus = 'todo' | 'done'
-export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study' | 'grades' | 'stats'
+export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study' | 'stats'
 
 export interface Notebook {
   id: number
@@ -79,18 +78,6 @@ export interface ReviewLogEntry {
   elapsed_days: number
   scheduled_days: number
   reviewed_at: string
-}
-
-export interface Grade {
-  id: number
-  notebook_id: number
-  title: string
-  score: number
-  max: number
-  weight: number
-  /** The grading system the row was entered under, so a later system switch can't reinterpret it. */
-  system: GradingSystem
-  created_at: string
 }
 
 export interface FocusSession {

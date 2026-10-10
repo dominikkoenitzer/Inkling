@@ -70,9 +70,6 @@ const checks = `
     ok('a review schedules the card forward', new Date(after.next_review_date) > new Date(), after.next_review_date)
     ok('a review records FSRS memory state', after.stability > 0 && after.difficulty > 0)
 
-    const g = await api.grades.create({ notebook_id: nb.id, title: 'Smoke quiz', score: 5, max: 6, weight: 1, system: 'swiss' })
-    ok('a grade keeps the system it was entered in', (await api.grades.list(nb.id)).some((x) => x.id === g.id && x.system === 'swiss'))
-
     const fid = await api.focus.start({ deck_id: deck.id })
     await api.focus.complete(fid, 25)
     ok('a finished focus session counts towards today', (await api.focus.todayMinutes()) >= 25)

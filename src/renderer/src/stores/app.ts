@@ -1,13 +1,10 @@
 import { create } from 'zustand'
 import type { ModuleTab, Notebook, StreakInfo } from '@shared/types'
-import type { GradingSystem } from '@shared/grades'
 import { DEFAULT_RETENTION, parseParams } from '@shared/fsrs'
 
 const api = window.inkling
 
 export type Theme = 'dark' | 'cozy'
-
-const isGradingSystem = (v: string | undefined): v is GradingSystem => v === 'percent' || v === 'swiss'
 
 /** A transient message at the bottom of the window, optionally with one undo action. */
 export interface Toast {
@@ -34,7 +31,6 @@ interface AppState {
   /** localDayKey() of the day the UI is showing; moves at local midnight and on focus. */
   today: string
   theme: Theme
-  gradingSystem: GradingSystem
   /** Desired retention and FSRS parameters, mirrored from the settings for the interval preview. */
   retention: number
   fsrsParams: number[]
@@ -56,7 +52,6 @@ interface AppState {
   /** Re-read the calendar day and the streak, e.g. after midnight or when the window returns. */
   syncDay(): void
   setTheme(t: Theme): void
-  setGradingSystem(v: GradingSystem): void
   setFsrsParams(v: number[]): void
   setActiveNotebook(id: number): void
   setTab(tab: ModuleTab): void
@@ -85,7 +80,6 @@ export const useApp = create<AppState>((set, get) => ({
   ready: false,
   today: localDayKey(),
   theme: 'dark',
-  gradingSystem: 'percent',
   retention: DEFAULT_RETENTION,
   fsrsParams: parseParams(null),
   notebooks: [],
@@ -106,7 +100,6 @@ export const useApp = create<AppState>((set, get) => ({
     set({
       ready: true,
       theme: settings['theme'] === 'cozy' ? 'cozy' : 'dark',
-      gradingSystem: isGradingSystem(settings['grading_system']) ? settings['grading_system'] : 'percent',
       retention: DEFAULT_RETENTION,
       fsrsParams: parseParams(settings['fsrs_params']),
       notebooks,
@@ -138,10 +131,6 @@ export const useApp = create<AppState>((set, get) => ({
   setTheme: (theme) => {
     set({ theme })
     void api.settings.set('theme', theme)
-  },
-  setGradingSystem: (gradingSystem) => {
-    set({ gradingSystem })
-    void api.settings.set('grading_system', gradingSystem)
   },
   setFsrsParams: (fsrsParams) => set({ fsrsParams }),
 

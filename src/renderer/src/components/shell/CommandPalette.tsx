@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, FileText, CheckSquare, Layers, Zap, Percent, Moon, Sun, Plus, GraduationCap, BarChart3 } from 'lucide-react'
+import { Search, FileText, CheckSquare, Layers, Zap, Moon, Sun, Plus, GraduationCap, BarChart3 } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { useTimer, isFocusLive, startFocusSession } from '@/stores/timer'
 import { fuzzyScore } from '@/lib/parse'
@@ -76,7 +76,6 @@ export function CommandPalette(): React.JSX.Element {
       { key: 'go-notes', icon: <FileText size={16} />, label: 'Jump to Notes', run: () => { app.setTab('notes'); close() } },
       { key: 'go-tasks', icon: <CheckSquare size={16} />, label: 'Jump to Tasks', run: () => { app.setTab('tasks'); close() } },
       { key: 'go-study', icon: <GraduationCap size={16} />, label: 'Jump to Study', run: () => { app.setTab('study'); close() } },
-      { key: 'go-grades', icon: <Percent size={16} />, label: 'Jump to Grades', run: () => { app.setTab('grades'); close() } },
       { key: 'go-stats', icon: <BarChart3 size={16} />, label: 'Jump to Progress', run: () => { app.setTab('stats'); close() } },
       {
         key: 'theme',

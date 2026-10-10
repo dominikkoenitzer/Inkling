@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Layers, TrendingUp, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
+import { Layers, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { useTimer, isFocusLive, startFocusSession } from '@/stores/timer'
-import { subjectAverage } from '@shared/grades'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
 import { onActivateKey } from '@/lib/keys'
 import { Inky } from '@/components/Inky'
-import type { Deck, Task, Grade, Note, Notebook } from '@shared/types'
+import type { Deck, Task, Note, Notebook } from '@shared/types'
 
 const api = window.inkling
 
@@ -30,8 +29,7 @@ function useNow(intervalMs = 60_000): number {
 }
 
 /**
- * The daily plan: due flashcards, open tasks, the weakest graded subject and today's focus
- * time, each with a one-click start.
+ * The daily plan: due flashcards, open tasks and today's focus time, each with a one-click start.
  */
 export function TodayView(): React.JSX.Element {
   const app = useApp()
@@ -39,10 +37,9 @@ export function TodayView(): React.JSX.Element {
   // A focus session is live if it's running or paused part-way through, used so the plan
   // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
   const timerActive = useTimer(isFocusLive)
-  const version = useVersion('decks') + useVersion('tasks') + useVersion('grades') + useVersion('focus')
+  const version = useVersion('decks') + useVersion('tasks') + useVersion('focus')
   const [decks, setDecks] = useState<Deck[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [grades, setGrades] = useState<Grade[]>([])
   const [minutes, setMinutes] = useState(0)
   const [loaded, setLoaded] = useState(false)
   // tasks mid-completion: keeps the checkbox visibly ticked until the refetch removes the row
@@ -53,11 +50,10 @@ export function TodayView(): React.JSX.Element {
   useEffect(() => {
     // Overlapping fetches can resolve out of order; only the newest may write state.
     let stale = false
-    void Promise.all([api.decks.list(), api.tasks.smart('today'), api.grades.all(), api.focus.todayMinutes()]).then(([d, t, g, m]) => {
+    void Promise.all([api.decks.list(), api.tasks.smart('today'), api.focus.todayMinutes()]).then(([d, t, m]) => {
       if (stale) return
       setDecks(d)
       setTasks(t)
-      setGrades(g)
       setMinutes(m)
       setLoaded(true)
     })
@@ -79,15 +75,11 @@ export function TodayView(): React.JSX.Element {
   const inkyColor = isColorKey(active?.color) ? active.color : 'teal'
   const dueDecks = decks.filter((d) => d.due_count > 0)
   const openTasks = tasks.filter((t) => t.status !== 'done')
-  const bySubject = app.notebooks
-    .map((nb) => ({ nb, avg: subjectAverage(grades.filter((g) => g.notebook_id === nb.id), app.gradingSystem) }))
-    .filter((x): x is { nb: Notebook; avg: NonNullable<ReturnType<typeof subjectAverage>> } => x.avg !== null)
-  const weakest = bySubject.length >= 2 ? bySubject.reduce((a, b) => (b.avg.value < a.avg.value ? b : a)) : null
   // gate on loaded so the focus card can't flash before the first fetch lands.
   // A running session shows "resume"; otherwise suggest a fresh block only if none is done yet.
   const suggestFocus = loaded && minutes === 0
   const focusItem: 'resume' | 'start' | null = timerActive ? 'resume' : suggestFocus ? 'start' : null
-  const planCount = dueDecks.length + openTasks.length + (weakest ? 1 : 0) + (focusItem ? 1 : 0)
+  const planCount = dueDecks.length + openTasks.length + (focusItem ? 1 : 0)
   const cleared = loaded && planCount === 0
 
   const completeTask = (t: Task): void => {
@@ -209,20 +201,6 @@ export function TodayView(): React.JSX.Element {
               </div>
             )
           })}
-
-          {weakest && (
-            <PlanCard
-              bubble={<TrendingUp size={18} />}
-              tint={softTint(weakest.nb.color, app.theme)}
-              title={`Give ${weakest.nb.name} some love`}
-              sub={`Your lowest average right now (${weakest.avg.display})`}
-              actionLabel="Open"
-              onAction={() => {
-                app.setActiveNotebook(weakest.nb.id)
-                app.setTab('grades')
-              }}
-            />
-          )}
 
           {focusItem && !cleared && (
             <PlanCard

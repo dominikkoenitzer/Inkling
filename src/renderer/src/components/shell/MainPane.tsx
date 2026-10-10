@@ -5,7 +5,6 @@ import { EmptyState } from '@/components/Inky'
 import { TasksView } from '@/components/tasks/TasksView'
 import { TodayView } from '@/components/today/TodayView'
 import { StudyView } from '@/components/study/StudyView'
-import { GradesView } from '@/components/grades/GradesView'
 import { StatsView } from '@/components/stats/StatsView'
 
 // TipTap and ProseMirror are two thirds of the renderer bundle, and the app opens on Today.
@@ -41,6 +40,5 @@ export function MainPane(): React.JSX.Element {
   if (tab === 'today') return <TodayView />
   if (tab === 'tasks') return <TasksView notebook={notebook} />
   if (tab === 'study') return <StudyView notebook={notebook} />
-  if (tab === 'stats') return <StatsView />
-  return <GradesView notebook={notebook} />
+  return <StatsView />
 }

@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Moon, Flame, Database, Keyboard, Percent, Sparkles } from 'lucide-react'
+import { Moon, Flame, Database, Keyboard, Sparkles } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
-import { GRADING_SYSTEM_OPTIONS } from '@shared/grades'
 import { DEFAULT_PARAMS } from '@shared/fsrs'
 import type { OptimiseOutcome } from '@shared/types'
 import { Button, Modal, Segmented } from '@/components/ui'
@@ -24,10 +23,6 @@ export function SettingsModal(): React.JSX.Element {
             value={app.theme}
             onChange={app.setTheme}
           />
-        </Row>
-
-        <Row icon={<Percent size={16} />} label="Grading" hint="How Inkling shows your averages: the Swiss 1–6 scale (6 is best) or plain percentages.">
-          <Segmented options={GRADING_SYSTEM_OPTIONS} value={app.gradingSystem} onChange={app.setGradingSystem} />
         </Row>
 
         <Row icon={<Sparkles size={16} />} label="Your reviews" hint="Fit the scheduler to how you actually remember.">
@@ -55,7 +50,7 @@ export function SettingsModal(): React.JSX.Element {
 
         <div className="flex items-center gap-2 border-t border-edge pt-4 text-xs text-faint">
           <LogoMark size={18} />
-          Inkling {__APP_VERSION__} · notes, tasks, study and grades. Studying, made fun.
+          Inkling {__APP_VERSION__} · notes, tasks and study. Studying, made fun.
         </div>
       </div>
     </Modal>
