@@ -57,7 +57,6 @@ interface AppState {
   syncDay(): void
   setTheme(t: Theme): void
   setGradingSystem(v: GradingSystem): void
-  setFsrsParams(v: number[]): void
   setActiveNotebook(id: number): void
   setTab(tab: ModuleTab): void
   openNote(notebookId: number, noteId: number): void
@@ -143,7 +142,6 @@ export const useApp = create<AppState>((set, get) => ({
     set({ gradingSystem })
     void api.settings.set('grading_system', gradingSystem)
   },
-  setFsrsParams: (fsrsParams) => set({ fsrsParams }),
 
   setActiveNotebook: (id) =>
     set({ activeNotebookId: id, selectedNoteId: null, selectedTaskId: null, selectedDeckId: null, reviewingDeckId: null }),

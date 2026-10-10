@@ -1,13 +1,8 @@
-import { useState } from 'react'
-import { Moon, Flame, Database, Keyboard, Percent, Sparkles } from 'lucide-react'
-import { useApp, bumpData } from '@/stores/app'
+import { Moon, Flame, Database, Keyboard, Percent } from 'lucide-react'
+import { useApp } from '@/stores/app'
 import { GRADING_SYSTEM_OPTIONS } from '@shared/grades'
-import { DEFAULT_PARAMS } from '@shared/fsrs'
-import type { OptimiseOutcome } from '@shared/types'
-import { Button, Modal, Segmented } from '@/components/ui'
+import { Modal, Segmented } from '@/components/ui'
 import { LogoMark } from '@/components/Inky'
-
-const api = window.inkling
 
 export function SettingsModal(): React.JSX.Element {
   const app = useApp()
@@ -28,10 +23,6 @@ export function SettingsModal(): React.JSX.Element {
 
         <Row icon={<Percent size={16} />} label="Grading" hint="How Inkling shows your averages: the Swiss 1–6 scale (6 is best) or plain percentages.">
           <Segmented options={GRADING_SYSTEM_OPTIONS} value={app.gradingSystem} onChange={app.setGradingSystem} />
-        </Row>
-
-        <Row icon={<Sparkles size={16} />} label="Your reviews" hint="Fit the scheduler to how you actually remember.">
-          <Optimise />
         </Row>
 
         <Row icon={<Keyboard size={16} />} label="Shortcuts" hint="">
@@ -59,49 +50,6 @@ export function SettingsModal(): React.JSX.Element {
         </div>
       </div>
     </Modal>
-  )
-}
-
-function outcomeText(o: OptimiseOutcome, fitted: boolean): string {
-  if (o.status === 'too-few') {
-    return `Needs ${o.needed} reviews a day or more apart, you have ${o.reviews}. Keeping the ${fitted ? 'current parameters' : 'defaults'}.`
-  }
-  if (o.status === 'no-better') return 'The parameters in use already fit your reviews best.'
-  const better = Math.max(1, Math.round((1 - o.lossAfter / o.lossBefore) * 100))
-  return `Fitted to ${o.reviews} reviews. Predictions ${better}% closer.`
-}
-
-function Optimise(): React.JSX.Element {
-  const fitted = useApp((s) => s.fsrsParams.some((v, i) => v !== DEFAULT_PARAMS[i]))
-  const setFsrsParams = useApp((s) => s.setFsrsParams)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-
-  const run = async (): Promise<void> => {
-    setBusy(true)
-    try {
-      const outcome = await api.decks.optimise()
-      if (outcome.params) {
-        setFsrsParams(outcome.params)
-        bumpData('decks')
-      }
-      setMessage(outcomeText(outcome, fitted))
-    } catch {
-      setMessage('Could not optimise. Your parameters are unchanged.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div>
-      <Button onClick={() => void run()} disabled={busy}>
-        {busy ? 'Optimising…' : 'Optimise from my reviews'}
-      </Button>
-      <p className="mt-1.5 text-[11px] text-faint" aria-live="polite">
-        {message ?? (fitted ? 'Using parameters fitted to your reviews.' : 'Using the default parameters.')}
-      </p>
-    </div>
   )
 }
 

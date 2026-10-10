@@ -43,8 +43,7 @@ const api: InklingApi = {
     updateCard: invoke('decks.updateCard'),
     removeCard: invoke('decks.removeCard'),
     review: invoke('decks.review'),
-    createFromPairs: invoke('decks.createFromPairs'),
-    optimise: invoke('decks.optimise')
+    createFromPairs: invoke('decks.createFromPairs')
   },
   focus: {
     start: invoke('focus.start'),
