@@ -16,7 +16,7 @@ export function ftsUpsert(sourceType: string, sourceId: number, title: string, c
     .run(title, contentText, sourceType, String(sourceId))
 }
 
-export function searchQuery(q: string): SearchResult[] {
+export function searchQuery(q: string, limit = 20): SearchResult[] {
   const tokens = q
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
@@ -36,9 +36,9 @@ export function searchQuery(q: string): SearchResult[] {
        LEFT JOIN flashcard_decks d ON s.source_type = 'deck' AND d.id = s.source_id
        WHERE search_index MATCH ?
          AND (n.id IS NOT NULL OR tn.id IS NOT NULL OR d.id IS NOT NULL)
-       ORDER BY rank LIMIT 20`
+       ORDER BY rank LIMIT ?`
     )
-    .all(match) as Array<{ title: string; snippet: string; source_type: string; source_id: string; note_id: number | null }>
+    .all(match, limit) as Array<{ title: string; snippet: string; source_type: string; source_id: string; note_id: number | null }>
   const results: SearchResult[] = rows.map((r) => ({
     source_type: r.source_type as SearchResult['source_type'],
     source_id: Number(r.source_id),
