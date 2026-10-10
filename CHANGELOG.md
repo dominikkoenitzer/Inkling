@@ -4,13 +4,37 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+A calmer, simpler Inkling, built around your notes.
+
+### Changed
+- One quiet sidebar: Today, Study and Settings, then all your notes. Notebooks are gone
+  from the screen; every note is in one list.
+- To-dos live in notes. Every open checkbox shows up on Today, and ticking it there ticks it
+  in the note. Tasks made in the old Tasks tab move into a note called "Tasks".
+- New light and dark themes, light by default. The window opens in your theme from the
+  first frame.
+- Today shows what is still open and which decks are due, nothing else.
+- The installer is one click, and the download links stay the same from version to version.
+
+### Removed
+- The Tasks tab and its side panel, Grades, Progress, the focus timer, the streak, confetti
+  and the other animations.
+- The deck import and the scheduler optimiser. Parameters you already fitted still apply.
+- Every setting except the theme.
+
+### Fixed
+- A note deleted for good takes its to-dos with it, so they no longer linger.
+- The screenshot and script hooks for development no longer work in release builds.
+
 ## [0.7.0] - 2026-10-01
 
-Decks from Anki, a scheduler fitted to your own reviews, and note cards that stay linked to
+Decks from other flashcard apps, a scheduler fitted to your own reviews, and note cards that stay linked to
 the lines they came from.
 
 ### Added
-- Import deck, under the deck list. Reads an Anki `.apkg` or `.colpkg`, current exports
+- Import deck, under the deck list. Reads an `.apkg` or `.colpkg` deck package, current exports
   and the older format alike. Basic, reversed, type-in and cloze cards arrive with their
   due dates, FSRS memory state and review history. Media, suspended cards and image
   occlusion stay behind, and the summary counts them. Importing the same file again adds
@@ -171,7 +195,7 @@ deletion.
   notebook with counts; clicking one filters the page list.
 - **Import**: bring in **Markdown** files as pages (headings, lists, task lists, quotes,
   code, inline marks, and `[[links]]`), or a **CSV/TSV** of cards as a deck. The delimiter
-  is detected rather than asked for, so Quizlet and Anki exports work as-is.
+  is detected rather than asked for, so exports from other flashcard apps work as-is.
 - **Trash and undo**: deleting a page or sticky now moves it to a trash it can be restored
   from, with an **Undo** offered immediately. Trashed notes are cleared 30 days later.
 
@@ -233,10 +257,10 @@ Round two of the design review: tone separation, empty states, and width discipl
 
 ## [0.3.2] - 2026-07-18
 
-A design-review pass applying an 8-point critique against Discord's visual system.
+A design-review pass applying an 8-point critique of the visual system.
 
 ### Changed
-- **Strict 4-tone surface ladder** (rail → sidebar → content → cards/inputs), using Discord's exact dark values; nothing in between.
+- **Strict 4-tone surface ladder** (rail → sidebar → content → cards/inputs); nothing in between.
 - **Sidebar nav is now vertical rows**: icon left, label right, 32px height, neutral pill highlight on the active tab instead of a green square.
 - **Accent discipline**: green is reserved for interactive and active states; streak text is default foreground with only the flame colored.
 - **One corner radius (8px) everywhere**; separation comes from background tone, not strokes.
@@ -246,13 +270,13 @@ A design-review pass applying an 8-point critique against Discord's visual syste
 
 ## [0.3.1] - 2026-07-18
 
-The clean pass, from a direct side-by-side against Discord.
+The clean pass, from a side-by-side review.
 
 ### Changed
 - **Surfaces separate by elevation, not borders.** The rail, sidebar, and content each sit on their own background shade (rail darkest); hairline borders between panes are now nearly invisible in the normal themes. High-contrast mode restores strong borders.
 - **Cards are raised again.** Plan cards, deck cards, the focus timer, flashcards, and form panels use the raised surface, so they float above the content instead of reading as cut-outs.
 - **The titlebar blends in.** Window chrome now matches the app background in both themes; the black seam at the top is gone.
-- **Context panel sections are cards**, like Discord's Active Now panel.
+- **Context panel sections are cards**.
 - **Rail initials are word initials** ("My Notebook" → MN), uppercase, so notebooks without a glyph still look deliberate.
 - **A cleared Today plan centers itself** and offers three quick actions (new page, build a deck, add a task) instead of leaving the pane empty.
 
@@ -263,7 +287,7 @@ The "make studying fun" release: Inkling sharpens from a four-pillar organizer i
 ### Added
 - **Today view**, a new home tab and the app's new default, which auto-assembles a daily study plan: flashcard decks with due cards, tasks due today (with inline check-off), your lowest-averaging subject, and a suggested 25-minute focus block, each with a one-click start. Clearing the plan earns a confetti celebration.
 - **Grading systems**: choose **Swiss 1–6** (6 best, 4 = pass; grades entered directly and averaged by weight), **US letters + 4.0 GPA**, or plain **percentages**. Switchable from the Grades header or Settings; the sidebar, Today plan, and grade rows all follow.
-- **User bar**, a Discord-style panel pinned to the bottom of the sidebar: Inky + streak status, a **live Pomodoro chip** (visible and pausable from any tab), and settings. The previously dead space at the bottom of the app now works for a living.
+- **User bar**, a panel pinned to the bottom of the sidebar: Inky + streak status, a **live Pomodoro chip** (visible and pausable from any tab), and settings. The previously dead space at the bottom of the app now works for a living.
 - **Notebook icon covers**: every notebook can pick a monochrome glyph (flask, calculator, globe, brain, …) from the app's own icon family, shown on its gradient squircle in the rail, the sidebar header, and Today plan cards. School starter notebooks come pre-iconed.
 
 ### Changed

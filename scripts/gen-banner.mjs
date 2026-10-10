@@ -1,5 +1,5 @@
 /**
- * Rebuilds docs/banner.png from the app's own icon and a current screenshot.
+ * Rebuilds docs/banner.png from the app icon and docs/notes.png.
  *
  *   bun run build && bun run banner
  *
@@ -19,49 +19,32 @@ const electron = join(electronDir, 'dist', readFileSync(join(electronDir, 'path.
 const work = mkdtempSync(join(tmpdir(), 'inkling-banner-'))
 
 const icon = pathToFileURL(join(root, 'resources', 'icon-256.png')).href
-const shot = pathToFileURL(join(root, 'docs', 'today.png')).href
+const shot = pathToFileURL(join(root, 'docs', 'notes.png')).href
 
 const html = `<!doctype html>
 <meta charset="utf-8" />
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { width: 1200px; height: 600px; overflow: hidden; }
+  html, body { width: 1200px; height: 600px; overflow: hidden; }
   body {
-    width: 1200px; height: 600px; overflow: hidden;
-    background: radial-gradient(900px 600px at 8% 30%, #12222b 0%, #0b0d10 55%, #08090b 100%);
+    background: #f4f2ee; position: relative; color: #1f1d1a;
     font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-    color: #e8e9ec; position: relative;
   }
-  .left { position: absolute; left: 72px; top: 74px; width: 452px; }
-  .brand { display: flex; align-items: center; gap: 22px; }
-  .brand img { width: 86px; height: 86px; border-radius: 20px; }
-  .brand h1 { font-size: 70px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
-  .tagline { margin-top: 40px; font-size: 29px; line-height: 1.3; color: #c9ccd2; font-weight: 400; }
-  .tagline b { display: block; color: #2fbf87; font-weight: 700; margin-top: 6px; }
-  .pills { margin-top: 46px; display: flex; flex-wrap: wrap; gap: 12px; max-width: 452px; }
-  .pill {
-    border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.035);
-    border-radius: 999px; padding: 11px 20px; font-size: 19px; font-weight: 600; color: #dfe2e7;
-  }
+  .left { position: absolute; left: 76px; top: 0; bottom: 0; width: 420px; display: flex; flex-direction: column; justify-content: center; }
+  .brand { display: flex; align-items: center; gap: 20px; }
+  .brand img { width: 76px; height: 76px; border-radius: 17px; }
+  .brand h1 { font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; font-size: 64px; font-weight: 600; letter-spacing: -1.5px; }
+  .tagline { margin-top: 30px; font-size: 27px; line-height: 1.4; color: #6b665e; }
   .shot {
-    position: absolute; right: -70px; top: 96px; width: 700px;
-    border-radius: 14px; overflow: hidden;
-    box-shadow: 0 50px 90px rgba(0,0,0,0.6);
-    transform: perspective(2000px) rotateY(-14deg) rotateX(2deg) rotate(-1.5deg);
-    transform-origin: left center;
+    position: absolute; left: 560px; top: 74px; width: 860px;
+    border-radius: 12px; overflow: hidden; border: 1px solid #e8e4dd;
+    box-shadow: 0 24px 60px rgba(30, 26, 20, 0.12), 0 2px 6px rgba(30, 26, 20, 0.06);
   }
   .shot img { width: 100%; display: block; }
 </style>
 <div class="left">
   <div class="brand"><img src="${icon}" alt="" /><h1>Inkling</h1></div>
-  <div class="tagline">Notes, tasks, flashcards and grades.<b>Studying, made fun.</b></div>
-  <div class="pills">
-    <span class="pill">Daily study plan</span>
-    <span class="pill">Spaced repetition</span>
-    <span class="pill">Linked tasks</span>
-    <span class="pill">Swiss 1-6 grades</span>
-    <span class="pill">Streaks</span>
-  </div>
+  <div class="tagline">A calm place for your notes, to-dos and flashcards.</div>
 </div>
 <div class="shot"><img src="${shot}" alt="" /></div>
 `
@@ -80,7 +63,7 @@ app.commandLine.appendSwitch('high-dpi-support', '1')
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
     width: 1200, height: 600, useContentSize: true, frame: false, show: false,
-    backgroundColor: '#08090b',
+    backgroundColor: '#f4f2ee',
     webPreferences: { zoomFactor: 1, offscreen: false }
   })
   await win.loadFile(${JSON.stringify(page)})
