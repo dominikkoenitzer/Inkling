@@ -1,0 +1,30 @@
+# Inkling
+
+> A desktop app for notes, to-dos and flashcards that works offline and needs no account.
+
+Inkling runs on Windows, macOS and Linux and keeps everything in one SQLite file on your computer.
+A to-do is a checkbox line in a note. Every open one, from every note, shows up on a page called Today.
+A line like `Term :: Definition`, or a cloze like `{{c1::Bern}} is the capital of Switzerland`, becomes a flashcard when you click Flashcards above the note.
+Reviews are scheduled with FSRS-6 at a fixed 90% recall target.
+Inkling has no account, sync or import. One note at a time exports as Markdown.
+It has an MCP server built in: started as `Inkling --mcp`, it lets an AI assistant on the same computer read and write notes, to-dos and flashcards.
+
+## Download
+
+- [Inkling for Windows](/download/windows): the installer, Inkling-Setup.exe
+- [Inkling for macOS](/download/mac): a disk image for Intel and Apple Silicon, Inkling-mac.dmg
+- [Inkling for Linux](/download/linux): an AppImage, Inkling.AppImage
+
+## For AI assistants
+
+- [Inkling skill](/skill/inkling.zip): a zipped skill folder that teaches an assistant how Inkling works and how to write notes, to-dos and flashcard lines it reads
+- [SKILL.md](/skill/inkling/SKILL.md): the skill's main file, readable on its own
+
+## MCP server
+
+An MCP client starts Inkling with the argument `--mcp` and talks to it over standard input and output. There is no network port and no account; nothing leaves the computer.
+Command: `C:\Users\<you>\AppData\Local\Programs\Inkling\Inkling.exe` on Windows, `/Applications/Inkling.app/Contents/MacOS/Inkling` on macOS, the full path to `Inkling.AppImage` on Linux. Arguments: `["--mcp"]`.
+Tools: search, list_notes, read_note, create_note, append_to_note, list_open_todos, complete_todo, reopen_todo, list_decks, add_flashcards. Each note is also a resource at `inkling://note/{id}`, as Markdown.
+Notes are written in Markdown. A `- [ ]` line becomes a real to-do on Today.
+The server cannot delete anything or change what a note already says; it only appends. It cannot review cards or change settings.
+Inkling has to have been opened once on the computer, and once more after each update, before the server can use the data.

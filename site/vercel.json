@@ -1,0 +1,11 @@
+{
+  "redirects": [
+    { "source": "/download/windows", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-Setup.exe", "permanent": false },
+    { "source": "/download/mac", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.dmg", "permanent": false },
+    { "source": "/download/linux", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling.AppImage", "permanent": false },
+    { "source": "/update/latest.yml", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/latest.yml", "permanent": false },
+    { "source": "/update/latest-mac.yml", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/latest-mac.yml", "permanent": false },
+    { "source": "/update/latest-linux.yml", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/latest-linux.yml", "permanent": false },
+    { "source": "/update/:file", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/:file", "permanent": false }
+  ]
+}
