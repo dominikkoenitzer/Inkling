@@ -91,10 +91,9 @@
       "icon": "resources/icon.ico"
     },
     "nsis": {
-      "artifactName": "${productName}-Setup-${version}.${ext}",
-      "oneClick": false,
+      "artifactName": "${productName}-Setup.${ext}",
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "Inkling"
     },
@@ -105,7 +104,8 @@
       ],
       "icon": "resources/icon.png",
       "category": "public.app-category.productivity",
-      "x64ArchFiles": "**/node_modules/better-sqlite3/prebuilds/*.node"
+      "x64ArchFiles": "**/node_modules/better-sqlite3/prebuilds/*.node",
+      "artifactName": "${productName}-mac.${ext}"
     },
     "linux": {
       "target": [
@@ -113,7 +113,8 @@
       ],
       "icon": "resources/icon.png",
       "category": "Office",
-      "maintainer": "dominikkoenitzer"
+      "maintainer": "dominikkoenitzer",
+      "artifactName": "${productName}.${ext}"
     }
   }
 }
