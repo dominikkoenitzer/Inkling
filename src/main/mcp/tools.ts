@@ -155,7 +155,7 @@ export function addFlashcards(input: {
   cards: Array<{ front: string; back?: string }>
 }): { deckId: number; deckName: string; added: number } {
   const name = input.deckName?.trim()
-  if ((input.deckId === undefined) === !name) throw new Error('Give either deckId or deckName, not both.')
+  if ((input.deckId === undefined) === !name) throw new Error('Give one of deckId or deckName.')
   if (input.cards.length === 0) throw new Error('Give at least one card.')
   const cards = input.cards.map((c, i) => {
     const front = c.front.trim()
