@@ -10,8 +10,6 @@ import type {
   NoteCardLine,
   ColorKey,
   ReviewGrade,
-  StatsOverview,
-  ActivityDay,
   OptimiseOutcome,
   ImportSummary
 } from './types'
@@ -80,10 +78,6 @@ export interface InklingApi {
   }
   search: {
     query(q: string): Promise<SearchResult[]>
-  }
-  stats: {
-    overview(windowDays?: number): Promise<StatsOverview>
-    activity(days?: number): Promise<ActivityDay[]>
   }
   app: {
     setTitlebar(colors: { color: string; symbolColor: string }): Promise<void>

@@ -62,10 +62,6 @@ const api: InklingApi = {
   search: {
     query: invoke('search.query')
   },
-  stats: {
-    overview: invoke('stats.overview'),
-    activity: invoke('stats.activity')
-  },
   app: {
     setTitlebar: invoke('app.setTitlebar'),
     saveFile: invoke('app.saveFile'),

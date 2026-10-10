@@ -75,9 +75,6 @@ const checks = `
     ok('a finished focus session counts towards today', (await api.focus.todayMinutes()) >= 25)
 
     ok('the streak advances', (await api.streak.bump(new Date().toISOString().slice(0, 10))).count >= 1)
-
-    const o = await api.stats.overview(30)
-    ok('Progress reads the review log back', o.reviews >= 1 && o.reviews_all_time >= 1, o.reviews + ' reviews')
   } catch (e) {
     r.push('FAIL threw: ' + (e && e.message ? e.message : String(e)))
   }

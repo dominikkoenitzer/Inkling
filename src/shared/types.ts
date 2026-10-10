@@ -2,7 +2,7 @@ import type { CardState } from './fsrs'
 
 export type ColorKey = 'teal' | 'coral' | 'amber' | 'pink' | 'gray'
 export type TaskStatus = 'todo' | 'done'
-export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study' | 'stats'
+export type ModuleTab = 'today' | 'notes' | 'tasks' | 'study'
 
 export interface Notebook {
   id: number
@@ -100,32 +100,6 @@ export interface SearchResult {
 export interface StreakInfo {
   count: number
   last_day: string | null // YYYY-MM-DD (local)
-}
-
-/* ---------------------------------- Stats --------------------------------- */
-
-/** One local calendar day of activity. Days with nothing to show are omitted. */
-export interface ActivityDay {
-  day: string // YYYY-MM-DD, local
-  reviews: number
-  focus_minutes: number
-}
-
-export interface StatsOverview {
-  /** Window the counts cover, in days. */
-  window_days: number
-  reviews: number
-  reviews_all_time: number
-  /** Share of reviews in the window graded better than Again, 0–1. Null when nothing was due. */
-  retention: number | null
-  focus_minutes: number
-  /** Consecutive local days with a review or a completed focus session, ending today or yesterday. */
-  current_streak: number
-  longest_streak: number
-  /** Days studied at all, in the window. */
-  active_days: number
-  /** Cards due right now, across every deck. */
-  due_now: number
 }
 
 export interface NoteTaskItem {

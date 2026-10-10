@@ -56,9 +56,6 @@ export function registerIpc(): void {
 
   handle('search.query', repos.searchQuery)
 
-  handle('stats.overview', repos.statsOverview)
-  handle('stats.activity', repos.activity)
-
   ipcMain.handle('app.setTitlebar', (event, colors: { color: string; symbolColor: string }) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     try {

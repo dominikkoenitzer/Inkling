@@ -1,7 +1,7 @@
 /**
  * The data layer, one module per domain, re-exported so callers can `import * as repos`.
  * Dependencies run one way: `search` and `dates` at the bottom, then `notes`, then
- * `tasks`, `stats` and `onboarding`.
+ * `tasks` and `onboarding`.
  */
 
 export * from './flashcards'
@@ -13,6 +13,5 @@ export * from './onboarding'
 export { optimiseParams } from './scheduler'
 export { searchQuery, tiptapToText } from './search'
 export * from './settings'
-export * from './stats'
 export { bumpStreak, getStreak } from './streak'
 export * from './tasks'

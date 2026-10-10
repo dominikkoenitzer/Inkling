@@ -8,8 +8,7 @@ import {
   Download,
   Trash2,
   MoreHorizontal,
-  Sun,
-  BarChart3
+  Sun
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
@@ -25,8 +24,7 @@ const TABS: Array<{ id: ModuleTab; icon: React.JSX.Element; label: string }> = [
   { id: 'today', icon: <Sun size={16} />, label: 'Today' },
   { id: 'notes', icon: <FileText size={16} />, label: 'Notes' },
   { id: 'tasks', icon: <CheckSquare size={16} />, label: 'Tasks' },
-  { id: 'study', icon: <GraduationCap size={16} />, label: 'Study' },
-  { id: 'stats', icon: <BarChart3 size={16} />, label: 'Progress' }
+  { id: 'study', icon: <GraduationCap size={16} />, label: 'Study' }
 ]
 
 export function Sidebar(): React.JSX.Element {
