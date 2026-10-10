@@ -5,9 +5,18 @@ import { version } from './package.json'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    // The MCP SDK and zod are bundled into mcp.js, so the installer carries only what it uses.
+    plugins: [externalizeDepsPlugin({ exclude: ['@modelcontextprotocol/sdk', 'zod'] })],
     resolve: {
       alias: { '@shared': resolve(__dirname, 'src/shared') }
+    },
+    build: {
+      lib: {
+        entry: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          mcp: resolve(__dirname, 'src/main/mcp/main.ts')
+        }
+      }
     }
   },
   preload: {

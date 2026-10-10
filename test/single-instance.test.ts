@@ -21,19 +21,25 @@ const electron = vi.hoisted(() => {
   }
   const app = {
     isPackaged: false,
+    getPath: vi.fn(() => '/home/profile'),
+    getVersion: vi.fn(() => '1.0.0'),
     setPath: vi.fn(),
+    exit: vi.fn(),
+    disableHardwareAcceleration: vi.fn(),
     quit: vi.fn(),
     requestSingleInstanceLock: vi.fn(() => true),
     on: vi.fn((event: string, fn: (...args: unknown[]) => void) => void handlers.set(event, fn)),
     whenReady: vi.fn(() => Promise.resolve())
   }
-  return { app, BrowserWindow, handlers, windows, openDb: vi.fn() }
+  const spawn = vi.fn(() => ({ on: vi.fn() }))
+  return { app, BrowserWindow, handlers, windows, openDb: vi.fn(), spawn }
 })
 
 vi.mock('electron', () => ({ app: electron.app, BrowserWindow: electron.BrowserWindow, shell: { openExternal: vi.fn() } }))
 vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn() } }))
 vi.mock('../src/main/db', () => ({ openDb: electron.openDb, getDb: vi.fn() }))
 vi.mock('../src/main/ipc', () => ({ registerIpc: vi.fn() }))
+vi.mock('child_process', () => ({ spawn: electron.spawn }))
 vi.mock('../src/main/repos', () => ({ purgeExpiredNotes: vi.fn(), adoptLooseTasks: vi.fn(), bootstrapFirstRun: vi.fn(), getSetting: vi.fn(() => null) }))
 
 type FakeWindow = InstanceType<typeof electron.BrowserWindow>
@@ -51,6 +57,7 @@ async function launch(gotLock: boolean): Promise<void> {
 
 afterEach(() => {
   delete process.env['INKLING_USERDATA']
+  process.argv = process.argv.filter((a) => a !== '--mcp')
 })
 
 describe('one running copy per profile', () => {
@@ -82,5 +89,34 @@ describe('one running copy per profile', () => {
     const [setPathAt] = electron.app.setPath.mock.invocationCallOrder
     const [lockAt] = electron.app.requestSingleInstanceLock.mock.invocationCallOrder
     expect(lockAt).toBeGreaterThan(setPathAt)
+  })
+})
+
+describe('--mcp', () => {
+  it('starts the server in a Node-mode copy and leaves the lock, the window and the database alone', async () => {
+    process.argv.push('--mcp')
+    await launch(true)
+
+    expect(electron.app.requestSingleInstanceLock).not.toHaveBeenCalled()
+    expect(electron.app.quit).not.toHaveBeenCalled()
+    expect(electron.openDb).not.toHaveBeenCalled()
+    expect(electron.windows).toHaveLength(0)
+    expect(electron.spawn).toHaveBeenCalledTimes(1)
+    const [, args, options] = electron.spawn.mock.calls[0] as unknown as [string, string[], { stdio: string; env: Record<string, string> }]
+    expect(args[0]).toMatch(/mcp\.js$/)
+    expect(options.stdio).toBe('inherit')
+    expect(options.env['ELECTRON_RUN_AS_NODE']).toBe('1')
+    expect(options.env['INKLING_MCP_DATA']).toBe('/home/profile')
+  })
+
+  it('serves the INKLING_USERDATA profile and keeps Chromium out of it', async () => {
+    process.env['INKLING_USERDATA'] = '/tmp/inkling-mcp-smoke'
+    electron.app.getPath.mockImplementationOnce(() => '/tmp/inkling-mcp-smoke')
+    process.argv.push('--mcp')
+    await launch(true)
+
+    const options = (electron.spawn.mock.calls[0] as unknown as [string, string[], { env: Record<string, string> }])[2]
+    expect(options.env['INKLING_MCP_DATA']).toBe('/tmp/inkling-mcp-smoke')
+    expect(electron.app.setPath).toHaveBeenCalledWith('sessionData', expect.stringContaining('inkling-mcp'))
   })
 })

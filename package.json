@@ -24,6 +24,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke.mjs",
+    "mcp": "electron . --mcp",
+    "mcp:smoke": "node scripts/mcp-smoke.mjs",
     "postinstall": "electron-builder install-app-deps",
     "dist": "electron-vite build && electron-builder --win nsis"
   },
@@ -44,6 +46,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.2.0",
@@ -64,7 +67,8 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.1",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "zod": "^4.6.5"
   },
   "build": {
     "appId": "app.inkling.desktop",

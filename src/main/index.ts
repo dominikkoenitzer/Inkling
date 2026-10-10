@@ -7,6 +7,7 @@ import { openDb } from './db'
 import { registerIpc } from './ipc'
 import * as repos from './repos'
 import { seedDemo } from './seed'
+import { startMcpHost } from './mcp/host'
 import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
@@ -17,10 +18,15 @@ if (process.env['INKLING_USERDATA']) {
 // The seed, screenshot and eval hooks below work in unpackaged builds only.
 const devHooks = !app.isPackaged
 
+// `--mcp` serves the data to an AI assistant instead of opening the app. It takes no lock,
+// so it runs next to an open window, and it never shows one.
+const mcpMode = process.argv.includes('--mcp')
+if (mcpMode) startMcpHost()
+
 // Two copies on one database overwrite each other's notes. Electron keys this lock to the
 // userData path, so it is taken after the hook above: a separate profile gets its own.
-const isPrimary = app.requestSingleInstanceLock()
-if (!isPrimary) app.quit()
+const isPrimary = !mcpMode && app.requestSingleInstanceLock()
+if (!isPrimary && !mcpMode) app.quit()
 
 let mainWindow: BrowserWindow | null = null
 
@@ -150,7 +156,7 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(() => {
-  if (!isPrimary) return // quitting: the copy already running owns the database
+  if (!isPrimary) return // quitting, or serving MCP: either way no window here
   openDb(app.getPath('userData'))
   // Clear anything that has sat in the trash past the retention window.
   try {
@@ -172,6 +178,8 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('first run setup failed', err)
   }
+  // Test hook: the profile is set up, no window needed (the MCP check uses it).
+  if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
   createMainWindow()
 
