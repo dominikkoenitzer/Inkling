@@ -51,10 +51,8 @@ export interface Card {
   deck_id: number
   front: string
   back: string
-  /** SM-2 fields, kept so pre-v0.4.0 data stays readable; FSRS uses the three below. */
-  ease_factor: number
+  /** Days until the next review, as last scheduled. */
   interval_days: number
-  repetitions: number
   next_review_date: string
   /** FSRS memory state (v0.4.0+). Null on a card that has never been reviewed. */
   stability: number | null

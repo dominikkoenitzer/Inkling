@@ -205,7 +205,7 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
       <input className="bg-transparent text-sm" value={front} onChange={(e) => setFront(e.target.value)} onBlur={save} />
       <input className="border-l border-edge bg-transparent pl-3 text-sm text-muted" value={back} onChange={(e) => setBack(e.target.value)} onBlur={save} />
       <div className="flex items-center gap-2">
-        <span className="text-[11px] text-faint" title={`ease ${card.ease_factor.toFixed(2)} · interval ${card.interval_days}d`}>
+        <span className="text-[11px] text-faint">
           {card.cloze > 0 && `c${card.cloze} · `}
           {due ? 'due' : `in ${card.interval_days}d`}
         </span>

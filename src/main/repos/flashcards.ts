@@ -85,8 +85,7 @@ export function removeCard(id: number): void {
 
 /**
  * Review one card and append to the review log. The scheduling maths is in `@shared/fsrs`;
- * this reads the memory state, writes the new one and records what happened. The old SM-2
- * columns are kept roughly in step for anything still reading them.
+ * this reads the memory state, writes the new one and records what happened.
  */
 export function reviewCard(cardId: number, grade: ReviewGrade): Card {
   const db = getDb()
@@ -109,7 +108,7 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
     db.prepare(
       `UPDATE flashcards
           SET stability = ?, difficulty = ?, state = ?, last_review = ?, next_review_date = ?,
-              interval_days = ?, repetitions = ?, ease_factor = ?
+              interval_days = ?
         WHERE id = ?`
     ).run(
       result.stability,
@@ -118,9 +117,6 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
       reviewedAtIso,
       result.due,
       result.scheduledDays,
-      grade === 'again' ? 0 : card.repetitions + 1,
-      // Mirror difficulty back onto the SM-2 ease factor (inverse of the v4 migration).
-      Math.round((2.5 - ((result.difficulty - 1) * 1.2) / 9) * 1000) / 1000,
       cardId
     )
     db.prepare(

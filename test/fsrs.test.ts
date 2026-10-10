@@ -9,7 +9,6 @@ import {
   decayOf,
   factorOf,
   formatInterval,
-  fromSm2,
   initialDifficulty,
   initialStability,
   intervalForRetention,
@@ -261,25 +260,6 @@ describe('previewIntervals', () => {
     const snapshot = { ...card }
     previewIntervals(card, NOW)
     expect(card).toEqual(snapshot)
-  })
-})
-
-describe('fromSm2', () => {
-  it('maps the ease-factor range onto the difficulty range, inverted', () => {
-    expect(fromSm2(2.5, 10).difficulty).toBeCloseTo(1, 6)
-    expect(fromSm2(1.3, 10).difficulty).toBeCloseTo(10, 6)
-    expect(fromSm2(1.9, 10).difficulty).toBeGreaterThan(4)
-    expect(fromSm2(1.9, 10).difficulty).toBeLessThan(7)
-  })
-
-  it('carries the SM-2 interval over as the stability estimate', () => {
-    expect(fromSm2(2.5, 21).stability).toBe(21)
-  })
-
-  it('clamps out-of-range ease factors and never returns zero stability', () => {
-    expect(fromSm2(9, 5).difficulty).toBeCloseTo(1, 6)
-    expect(fromSm2(0.1, 5).difficulty).toBeCloseTo(10, 6)
-    expect(fromSm2(2.5, 0).stability).toBe(MIN_STABILITY)
   })
 })
 

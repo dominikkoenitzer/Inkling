@@ -24,7 +24,7 @@ export type CardState = 'new' | 'learning' | 'review' | 'relearning'
 export const RATINGS: Record<ReviewGradeName, Rating> = { again: 1, hard: 2, good: 3, easy: 4 }
 export type ReviewGradeName = 'again' | 'hard' | 'good' | 'easy'
 
-/** Published FSRS-6 default parameters, used until the review log is large enough to fit your own. */
+/** Published FSRS-6 default parameters, used unless fitted ones are stored. */
 export const DEFAULT_PARAMS: readonly number[] = [
   0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629,
   1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542
@@ -212,7 +212,6 @@ export function nextShortTermStability(stability: number, rating: Rating, w: rea
 /**
  * The memory state after one review: initialised from the rating for a first review, the
  * same-day terms for a review less than a day after the last, the long-term ones otherwise.
- * Shared by the scheduler and the optimiser, so both always run the same model.
  */
 export function nextMemoryState(
   previous: MemoryState | null,
@@ -305,19 +304,6 @@ export function previewIntervals(
     out[rating] = schedule(card, rating, now, w).scheduledDays
   }
   return out
-}
-
-/**
- * Convert an SM-2 card (ease factor + interval) to an FSRS memory state, for the
- * one-time migration of decks reviewed before v0.4.0. Ease factor runs 1.3 (hardest)
- * to ~2.5+ (easiest); difficulty runs the other way, 10 (hardest) to 1.
- */
-export function fromSm2(easeFactor: number, intervalDays: number): MemoryState {
-  const ef = clamp(easeFactor, 1.3, 2.5)
-  return {
-    stability: clamp(intervalDays, MIN_STABILITY, MAX_INTERVAL_DAYS),
-    difficulty: clamp(10 - ((ef - 1.3) * 9) / 1.2, 1, 10)
-  }
 }
 
 /** Human-readable interval, e.g. 1 → "1d", 45 → "1.5mo", 400 → "1.1y". */
