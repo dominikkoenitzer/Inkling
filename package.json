@@ -75,9 +75,8 @@
     ],
     "publish": [
       {
-        "provider": "github",
-        "owner": "dominikkoenitzer",
-        "repo": "Inkling"
+        "provider": "generic",
+        "url": "https://get-inkling.vercel.app/update"
       }
     ],
     "directories": {
