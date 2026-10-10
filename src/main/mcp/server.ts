@@ -36,14 +36,20 @@ export function createServer(dataDir: string, version: string): McpServer {
   // Opened on the first call, not at start: Inkling may be opened (or updated) after the
   // assistant started the server. Every call checks the schema again.
   const ready = (): void => {
-    if (attached) return checkVersion(getDb())
+    if (attached) return
     attachDb(dataDir)
     attached = true
   }
-  const call = <T extends object>(fn: () => T): ReturnType<typeof result> =>
+  // One transaction per call with the schema check inside it. Writes take the lock up front:
+  // a deferred one would fail at once if the app committed between its first read and write.
+  const call = <T extends object>(fn: () => T, write = false): ReturnType<typeof result> =>
     result(() => {
       ready()
-      return fn()
+      const tx = getDb().transaction(() => {
+        checkVersion(getDb())
+        return fn()
+      })
+      return write ? tx.immediate() : tx()
     })
 
   const server = new McpServer({ name: 'inkling', title: 'Inkling', version }, { instructions: INSTRUCTIONS })
@@ -108,7 +114,7 @@ export function createServer(dataDir: string, version: string): McpServer {
       outputSchema: writeShape,
       annotations: WRITE
     },
-    (args) => call(() => tools.createNote(args))
+    (args) => call(() => tools.createNote(args), true)
   )
 
   server.registerTool(
@@ -124,7 +130,7 @@ export function createServer(dataDir: string, version: string): McpServer {
       outputSchema: writeShape,
       annotations: WRITE
     },
-    (args) => call(() => tools.appendToNote(args))
+    (args) => call(() => tools.appendToNote(args), true)
   )
 
   server.registerTool(
@@ -150,7 +156,7 @@ export function createServer(dataDir: string, version: string): McpServer {
       outputSchema: todoShape,
       annotations: { ...WRITE, idempotentHint: true }
     },
-    (args) => call(() => tools.setTodoDone(args, true))
+    (args) => call(() => tools.setTodoDone(args, true), true)
   )
 
   server.registerTool(
@@ -162,7 +168,7 @@ export function createServer(dataDir: string, version: string): McpServer {
       outputSchema: todoShape,
       annotations: { ...WRITE, idempotentHint: true }
     },
-    (args) => call(() => tools.setTodoDone(args, false))
+    (args) => call(() => tools.setTodoDone(args, false), true)
   )
 
   server.registerTool(
@@ -204,7 +210,7 @@ export function createServer(dataDir: string, version: string): McpServer {
       outputSchema: { deckId: z.number(), deckName: z.string(), added: z.number().describe('Cards made, one per cloze number.') },
       annotations: WRITE
     },
-    (args) => call(() => tools.addFlashcards(args))
+    (args) => call(() => tools.addFlashcards(args), true)
   )
 
   server.registerResource(
@@ -212,6 +218,7 @@ export function createServer(dataDir: string, version: string): McpServer {
     new ResourceTemplate('inkling://note/{id}', {
       list: () => {
         ready()
+        checkVersion(getDb())
         return {
           resources: repos
             .listNotes()
@@ -223,6 +230,7 @@ export function createServer(dataDir: string, version: string): McpServer {
     { title: 'Note', description: 'A note as Markdown.', mimeType: 'text/markdown' },
     (uri, vars) => {
       ready()
+      checkVersion(getDb())
       const note = tools.readNote({ id: Number(vars['id']) })
       return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text: note.markdown }] }
     }
@@ -241,6 +249,7 @@ export async function runServer(dataDir: string, version: string): Promise<void>
     } catch {
       // never opened
     }
-    process.exit(0)
+    // Let the last reply reach the pipe first.
+    process.stdout.write('', () => process.exit(0))
   })
 }
