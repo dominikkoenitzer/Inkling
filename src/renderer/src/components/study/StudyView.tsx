@@ -213,6 +213,19 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           </span>
         </div>
 
+        {deck.note_id !== null && cards.some((c) => c.source_line !== null) && (
+          <p className="mt-6 text-sm text-muted">
+            Cards from a note are edited in that note, so the next Flashcards press keeps your change.{' '}
+            <button
+              type="button"
+              onClick={() => useApp.getState().openNote(deck.note_id!)}
+              className="font-medium text-accent-text underline-offset-2 hover:underline"
+            >
+              Open the note
+            </button>
+          </p>
+        )}
+
         <div className="mt-8 grid grid-cols-[1fr_1fr_auto] gap-2">
           <input className={inputCls} placeholder="Front" value={front} onChange={(e) => setFront(e.target.value)} />
           <input
@@ -242,6 +255,22 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 }
 
 function CardRow({ card }: { card: Card }): React.JSX.Element {
+  const due = new Date(card.next_review_date) <= new Date()
+  // A card made from a note line belongs to that line: an edit here would be undone by the
+  // next Flashcards press, so it is shown as text and edited in the note.
+  if (card.source_line !== null) {
+    return (
+      <li className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
+        <span className="min-w-0 truncate px-1.5 py-1 text-sm">{card.front}</span>
+        <span className="min-w-0 truncate px-1.5 py-1 text-sm text-muted">{card.back}</span>
+        <span className="w-14 pr-8 text-right text-xs text-faint">{due ? 'due' : `in ${card.interval_days}d`}</span>
+      </li>
+    )
+  }
+  return <EditableCardRow card={card} due={due} />
+}
+
+function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX.Element {
   const [front, setFront] = useState(card.front)
   const [back, setBack] = useState(card.back)
   const dirty = useRef(false)
@@ -274,7 +303,6 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
     }
   }
 
-  const due = new Date(card.next_review_date) <= new Date()
   const field = 'min-w-0 rounded px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-hover'
 
   return (
