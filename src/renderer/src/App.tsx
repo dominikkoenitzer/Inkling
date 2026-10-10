@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Search } from 'lucide-react'
-import { useApp, watchDay, bumpData } from '@/stores/app'
+import { useApp, watchDay, watchFocus, bumpData } from '@/stores/app'
 import { Sidebar } from '@/components/shell/Sidebar'
 import { MainPane } from '@/components/shell/MainPane'
 import { CommandPalette } from '@/components/shell/CommandPalette'
@@ -24,6 +24,9 @@ export default function App(): React.JSX.Element {
 
   // Roll "today" over at midnight and when the window comes back.
   useEffect(() => watchDay(), [])
+
+  // Pick up what an assistant wrote through the MCP server while the window was in the background.
+  useEffect(() => watchFocus(), [])
 
   // Cards answered "Again" come due again within minutes: recount every few minutes.
   useEffect(() => {

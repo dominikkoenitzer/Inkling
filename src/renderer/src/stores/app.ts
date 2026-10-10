@@ -170,5 +170,15 @@ export function watchDay(target: EventTarget = window): () => void {
   }
 }
 
+/** Refetches notes, tasks and decks when the window regains focus: another process may have written them. */
+export function watchFocus(target: EventTarget = window): () => void {
+  const onFocus = (): void => {
+    const { bump } = useData.getState()
+    for (const domain of ['notes', 'tasks', 'decks']) bump(domain)
+  }
+  target.addEventListener('focus', onFocus)
+  return () => target.removeEventListener('focus', onFocus)
+}
+
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
