@@ -63,11 +63,6 @@ export interface InklingApi {
     /** Fits the FSRS parameters to the review log; keeps the ones in use unless the fit is better. */
     optimise(): Promise<OptimiseOutcome>
   }
-  focus: {
-    start(input: { task_id?: number | null; deck_id?: number | null }): Promise<number>
-    complete(id: number, minutes: number): Promise<void>
-    todayMinutes(): Promise<number>
-  }
   streak: {
     get(): Promise<StreakInfo>
     bump(localDay: string): Promise<StreakInfo>

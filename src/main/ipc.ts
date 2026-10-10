@@ -44,10 +44,6 @@ export function registerIpc(): void {
   handle('decks.createFromPairs', repos.createDeckFromPairs)
   handle('decks.optimise', repos.optimiseParams)
 
-  handle('focus.start', repos.startFocus)
-  handle('focus.complete', repos.completeFocus)
-  handle('focus.todayMinutes', repos.todayFocusMinutes)
-
   handle('streak.get', repos.getStreak)
   handle('streak.bump', repos.bumpStreak)
 

@@ -80,15 +80,6 @@ export interface ReviewLogEntry {
   reviewed_at: string
 }
 
-export interface FocusSession {
-  id: number
-  task_id: number | null
-  deck_id: number | null
-  duration_minutes: number | null
-  started_at: string
-  completed: 0 | 1
-}
-
 export interface SearchResult {
   source_type: 'note' | 'task' | 'deck'
   source_id: number

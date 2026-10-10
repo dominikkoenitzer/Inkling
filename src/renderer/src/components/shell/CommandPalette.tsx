@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, FileText, CheckSquare, Layers, Zap, Moon, Sun, Plus, GraduationCap } from 'lucide-react'
+import { Search, FileText, CheckSquare, Layers, Moon, Sun, Plus, GraduationCap } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
-import { useTimer, isFocusLive, startFocusSession } from '@/stores/timer'
 import { fuzzyScore } from '@/lib/parse'
 import type { SearchResult } from '@shared/types'
 
@@ -17,7 +16,6 @@ interface PaletteItem {
 
 export function CommandPalette(): React.JSX.Element {
   const app = useApp()
-  const focusLive = useTimer(isFocusLive)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [selected, setSelected] = useState(0)
@@ -59,15 +57,6 @@ export function CommandPalette(): React.JSX.Element {
             app.setTab('tasks')
             close()
           }
-        },
-        {
-          key: 'focus',
-          icon: <Zap size={16} />,
-          label: focusLive ? 'Resume focus session' : 'Start focus session',
-          run: () => {
-            startFocusSession()
-            close()
-          }
         }
       )
     }
@@ -88,7 +77,7 @@ export function CommandPalette(): React.JSX.Element {
     )
     return list.filter((a) => fuzzyScore(query, a.label) >= 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, app.notebooks, app.activeNotebookId, app.theme, focusLive])
+  }, [query, app.notebooks, app.activeNotebookId, app.theme])
 
   // An empty box shows no matches; the last query's hits stay cached for the
   // 120ms debounce so retyping doesn't blank the list mid-keystroke.

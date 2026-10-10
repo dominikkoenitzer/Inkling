@@ -5,7 +5,6 @@ import { isColorKey, ramp } from '@/lib/colors'
 import { hasCloze } from '@shared/cloze'
 import { EmptyState } from '@/components/Inky'
 import { Button, IconBtn, inputCls } from '@/components/ui'
-import { FocusTimer } from './FocusTimer'
 import { ReviewSession } from './ReviewSession'
 import type { Notebook, Deck, Card } from '@shared/types'
 
@@ -72,11 +71,6 @@ export function StudyView({ notebook }: { notebook: Notebook }): React.JSX.Eleme
               ))}
             </div>
           )}
-        </section>
-
-        <section>
-          <h2 className="mb-3 text-base font-bold">Focus timer</h2>
-          <FocusTimer notebook={notebook} decks={decks} />
         </section>
       </div>
     </div>

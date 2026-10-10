@@ -70,10 +70,6 @@ const checks = `
     ok('a review schedules the card forward', new Date(after.next_review_date) > new Date(), after.next_review_date)
     ok('a review records FSRS memory state', after.stability > 0 && after.difficulty > 0)
 
-    const fid = await api.focus.start({ deck_id: deck.id })
-    await api.focus.complete(fid, 25)
-    ok('a finished focus session counts towards today', (await api.focus.todayMinutes()) >= 25)
-
     ok('the streak advances', (await api.streak.bump(new Date().toISOString().slice(0, 10))).count >= 1)
   } catch (e) {
     r.push('FAIL threw: ' + (e && e.message ? e.message : String(e)))

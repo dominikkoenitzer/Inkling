@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Layers, Flame, ArrowRight, Play, Plus, CheckSquare, FileText } from 'lucide-react'
+import { Layers, Flame, ArrowRight, Plus, CheckSquare, FileText } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { useTimer, isFocusLive, startFocusSession } from '@/stores/timer'
 import { ramp, isColorKey, softTint } from '@/lib/colors'
 import { onActivateKey } from '@/lib/keys'
 import { Inky } from '@/components/Inky'
@@ -29,18 +28,14 @@ function useNow(intervalMs = 60_000): number {
 }
 
 /**
- * The daily plan: due flashcards, open tasks and today's focus time, each with a one-click start.
+ * The daily plan: due flashcards and open tasks, each with a one-click start.
  */
 export function TodayView(): React.JSX.Element {
   const app = useApp()
   const now = useNow()
-  // A focus session is live if it's running or paused part-way through, used so the plan
-  // offers "Resume" instead of a second "Start" that would orphan the in-progress session.
-  const timerActive = useTimer(isFocusLive)
-  const version = useVersion('decks') + useVersion('tasks') + useVersion('focus')
+  const version = useVersion('decks') + useVersion('tasks')
   const [decks, setDecks] = useState<Deck[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [minutes, setMinutes] = useState(0)
   const [loaded, setLoaded] = useState(false)
   // tasks mid-completion: keeps the checkbox visibly ticked until the refetch removes the row
   const [completing, setCompleting] = useState<Set<number>>(new Set())
@@ -50,17 +45,16 @@ export function TodayView(): React.JSX.Element {
   useEffect(() => {
     // Overlapping fetches can resolve out of order; only the newest may write state.
     let stale = false
-    void Promise.all([api.decks.list(), api.tasks.smart('today'), api.focus.todayMinutes()]).then(([d, t, m]) => {
+    void Promise.all([api.decks.list(), api.tasks.smart('today')]).then(([d, t]) => {
       if (stale) return
       setDecks(d)
       setTasks(t)
-      setMinutes(m)
       setLoaded(true)
     })
     return () => {
       stale = true
     }
-    // app.today: "due today" and today's focus minutes are a new list after midnight
+    // app.today: "due today" is a new list after midnight
   }, [version, app.today])
 
   useEffect(() => {
@@ -75,11 +69,7 @@ export function TodayView(): React.JSX.Element {
   const inkyColor = isColorKey(active?.color) ? active.color : 'teal'
   const dueDecks = decks.filter((d) => d.due_count > 0)
   const openTasks = tasks.filter((t) => t.status !== 'done')
-  // gate on loaded so the focus card can't flash before the first fetch lands.
-  // A running session shows "resume"; otherwise suggest a fresh block only if none is done yet.
-  const suggestFocus = loaded && minutes === 0
-  const focusItem: 'resume' | 'start' | null = timerActive ? 'resume' : suggestFocus ? 'start' : null
-  const planCount = dueDecks.length + openTasks.length + (focusItem ? 1 : 0)
+  const planCount = dueDecks.length + openTasks.length
   const cleared = loaded && planCount === 0
 
   const completeTask = (t: Task): void => {
@@ -98,8 +88,6 @@ export function TodayView(): React.JSX.Element {
     const hm = format(due, 'HH:mm')
     return { text: hm === '00:00' ? 'today' : `due ${hm}`, overdue: false }
   }
-
-  const startFocus = startFocusSession
 
   const newPage = async (): Promise<void> => {
     if (app.activeNotebookId === null) return
@@ -201,21 +189,6 @@ export function TodayView(): React.JSX.Element {
               </div>
             )
           })}
-
-          {focusItem && !cleared && (
-            <PlanCard
-              bubble={<Play size={18} />}
-              tint={softTint(active?.color, app.theme)}
-              title={focusItem === 'resume' ? 'Focus session in progress' : 'One 25-minute focus block'}
-              sub={
-                focusItem === 'resume'
-                  ? 'Pick up where you left off. Your timer is still running.'
-                  : 'Start the timer, pick anything above. Momentum does the rest.'
-              }
-              actionLabel={focusItem === 'resume' ? 'Resume' : 'Start'}
-              onAction={startFocus}
-            />
-          )}
         </div>
 
         {recent.length > 0 && (

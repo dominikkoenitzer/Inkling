@@ -5,7 +5,6 @@
  */
 
 export * from './flashcards'
-export * from './focus'
 export { importAnkiFile } from './imports'
 export * from './notebooks'
 export * from './notes'

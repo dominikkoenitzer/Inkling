@@ -180,9 +180,6 @@ function seedHistory(deckId: number): void {
     `INSERT INTO review_log (card_id, deck_id, rating, state, stability, difficulty, elapsed_days, scheduled_days, reviewed_at)
      VALUES (?, ?, ?, 'review', ?, ?, ?, ?, ?)`
   )
-  const logFocus = db.prepare(
-    `INSERT INTO focus_sessions (task_id, deck_id, duration_minutes, started_at, completed) VALUES (NULL, ?, ?, ?, 1)`
-  )
 
   const tx = db.transaction(() => {
     for (let daysAgo = 120; daysAgo >= 0; daysAgo--) {
@@ -211,7 +208,6 @@ function seedHistory(deckId: number): void {
           at.toISOString()
         )
       }
-      if (daysAgo % 2 === 0) logFocus.run(deckId, 25, new Date(day.getTime() - 3_600_000).toISOString())
     }
   })
   tx()
