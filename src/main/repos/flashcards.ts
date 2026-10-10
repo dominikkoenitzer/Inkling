@@ -276,6 +276,6 @@ export function syncNoteCards(
       if (taken.has(key)) continue
       for (const c of group) db.prepare(`DELETE FROM flashcards WHERE id = ?`).run(c.id)
     }
-  })()
+  }).immediate() // reads before it writes, like syncNoteTasks
   return { deck: listDecks().find((d) => d.id === deckId)!, lineIds }
 }

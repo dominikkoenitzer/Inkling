@@ -75,7 +75,9 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
       ftsDelete('task', orphan.id)
     }
   })
-  tx()
+  // Reads before it writes: take the write lock first, so a commit from the MCP server
+  // in between cannot fail it.
+  tx.immediate()
   return ids
 }
 

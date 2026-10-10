@@ -16,21 +16,25 @@ export function openSqlite(): { raw: DatabaseSync; db: Database.Database } {
       const row = raw.prepare(`PRAGMA ${src}`).get() as Record<string, unknown>
       return opts?.simple ? Object.values(row)[0] : row
     },
-    // Like better-sqlite3: passes arguments and the result through, and nests as savepoints.
-    transaction: (fn: (...args: unknown[]) => unknown) => (...args: unknown[]) => {
-      const sp = `sp${depth}`
-      raw.exec(depth === 0 ? 'BEGIN' : `SAVEPOINT ${sp}`)
-      depth++
-      try {
-        const result = fn(...args)
-        depth--
-        raw.exec(depth === 0 ? 'COMMIT' : `RELEASE ${sp}`)
-        return result
-      } catch (err) {
-        depth--
-        raw.exec(depth === 0 ? 'ROLLBACK' : `ROLLBACK TO ${sp}; RELEASE ${sp}`)
-        throw err
+    // Like better-sqlite3: passes arguments and the result through, nests as savepoints, and
+    // has the `.immediate()` variant.
+    transaction: (fn: (...args: unknown[]) => unknown) => {
+      const run = (begin: string) => (...args: unknown[]) => {
+        const sp = `sp${depth}`
+        raw.exec(depth === 0 ? begin : `SAVEPOINT ${sp}`)
+        depth++
+        try {
+          const result = fn(...args)
+          depth--
+          raw.exec(depth === 0 ? 'COMMIT' : `RELEASE ${sp}`)
+          return result
+        } catch (err) {
+          depth--
+          raw.exec(depth === 0 ? 'ROLLBACK' : `ROLLBACK TO ${sp}; RELEASE ${sp}`)
+          throw err
+        }
       }
+      return Object.assign(run('BEGIN'), { immediate: run('BEGIN IMMEDIATE') })
     }
   })
   return { raw, db: db as unknown as Database.Database }
