@@ -50,8 +50,8 @@
   --titlebar-h: 36px;
 }
 
-/* ---------- Dark theme (Discord-like, default) ---------- */
-/* Elevation ladder does the separating (rail darkest → content lightest), Discord-style.
+/* ---------- Dark theme (default) ---------- */
+/* Elevation ladder does the separating (rail darkest → content lightest).
    Borders stay almost invisible. */
 :root[data-theme='dark'] {
   --bg-app: #191a1d;

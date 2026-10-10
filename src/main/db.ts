@@ -276,9 +276,7 @@ export function migrate(d: Database.Database): void {
     })()
   }
   if (version < 12) {
-    // Imported cards remember where they came from: `external_id` is `anki:<note guid>:<ord>`
-    // for a card read from an Anki package, null for everything else. The unique index lets
-    // a second import of the same package skip the cards it already brought in. Additive.
+    // `external_id` marked cards from the removed deck import; null for everything else. Additive.
     const has = (table: string, column: string): boolean =>
       (d.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).some((c) => c.name === column)
     d.transaction(() => {

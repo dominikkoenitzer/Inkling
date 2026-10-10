@@ -7,7 +7,7 @@ import type { ColorKey } from '@shared/types'
 
 const api = window.inkling
 
-/** Discord-style word initials for a notebook cover: "My Notebook" → "MN". */
+/** Word initials for a notebook cover: "My Notebook" → "MN". */
 function initials(name: string): string {
   return (
     name

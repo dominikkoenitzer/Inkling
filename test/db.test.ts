@@ -149,8 +149,8 @@ describe('migrate to v12', () => {
     migrate(db)
     raw.exec(`INSERT INTO flashcard_decks (id, name) VALUES (1, 'Cells')`)
     raw.exec(`INSERT INTO flashcards (deck_id, front, back) VALUES (1, 'a', 'b'), (1, 'c', 'd')`)
-    raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'e', 'f', 'anki:x:0')`)
-    expect(() => raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'g', 'h', 'anki:x:0')`)).toThrow()
+    raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'e', 'f', 'pkg:x:0')`)
+    expect(() => raw.exec(`INSERT INTO flashcards (deck_id, front, back, external_id) VALUES (1, 'g', 'h', 'pkg:x:0')`)).toThrow()
   })
 })
 

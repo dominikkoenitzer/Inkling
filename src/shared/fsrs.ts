@@ -14,7 +14,7 @@
  * So a card comes due exactly when it did, and its next review simply runs the new formulas.
  *
  * Pure: the caller passes `now`. Formulas are covered in test/fsrs.test.ts.
- * https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm
+ * See the algorithm description in the Open Spaced Repetition project wiki.
  */
 
 /** 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches the review UI's keys 1–4. */
