@@ -165,12 +165,17 @@ app.whenReady().then(() => {
     console.error('trash purge failed', err)
   }
   if (devHooks && process.env['INKLING_SEED']) seedDemo()
-  // Tasks from before checkboxes lived only in notes get a note of their own. Neither step
-  // may keep the window from opening.
+  // Tasks from before checkboxes lived only in notes get a note of their own, and rows for
+  // empty lines go. No step may keep the window from opening.
   try {
     repos.adoptLooseTasks()
   } catch (err) {
     console.error('adopting loose tasks failed', err)
+  }
+  try {
+    repos.dropBlankTasks()
+  } catch (err) {
+    console.error('dropping blank tasks failed', err)
   }
   // First run: a welcome note, no wizard.
   try {

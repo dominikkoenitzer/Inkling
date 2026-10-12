@@ -132,6 +132,12 @@ describe('createNote', () => {
     expect(repos.openTasks().map((t) => [t.title, t.note_title])).toEqual([['Call the vet', 'Errands']])
   })
 
+  it('makes no to-do from an empty checkbox line', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: '- [ ] \n- [ ] Buy agar' })
+    expect(note.todosCreated).toBe(1)
+    expect(tasksOf(note.id).map((t) => t.title)).toEqual(['Buy agar'])
+  })
+
   it('makes an empty note without Markdown', () => {
     const note = tools.createNote({ title: 'Blank' })
     expect(note.todosCreated).toBe(0)

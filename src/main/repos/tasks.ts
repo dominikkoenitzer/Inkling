@@ -3,6 +3,7 @@ import { now } from './dates'
 import { homeNotebookId } from './notebooks'
 import { createNote, getNote } from './notes'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
+import { extractNoteTaskItems } from '@shared/noteTasks'
 import type { NoteTaskItem, OpenTask, Task } from '@shared/types'
 
 // A task is a checkbox line in a note. The rows here mirror those lines for Today and search.
@@ -45,7 +46,12 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
     const existing = db.prepare(`SELECT * FROM tasks WHERE note_id = ?`).all(noteId) as Task[]
     const byId = new Map(existing.map((t) => [t.id, t]))
     for (const item of items) {
-      const title = item.title.trim() || 'Untitled task'
+      const title = item.title.trim()
+      // An empty line is not a to-do yet: no row, and 0 so nothing is stamped on it.
+      if (!title) {
+        ids.push(0)
+        continue
+      }
       const current = item.taskId !== null ? byId.get(item.taskId) : undefined
       if (current) {
         const status = item.checked ? 'done' : 'todo'
@@ -79,6 +85,34 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
   // in between cannot fail it.
   tx.immediate()
   return ids
+}
+
+/**
+ * Older builds made a row titled "Untitled task" for an empty checkbox line, and it showed on
+ * Today. Drops the rows whose line is still empty. Safe to run on every start.
+ */
+export function dropBlankTasks(): number {
+  const db = getDb()
+  let dropped = 0
+  db.transaction(() => {
+    const rows = db
+      .prepare(`SELECT t.id, n.content FROM tasks t JOIN notes n ON n.id = t.note_id WHERE t.title = 'Untitled task'`)
+      .all() as Array<{ id: number; content: string }>
+    for (const row of rows) {
+      let doc: Record<string, unknown>
+      try {
+        doc = JSON.parse(row.content) as Record<string, unknown>
+      } catch {
+        continue // malformed content, skip
+      }
+      const line = extractNoteTaskItems(doc).find((i) => i.taskId === row.id)
+      if (!line || line.title) continue
+      db.prepare(`DELETE FROM tasks WHERE id = ?`).run(row.id)
+      ftsDelete('task', row.id)
+      dropped++
+    }
+  })()
+  return dropped
 }
 
 /**

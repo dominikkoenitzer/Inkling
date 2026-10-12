@@ -61,7 +61,7 @@ function saveWithTasks(note: Note, doc: Doc): { note: Note; todosCreated: number
   const ids = items.length > 0 || known.size > 0 ? repos.syncNoteTasks(note.id, note.notebook_id, items) : []
   const saved = repos.updateNote(note.id, { content: JSON.stringify(stampTaskIds(doc, ids)) })
   if (!saved) throw new Error(`The note with id ${note.id} was deleted.`)
-  return { note: saved, todosCreated: ids.filter((id) => !known.has(id)).length }
+  return { note: saved, todosCreated: ids.filter((id) => id > 0 && !known.has(id)).length }
 }
 
 const summary = (n: Note): NoteSummary => ({ id: n.id, title: titleOf(n), updatedAt: n.updated_at })

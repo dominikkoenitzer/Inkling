@@ -10,7 +10,7 @@ let db: Database.Database
 vi.mock('../src/main/db', () => ({ getDb: () => db }))
 
 const { createNote } = await import('../src/main/repos/notes')
-const { adoptLooseTasks, openTasks, setTaskDone, syncNoteTasks } = await import('../src/main/repos/tasks')
+const { adoptLooseTasks, dropBlankTasks, openTasks, setTaskDone, syncNoteTasks } = await import('../src/main/repos/tasks')
 const { searchQuery } = await import('../src/main/repos/search')
 
 const tasksForNote = (noteId: number): Task[] => db.prepare(`SELECT * FROM tasks WHERE note_id = ? ORDER BY id`).all(noteId) as Task[]
@@ -110,6 +110,37 @@ describe('openTasks', () => {
 
     raw.prepare(`UPDATE notes SET deleted_at = '2026-01-01' WHERE id = ?`).run(noteId)
     expect(openTasks()).toEqual([])
+  })
+})
+
+describe('an empty checkbox line', () => {
+  it('gets no task and stays off Today', () => {
+    const note = createNote({ notebook_id: 1, title: 'Lab', content: docOf(list(item(null, 'Buy agar'), item(null, '  '))) })
+
+    const ids = syncNoteTasks(note.id, 1, itemsOf(note.content))
+
+    expect(ids[1]).toBe(0)
+    expect(tasksForNote(note.id).map((t) => t.title)).toEqual(['Buy agar'])
+    expect(openTasks().map((t) => t.title)).toEqual(['Buy agar'])
+  })
+
+  it('drops the row an older build made for it', () => {
+    const { noteId, ids } = linkedNote()
+    raw.exec(`INSERT INTO tasks (notebook_id, note_id, title, status) VALUES (1, ${noteId}, 'Untitled task', 'todo')`)
+    const blank = (raw.prepare(`SELECT MAX(id) AS id FROM tasks`).get() as { id: number }).id
+    raw.prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(docOf(list(item(ids[0], 'Buy agar'), item(blank, ''), item(ids[1], 'Book the lab'))), noteId)
+
+    expect(dropBlankTasks()).toBe(1)
+
+    expect(openTasks().map((t) => t.title)).toEqual(['Buy agar', 'Book the lab'])
+  })
+
+  it('keeps a to-do someone named "Untitled task"', () => {
+    const note = createNote({ notebook_id: 1, title: 'Lab', content: docOf(list(item(null, 'Untitled task'))) })
+    syncNoteTasks(note.id, 1, itemsOf(note.content))
+
+    expect(dropBlankTasks()).toBe(0)
+    expect(openTasks().map((t) => t.title)).toEqual(['Untitled task'])
   })
 })
 
