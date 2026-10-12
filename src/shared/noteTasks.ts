@@ -3,6 +3,8 @@ import type { NoteTaskItem } from './types'
 
 type DocNode = { type?: string; text?: string; attrs?: Record<string, unknown>; content?: unknown[] }
 
+const NESTED_LISTS = new Set(['taskList', 'taskItem', 'bulletList', 'orderedList', 'listItem'])
+
 /** Every task item of a doc in document order, with the task id an earlier sync stamped. */
 export function extractNoteTaskItems(doc: Record<string, unknown>): NoteTaskItem[] {
   const items: NoteTaskItem[] = []
@@ -10,17 +12,20 @@ export function extractNoteTaskItems(doc: Record<string, unknown>): NoteTaskItem
     const parts: string[] = []
     const walk = (m: DocNode): void => {
       if (typeof m.text === 'string') parts.push(m.text)
+      if (m.type === 'hardBreak') parts.push(' ')
       if (Array.isArray(m.content)) {
         m.content.forEach((c) => {
-          // A nested checklist is its own task; its text stays out of this item's title.
-          const type = (c as DocNode).type
-          if (type === 'taskList' || type === 'taskItem') return
-          walk(c as DocNode)
+          // A nested list is lines of its own; its text stays out of this item's title.
+          const child = c as DocNode
+          if (child.type && NESTED_LISTS.has(child.type)) return
+          walk(child)
+          // Blocks inside the item are separate lines, so their words stay apart.
+          if (Array.isArray(child.content)) parts.push(' ')
         })
       }
     }
     walk(n)
-    return parts.join('')
+    return parts.join('').replace(/\s+/g, ' ').trim()
   }
   const walk = (n: DocNode): void => {
     if (n.type === 'taskItem') {

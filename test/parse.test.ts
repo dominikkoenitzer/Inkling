@@ -88,4 +88,24 @@ describe('extractNoteTaskItems', () => {
     expect(items[0].title).toBe('Groceries') // not "GroceriesMilk"
     expect(items[1].title).toBe('Milk')
   })
+
+  it('keeps words apart across a line break and a second paragraph', () => {
+    const item = {
+      type: 'taskItem',
+      attrs: { checked: false, taskId: null },
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Buy' }, { type: 'hardBreak' }, { type: 'text', text: 'milk' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'and  eggs ' }] }
+      ]
+    }
+    const items = extractNoteTaskItems(JSON.parse(doc([{ type: 'taskList', content: [item] }])))
+    expect(items.map((i) => i.title)).toEqual(['Buy milk and eggs'])
+  })
+
+  it('leaves a nested bullet or numbered list out of the title', () => {
+    const bullets = { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'socks' }] }] }] }
+    const numbered = { type: 'orderedList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'shoes' }] }] }] }
+    const d = JSON.parse(doc([{ type: 'taskList', content: [taskItem('Pack', false, [bullets, numbered])] }]))
+    expect(extractNoteTaskItems(d).map((i) => i.title)).toEqual(['Pack'])
+  })
 })
