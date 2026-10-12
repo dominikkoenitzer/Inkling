@@ -220,7 +220,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 
         {deck.note_id !== null && cards.some((c) => c.source_line !== null) && (
           <p className="mt-6 text-sm text-muted">
-            Cards from a note are edited in that note, so the next Flashcards press keeps your change.{' '}
+            These cards live in a note. Edit them there, then press Flashcards again.{' '}
             <button
               type="button"
               onClick={() => useApp.getState().openNote(deck.note_id!)}

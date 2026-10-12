@@ -159,7 +159,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                   </>
                 )
               ) : (
-                <div className="text-xs text-faint">click or press Space to reveal</div>
+                <div className="text-xs text-faint">Click or press Space to see the answer</div>
               )}
             </div>
             {showBack && (

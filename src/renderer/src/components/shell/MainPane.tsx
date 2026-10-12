@@ -24,7 +24,7 @@ export function MainPane(): React.JSX.Element {
   }
   return (
     <EmptyState
-      title="Pick a note, or start a new one"
+      title="Pick a note, or start a new one."
       action={
         <Button variant="primary" onClick={() => void useApp.getState().newNote()}>
           <Plus size={15} /> New note

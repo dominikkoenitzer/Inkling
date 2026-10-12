@@ -110,7 +110,7 @@ export function CommandPalette(): React.JSX.Element {
               setSelected(0)
             }}
             onKeyDown={onKey}
-            placeholder="Search your notes"
+            placeholder="Search notes, to-dos and decks"
             className="h-12 flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
         </div>

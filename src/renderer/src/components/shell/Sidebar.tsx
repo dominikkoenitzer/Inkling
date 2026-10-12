@@ -119,7 +119,7 @@ function NotesList(): React.JSX.Element {
         if (!undoable.includes(n.id)) undoable = [...undoable, n.id]
         const ids = undoable
         useApp.getState().showToast({
-          message: ids.length === 1 ? `Deleted "${n.title?.trim() || 'Untitled'}"` : `Deleted ${ids.length} notes`,
+          message: ids.length === 1 ? `Deleted “${n.title?.trim() || 'Untitled'}”` : `Deleted ${ids.length} notes`,
           actionLabel: 'Undo',
           onAction: () => {
             undoable = []
