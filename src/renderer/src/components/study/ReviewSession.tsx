@@ -131,14 +131,16 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
           <div className="flex flex-col items-center gap-2 text-center">
             <Inky size={44} className="mb-2" />
             <div className="text-[15px] font-medium">{reviewed > 0 ? 'All caught up.' : 'Nothing due in this deck.'}</div>
-            <div className="max-w-sm text-muted">
+            <div className="max-w-sm text-sm text-muted">
               {reviewed > 0
                 ? `You reviewed ${reviewed} card${reviewed === 1 ? '' : 's'}. Cards you struggled with will come back sooner.`
                 : 'Come back when cards are due. Spaced repetition works best that way.'}
             </div>
-            <Button variant="primary" onClick={finish}>
-              Done
-            </Button>
+            <div className="mt-3">
+              <Button variant="primary" onClick={finish}>
+                Done
+              </Button>
+            </div>
           </div>
         ) : card ? (
           <>

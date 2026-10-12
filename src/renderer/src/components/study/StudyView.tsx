@@ -307,7 +307,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
     }
   }
 
-  const field = 'min-w-0 rounded px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-raised focus:ring-1 focus:ring-accent'
+  const field = 'min-w-0 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-raised focus:ring-1 focus:ring-accent'
 
   return (
     <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">

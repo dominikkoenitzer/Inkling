@@ -111,7 +111,7 @@ export function TodayView(): React.JSX.Element {
                     <button
                       type="button"
                       onClick={() => useApp.getState().openNote(t.note_id!)}
-                      className="max-w-[40%] shrink-0 truncate rounded px-1.5 py-0.5 text-xs text-faint transition-colors hover:bg-hover hover:text-muted"
+                      className="max-w-[40%] shrink-0 truncate rounded-md px-1.5 py-0.5 text-xs text-faint transition-colors hover:bg-hover hover:text-muted"
                     >
                       {t.note_title?.trim() || 'Untitled'}
                     </button>
