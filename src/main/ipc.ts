@@ -2,6 +2,12 @@ import { ipcMain, BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
 import * as repos from './repos'
 import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
+import { RATINGS } from '@shared/fsrs'
+import type { ReviewGrade } from '@shared/types'
+
+/** The only setting the renderer writes; the rest are read-only from there. */
+const WRITABLE_SETTINGS = new Set(['theme'])
+const GRADES = new Set(Object.keys(RATINGS))
 
 type Handler = (...args: never[]) => unknown
 
@@ -33,10 +39,16 @@ export function registerIpc(): void {
   handle('decks.addCard', repos.addCard)
   handle('decks.updateCard', repos.updateCard)
   handle('decks.removeCard', repos.removeCard)
-  handle('decks.review', repos.reviewCard)
+  handle('decks.review', (cardId: number, grade: ReviewGrade) => {
+    if (!GRADES.has(grade)) throw new Error(`unknown grade: ${String(grade)}`)
+    return repos.reviewCard(cardId, grade)
+  })
 
   handle('settings.all', repos.allSettings)
-  handle('settings.set', repos.setSetting)
+  handle('settings.set', (key: string, value: string) => {
+    if (!WRITABLE_SETTINGS.has(key) || typeof value !== 'string') throw new Error(`setting cannot be written: ${String(key)}`)
+    repos.setSetting(key, value)
+  })
 
   handle('search.query', repos.searchQuery)
 
