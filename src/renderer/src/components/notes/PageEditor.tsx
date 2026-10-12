@@ -60,6 +60,30 @@ const CardLineId = Extension.create({
   }
 })
 
+/** Ctrl+Enter ticks or unticks the to-do the cursor is in; anywhere else the key works as before. */
+const ToggleTodo = Extension.create({
+  name: 'toggleTodo',
+  // Ahead of the hard break, which also listens for Mod-Enter.
+  priority: 101,
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Enter': () =>
+        this.editor.commands.command(({ tr, dispatch }) => {
+          const { $from } = tr.selection
+          // In a code block the key leaves the block, as it always did.
+          if ($from.parent.type.spec.code) return false
+          for (let depth = $from.depth; depth > 0; depth--) {
+            const node = $from.node(depth)
+            if (node.type.name !== 'taskItem') continue
+            if (dispatch) tr.setNodeMarkup($from.before(depth), undefined, { ...node.attrs, checked: !node.attrs.checked })
+            return true
+          }
+          return false
+        })
+    }
+  }
+})
+
 function itemsEqual(a: NoteTaskItem[], b: NoteTaskItem[]): boolean {
   if (a.length !== b.length) return false
   return a.every((x, i) => x.taskId === b[i].taskId && x.title === b[i].title && x.checked === b[i].checked)
@@ -95,7 +119,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       Placeholder.configure({ placeholder: 'Start writing. Type # for a heading, [ ] for a to-do.' }),
       TaskList,
       LinkedTaskItem.configure({ nested: true }),
-      CardLineId
+      CardLineId,
+      ToggleTodo
     ],
     onUpdate: () => {
       if (syncingRef.current) return
