@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { join } from 'path'
 
 /** Just enough of Electron for the main process to start up without a window on screen. */
 const electron = vi.hoisted(() => {
@@ -32,10 +33,11 @@ const electron = vi.hoisted(() => {
     whenReady: vi.fn(() => Promise.resolve())
   }
   const spawn = vi.fn(() => ({ on: vi.fn() }))
-  return { app, BrowserWindow, handlers, windows, openDb: vi.fn(), spawn }
+  const dialog = { showErrorBox: vi.fn() }
+  return { app, BrowserWindow, dialog, handlers, windows, openDb: vi.fn(), spawn }
 })
 
-vi.mock('electron', () => ({ app: electron.app, BrowserWindow: electron.BrowserWindow, shell: { openExternal: vi.fn() } }))
+vi.mock('electron', () => ({ app: electron.app, BrowserWindow: electron.BrowserWindow, dialog: electron.dialog, shell: { openExternal: vi.fn() } }))
 vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn() } }))
 vi.mock('../src/main/db', () => ({ openDb: electron.openDb, getDb: vi.fn() }))
 vi.mock('../src/main/ipc', () => ({ registerIpc: vi.fn() }))
@@ -89,6 +91,22 @@ describe('one running copy per profile', () => {
     const [setPathAt] = electron.app.setPath.mock.invocationCallOrder
     const [lockAt] = electron.app.requestSingleInstanceLock.mock.invocationCallOrder
     expect(lockAt).toBeGreaterThan(setPathAt)
+  })
+})
+
+describe('a database that cannot be opened', () => {
+  it('says so with the path and quits instead of hanging without a window', async () => {
+    electron.openDb.mockImplementationOnce(() => {
+      throw new Error('file is not a database')
+    })
+    await launch(true)
+
+    expect(electron.dialog.showErrorBox).toHaveBeenCalledTimes(1)
+    const [, message] = electron.dialog.showErrorBox.mock.calls[0] as unknown as [string, string]
+    expect(message).toContain(join('/home/profile', 'inkling.db'))
+    expect(message).toContain('file is not a database')
+    expect(electron.app.quit).toHaveBeenCalled()
+    expect(electron.windows).toHaveLength(0)
   })
 })
 

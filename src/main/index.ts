@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
@@ -157,7 +157,16 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   if (!isPrimary) return // quitting, or serving MCP: either way no window here
-  openDb(app.getPath('userData'))
+  const dataDir = app.getPath('userData')
+  try {
+    openDb(dataDir)
+  } catch (err) {
+    // Without its data the app cannot run: say what failed and quit, which frees the lock too.
+    console.error('opening the database failed', err)
+    const reason = err instanceof Error ? err.message : String(err)
+    dialog.showErrorBox('Inkling could not start', `Inkling could not open its data at\n${join(dataDir, 'inkling.db')}\n\n${reason}`)
+    return app.quit()
+  }
   // Clear anything that has sat in the trash past the retention window.
   try {
     repos.purgeExpiredNotes()
