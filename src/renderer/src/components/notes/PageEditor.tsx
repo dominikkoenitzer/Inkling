@@ -222,7 +222,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     if (!editor || notebookIdRef.current === null) return
     const lines = extractNoteCardLines(editor.getJSON() as Record<string, unknown>)
     if (lines.length === 0) {
-      setFlashMsg('Write a line like “Term :: Definition” first.', 3500)
+      setFlashMsg('Write a line like Term :: Definition or {{c1::word}} first.', 3500)
       return
     }
     // The note's own deck: made on the first run, updated in place on every later one.
@@ -409,7 +409,7 @@ function Toolbar({
         action={run((c) => c.toggleTaskList())}
       />
       <Divider />
-      <IconBtn title="Make or update flashcards from “Term :: Definition” lines" onClick={onFlashcards} className="!w-auto gap-1.5 px-2 text-sm">
+      <IconBtn title="Turn Term :: Definition and {{c1::cloze}} lines into cards" onClick={onFlashcards} className="!w-auto gap-1.5 px-2 text-sm">
         <Layers size={15} />
         Flashcards
       </IconBtn>

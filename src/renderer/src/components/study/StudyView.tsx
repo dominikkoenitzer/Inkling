@@ -227,7 +227,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
         )}
 
         <div className="mt-8 grid grid-cols-[1fr_1fr_auto] gap-2">
-          <input className={inputCls} placeholder="Front" value={front} onChange={(e) => setFront(e.target.value)} />
+          <input className={inputCls} placeholder="Front, or a {{c1::cloze}}" value={front} onChange={(e) => setFront(e.target.value)} />
           <input
             className={inputCls}
             placeholder="Back"
