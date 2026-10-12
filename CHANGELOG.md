@@ -4,6 +4,28 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] - 2026-10-12
+
+### Changed
+- Today explains to-dos with a framed `[ ]`, and Ctrl+Enter ticks the to-do your cursor is in.
+- Toolbar tooltips show their shortcuts, and fill-in-the-blank cards (`{{c1::word}}`) are
+  mentioned where cards are made.
+- Faint text is easier to read, nothing on screen is see-through any more, and the same icon
+  no longer repeats on every row.
+- Deleting a deck can be called off with "Keep it".
+
+### Fixed
+- An empty checkbox line no longer shows up on Today as "Untitled task".
+- Words on separate lines of a to-do no longer run together in its title.
+- Cards from a note in the trash no longer count as due, and they can be edited again once the
+  note is gone for good.
+- If Inkling cannot open its data, it says so and closes instead of hanging with no window.
+- A to-do keeps its due date when its line moves to another note.
+- Updating from 0.7 keeps the dark theme if you never picked one, and makes one "Tasks" note
+  instead of one per notebook.
+- Deleting a note waits for its last edit to be saved.
+- Today notices a new day after the computer wakes from sleep.
+
 ## [0.8.0] - 2026-10-10
 
 A calmer, simpler Inkling, built around your notes.
