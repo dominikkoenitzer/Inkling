@@ -113,6 +113,65 @@ describe('openTasks', () => {
   })
 })
 
+describe('a dated to-do that moves', () => {
+  const DUE = '2026-11-02T09:00:00.000Z'
+  /** Note A with a dated to-do and note B, both live. */
+  function dated(): { a: number; b: number; id: number } {
+    const { noteId, ids } = linkedNote()
+    raw.prepare(`UPDATE tasks SET due_date = ? WHERE id = ?`).run(DUE, ids[0])
+    const b = createNote({ notebook_id: 1, title: 'Shop', content: docOf() })
+    return { a: noteId, b: b.id, id: ids[0] }
+  }
+  const row = (id: number): Task => raw.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id) as unknown as Task
+
+  it('takes its row along when the other note no longer has the line', () => {
+    const { a, b, id } = dated()
+    raw.prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(docOf(list(item(tasksForNote(a)[1].id, 'Book the lab'))), a)
+
+    expect(syncNoteTasks(b, 1, [{ taskId: id, title: 'Buy agar', checked: false }])).toEqual([id])
+
+    expect(row(id)).toMatchObject({ note_id: b, due_date: DUE })
+  })
+
+  it('keeps the date when it is cut from one note and pasted into another', () => {
+    const { a, b, id } = dated()
+    const [, other] = tasksForNote(a)
+    syncNoteTasks(a, 1, [{ taskId: other.id, title: 'Book the lab', checked: false }])
+
+    const [moved] = syncNoteTasks(b, 1, [{ taskId: id, title: 'Buy agar', checked: false }])
+
+    expect(row(moved)).toMatchObject({ note_id: b, title: 'Buy agar', due_date: DUE })
+    expect(openTasks().map((t) => [t.title, t.due_date])).toEqual([
+      ['Buy agar', DUE],
+      ['Book the lab', null]
+    ])
+  })
+
+  it('keeps the date when a deleted line comes back with undo', () => {
+    const { a, id } = dated()
+    const [, other] = tasksForNote(a)
+    syncNoteTasks(a, 1, [{ taskId: other.id, title: 'Book the lab', checked: false }])
+
+    const ids = syncNoteTasks(a, 1, [
+      { taskId: id, title: 'Buy agar', checked: false },
+      { taskId: other.id, title: 'Book the lab', checked: false }
+    ])
+
+    expect(ids).toEqual([id, other.id])
+    expect(row(id)).toMatchObject({ note_id: a, due_date: DUE })
+  })
+
+  it('gives a pasted copy its own row and leaves the original where it is', () => {
+    const { a, b, id } = dated()
+
+    const [copy] = syncNoteTasks(b, 1, [{ taskId: id, title: 'Buy agar', checked: false }])
+
+    expect(copy).not.toBe(id)
+    expect(row(id)).toMatchObject({ note_id: a, due_date: DUE })
+    expect(row(copy)).toMatchObject({ note_id: b, due_date: DUE })
+  })
+})
+
 describe('an empty checkbox line', () => {
   it('gets no task and stays off Today', () => {
     const note = createNote({ notebook_id: 1, title: 'Lab', content: docOf(list(item(null, 'Buy agar'), item(null, '  '))) })

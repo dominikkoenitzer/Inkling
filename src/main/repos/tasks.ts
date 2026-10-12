@@ -35,6 +35,20 @@ export function setTaskDone(id: number, done: boolean): Task | null {
   return getTask(id)
 }
 
+/** Rows a sync deleted in this session, so a line that comes back gets its row back. */
+const removedTasks = new Map<number, Task>()
+
+/** Whether a note's stored content still has a checkbox line linked to `taskId`. */
+function noteHasTask(noteId: number | null, taskId: number): boolean {
+  const note = noteId !== null ? getNote(noteId) : null
+  if (!note) return false
+  try {
+    return extractNoteTaskItems(JSON.parse(note.content) as Record<string, unknown>).some((i) => i.taskId === taskId)
+  } catch {
+    return false // malformed content holds no lines
+  }
+}
+
 /**
  * Create or update a task row per checklist item in a note, and prune tasks whose checkbox
  * was deleted. Returns ids in the same order as `items`, for stamping back into the doc.
@@ -52,7 +66,13 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
         ids.push(0)
         continue
       }
-      const current = item.taskId !== null ? byId.get(item.taskId) : undefined
+      const known = item.taskId !== null ? getTask(item.taskId) : null
+      let current = item.taskId !== null ? byId.get(item.taskId) : undefined
+      if (!current && known && known.note_id !== noteId && !noteHasTask(known.note_id, known.id)) {
+        // The line moved here from another note: its row comes along, due date and all.
+        db.prepare(`UPDATE tasks SET note_id = ?, notebook_id = ? WHERE id = ?`).run(noteId, notebookId, known.id)
+        current = known
+      }
       if (current) {
         const status = item.checked ? 'done' : 'todo'
         db.prepare(`UPDATE tasks SET title = ?, status = ?, completed_at = ? WHERE id = ?`).run(
@@ -65,13 +85,27 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
         ids.push(current.id)
         byId.delete(current.id)
       } else {
+        // A line back after its row was deleted (undo, or cut and pasted) gets the row back
+        // under its old id; a copy of a line gets a row of its own. Both keep the due date.
+        const gone = item.taskId !== null ? removedTasks.get(item.taskId) : undefined
         const info = db
           .prepare(
-            `INSERT INTO tasks (notebook_id, note_id, title, status, created_at, completed_at)
-             VALUES (?, ?, ?, ?, ?, ?)`
+            `INSERT INTO tasks (id, notebook_id, note_id, title, status, due_date, created_at, completed_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
           )
-          .run(notebookId, noteId, title, item.checked ? 'done' : 'todo', now(), item.checked ? now() : null)
+          .run(
+            gone && !known ? gone.id : null,
+            notebookId,
+            noteId,
+            title,
+            item.checked ? 'done' : 'todo',
+            gone?.due_date ?? known?.due_date ?? null,
+            gone?.created_at ?? now(),
+            item.checked ? (gone?.completed_at ?? now()) : null
+          )
         const newId = Number(info.lastInsertRowid)
+        if (gone) removedTasks.delete(gone.id)
+        removedTasks.delete(newId) // an id used again belongs to the new row now
         ftsUpsert('task', newId, title, '')
         ids.push(newId)
       }
@@ -79,6 +113,7 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
     for (const orphan of byId.values()) {
       db.prepare(`DELETE FROM tasks WHERE id = ?`).run(orphan.id)
       ftsDelete('task', orphan.id)
+      removedTasks.set(orphan.id, orphan)
     }
   })
   // Reads before it writes: take the write lock first, so a commit from the MCP server
