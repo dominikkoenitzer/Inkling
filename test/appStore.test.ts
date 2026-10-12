@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const inkling = vi.hoisted(() => {
   const api = {
+    settings: { all: vi.fn(async (): Promise<Record<string, string>> => ({})) },
     notebooks: { home: vi.fn(async () => 3) },
     notes: {
       restore: vi.fn(async () => undefined),
@@ -98,5 +99,31 @@ describe('settleNote', () => {
     void trackSave(8, Promise.reject(new Error('offline'))).catch(() => undefined)
     await expect(settleNote(8)).resolves.toBeUndefined()
     await expect(settleNote(9)).resolves.toBeUndefined()
+  })
+})
+
+describe('init', () => {
+  it('keeps the saved theme for the failed-start screen when only the notebook could not be read', async () => {
+    inkling.settings.all.mockResolvedValueOnce({ theme: 'dark' })
+    inkling.notebooks.home.mockRejectedValueOnce(new Error('locked'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    useApp.setState({ ready: false, failed: false, theme: 'light' })
+    await useApp.getState().init()
+    quiet.mockRestore()
+    expect(useApp.getState().failed).toBe(true)
+    expect(useApp.getState().theme).toBe('dark')
+  })
+
+  it("falls back to the system's theme when the settings could not be read", async () => {
+    inkling.settings.all.mockRejectedValueOnce(new Error('locked'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const win = globalThis as unknown as { window: { matchMedia?: (q: string) => { matches: boolean } } }
+    win.window.matchMedia = (q) => ({ matches: q === '(prefers-color-scheme: dark)' })
+    useApp.setState({ ready: false, failed: false, theme: 'light' })
+    await useApp.getState().init()
+    quiet.mockRestore()
+    delete win.window.matchMedia
+    expect(useApp.getState().failed).toBe(true)
+    expect(useApp.getState().theme).toBe('dark')
   })
 })

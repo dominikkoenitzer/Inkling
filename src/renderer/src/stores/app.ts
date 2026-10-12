@@ -23,6 +23,10 @@ export function msUntilNextLocalDay(now: Date = new Date()): number {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime()
 }
 
+function systemTheme(): Theme {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 interface AppState {
   ready: boolean
   /** Set when the data could not be read at start. */
@@ -77,8 +81,10 @@ export const useApp = create<AppState>((set, get) => ({
   toast: null,
 
   init: async () => {
+    // Asked for on its own, so a failed start can still show the saved theme.
+    const stored = api.settings.all()
     try {
-      const [settings, home] = await Promise.all([api.settings.all(), api.notebooks.home()])
+      const [settings, home] = await Promise.all([stored, api.notebooks.home()])
       set({
         ready: true,
         failed: false,
@@ -88,7 +94,10 @@ export const useApp = create<AppState>((set, get) => ({
       })
     } catch (err) {
       console.error('could not load settings', err)
-      set({ failed: true })
+      const settings = await stored.catch(() => null)
+      // The saved theme if it could be read, otherwise the system's.
+      const theme: Theme = settings ? (settings['theme'] === 'dark' ? 'dark' : 'light') : systemTheme()
+      set({ failed: true, theme })
     }
   },
 

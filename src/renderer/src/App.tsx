@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { Search } from 'lucide-react'
 import { useApp, watchDay, watchFocus, bumpData } from '@/stores/app'
 import { Sidebar } from '@/components/shell/Sidebar'
@@ -38,12 +38,13 @@ export default function App(): React.JSX.Element {
     return () => clearInterval(id)
   }, [])
 
-  // Only once the saved theme is known: the window already opened in it.
-  useEffect(() => {
-    if (!ready) return
+  // Only once the theme is known: the saved one, or after a failed start the system's.
+  // Set before paint, so the first frame already wears it.
+  useLayoutEffect(() => {
+    if (!ready && !failed) return
     document.documentElement.dataset.theme = theme
     void api.app.setTitlebar(theme)
-  }, [ready, theme])
+  }, [ready, failed, theme])
 
   // Ctrl+K search, Ctrl+N new note, Ctrl+, settings.
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function App(): React.JSX.Element {
 
   if (failed) {
     return (
-      <div className="titlebar-drag flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-sm" style={{ background: '#fbfaf8', color: '#625d56' }}>
+      <div className="titlebar-drag flex h-full flex-col items-center justify-center gap-4 bg-app p-8 text-center text-sm text-muted">
         Inkling could not open its data.
         <button
           type="button"
@@ -76,8 +77,7 @@ export default function App(): React.JSX.Element {
             useApp.setState({ failed: false })
             void useApp.getState().init()
           }}
-          className="no-drag rounded-md border px-3 py-1.5"
-          style={{ borderColor: '#e8e4dd', color: '#1f1d1a' }}
+          className="no-drag rounded-md border border-edge px-3 py-1.5 text-ink"
         >
           Try again
         </button>
