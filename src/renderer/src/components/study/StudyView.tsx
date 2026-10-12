@@ -138,6 +138,18 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
       stale = true
     }
   }, [deck.id, version])
+
+  // A deleted note has nothing to open, so its link stays hidden.
+  const notesVersion = useVersion('notes')
+  const [noteExists, setNoteExists] = useState(false)
+  useEffect(() => {
+    if (deck.note_id === null) return
+    let stale = false
+    void api.notes.get(deck.note_id).then((n) => !stale && setNoteExists(!!n && !n.deleted_at))
+    return () => {
+      stale = true
+    }
+  }, [deck.note_id, notesVersion])
   const adding = useRef(false)
 
   // A cloze front is a whole card on its own; the back is then an optional extra.
@@ -220,13 +232,15 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
         {deck.note_id !== null && cards.some((c) => c.source_line !== null) && (
           <p className="mt-6 text-sm text-muted">
             These cards live in a note. Edit them there, then press Flashcards again.{' '}
-            <button
-              type="button"
-              onClick={() => useApp.getState().openNote(deck.note_id!)}
-              className="font-medium text-accent-text underline-offset-2 hover:underline"
-            >
-              Open the note
-            </button>
+            {noteExists && (
+              <button
+                type="button"
+                onClick={() => useApp.getState().openNote(deck.note_id!)}
+                className="font-medium text-accent-text underline-offset-2 hover:underline"
+              >
+                Open the note
+              </button>
+            )}
           </p>
         )}
 
