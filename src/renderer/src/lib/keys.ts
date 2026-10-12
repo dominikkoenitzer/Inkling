@@ -44,6 +44,8 @@ export function tickTodo(tr: Transaction, dispatch: boolean): boolean {
   if ($from.parent.type.spec.code) return false
   for (let depth = $from.depth; depth > 0; depth--) {
     const node = $from.node(depth)
+    // A bullet or numbered item under a to-do keeps the key's hard break.
+    if (node.type.name === 'listItem') return false
     if (node.type.name !== 'taskItem') continue
     if (dispatch) tr.setNodeMarkup($from.before(depth), undefined, { ...node.attrs, checked: !node.attrs.checked })
     return true

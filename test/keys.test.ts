@@ -108,6 +108,13 @@ describe('tickTodo', () => {
     expect(ticks(press(nested, (d) => NodeSelection.create(d, find(d, 'Outer', 'taskItem').node)))).toEqual([true, false])
   })
 
+  it('leaves the key alone in a list item under a to-do', () => {
+    for (const list of ['bulletList', 'orderedList']) {
+      const doc = docOf({ type: 'taskList', content: [todo('Outer', { type: list, content: [{ type: 'listItem', content: [para('Point')] }] })] })
+      expect(press(doc, (d) => TextSelection.create(d, find(d, 'Point', 'listItem').text + 2))).toBeNull()
+    }
+  })
+
   it('leaves the key alone in a code block and outside to-dos', () => {
     const doc = docOf({ type: 'codeBlock', content: [{ type: 'text', text: 'let a' }] }, para('Plain'))
     expect(press(doc, (d) => TextSelection.create(d, find(d, 'let a', 'codeBlock').text + 1))).toBeNull()
