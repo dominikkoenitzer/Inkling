@@ -279,7 +279,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     <div className="flex h-full flex-col">
       {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExportMd={() => void exportMarkdown()} savedAt={savedAt} />}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[720px] px-10 pb-32 pt-10">
+        {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Study. */}
+        <div className="mx-auto max-w-[720px] px-10 pb-32 pt-3">
           <input
             value={title}
             onChange={(e) => {
