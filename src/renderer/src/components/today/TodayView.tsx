@@ -3,7 +3,7 @@ import { Layers, Plus } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { localDay } from '@shared/day'
 import { Inky } from '@/components/Inky'
-import { Button } from '@/components/ui'
+import { Button, Code } from '@/components/ui'
 import type { Deck, OpenTask } from '@shared/types'
 
 const api = window.inkling
@@ -81,7 +81,9 @@ export function TodayView(): React.JSX.Element {
           <div className="mt-16 flex flex-col items-center text-center">
             <Inky size={44} className="mb-4" />
             <p className="text-[15px] text-ink">Nothing open. Enjoy the calm.</p>
-            <p className="mt-1 text-sm text-muted">To-dos you write in a note with [] show up here.</p>
+            <p className="mt-1 text-sm text-muted">
+              Start a line in a note with <Code>[ ]</Code> to make a to-do. It shows up here.
+            </p>
             <Button variant="default" className="mt-5" onClick={() => void useApp.getState().newNote()}>
               <Plus size={15} /> New note
             </Button>

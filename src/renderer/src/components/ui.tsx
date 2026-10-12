@@ -174,6 +174,11 @@ export function Toaster(): React.JSX.Element | null {
   )
 }
 
+/** Something to type, shown as a small solid chip. */
+export function Code({ children }: { children: ReactNode }): React.JSX.Element {
+  return <code className="rounded border border-edge bg-panel px-1 font-mono text-[13px] text-ink">{children}</code>
+}
+
 export const inputCls =
   'w-full rounded-md border border-edge bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-accent'
 

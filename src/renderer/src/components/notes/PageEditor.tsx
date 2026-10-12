@@ -92,7 +92,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       // StarterKit v3 bundles Underline and Link; configure them here rather than registering twice.
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: true } }),
       Highlight,
-      Placeholder.configure({ placeholder: 'Start writing. “# ” makes a heading, “[] ” a to-do.' }),
+      Placeholder.configure({ placeholder: 'Start writing. Type # for a heading, [ ] for a to-do.' }),
       TaskList,
       LinkedTaskItem.configure({ nested: true }),
       CardLineId
