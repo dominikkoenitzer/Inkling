@@ -180,7 +180,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           onBlur={rename}
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
           aria-label="Deck name"
-          className="font-display w-full bg-transparent text-[32px] font-semibold leading-tight tracking-tight"
+          className="font-display -mx-1.5 w-full rounded-md bg-transparent px-1.5 text-[32px] font-semibold leading-tight tracking-tight focus:bg-raised focus:ring-1 focus:ring-accent"
         />
         <div className="mt-2 flex items-center gap-3 text-sm text-muted">
           <span>
@@ -308,7 +308,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
     }
   }
 
-  const field = 'min-w-0 rounded px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-hover'
+  const field = 'min-w-0 rounded px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-raised focus:ring-1 focus:ring-accent'
 
   return (
     <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
