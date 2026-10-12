@@ -8,13 +8,16 @@ import type { NoteTaskItem, OpenTask, Task } from '@shared/types'
 
 // A task is a checkbox line in a note. The rows here mirror those lines for Today and search.
 
-/** Open checkboxes from live notes: dated ones first, then the most recently edited notes. */
+/**
+ * Open checkboxes from live notes: dated ones first, then the most recently edited notes.
+ * An emptied line keeps its row with an empty title; that is no to-do and never listed.
+ */
 export function openTasks(): OpenTask[] {
   return getDb()
     .prepare(
       `SELECT t.*, n.title AS note_title FROM tasks t
        JOIN notes n ON n.id = t.note_id
-       WHERE t.status != 'done' AND n.deleted_at IS NULL
+       WHERE t.status != 'done' AND n.deleted_at IS NULL AND TRIM(t.title) != ''
        ORDER BY t.due_date IS NULL, t.due_date, n.updated_at DESC, t.id`
     )
     .all() as OpenTask[]
@@ -61,13 +64,16 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
     const byId = new Map(existing.map((t) => [t.id, t]))
     for (const item of items) {
       const title = item.title.trim()
-      // An empty line is not a to-do yet: no row, and 0 so nothing is stamped on it.
-      if (!title) {
+      let current = item.taskId !== null ? byId.get(item.taskId) : undefined
+      // An empty line is not a to-do yet: 0, so nothing is stamped on it. One that had a row
+      // here keeps it with an empty title, so its id is not freed and handed to a new line.
+      if (!title && !current) {
         ids.push(0)
         continue
       }
-      const known = item.taskId !== null ? getTask(item.taskId) : null
-      let current = item.taskId !== null ? byId.get(item.taskId) : undefined
+      const taken = item.taskId !== null ? getTask(item.taskId) : null
+      // Ids are reused, so another note's row only follows a line with the same text.
+      const known = taken && taken.title === title ? taken : null
       if (!current && known && known.note_id !== noteId && !noteHasTask(known.note_id, known.id)) {
         // The line moved here from another note: its row comes along, due date and all.
         db.prepare(`UPDATE tasks SET note_id = ?, notebook_id = ? WHERE id = ?`).run(noteId, notebookId, known.id)
@@ -81,20 +87,22 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
           status === 'done' ? (current.completed_at ?? now()) : null,
           current.id
         )
-        ftsUpsert('task', current.id, title, '')
+        if (title) ftsUpsert('task', current.id, title, '')
+        else ftsDelete('task', current.id)
         ids.push(current.id)
         byId.delete(current.id)
       } else {
         // A line back after its row was deleted (undo, or cut and pasted) gets the row back
         // under its old id; a copy of a line gets a row of its own. Both keep the due date.
-        const gone = item.taskId !== null ? removedTasks.get(item.taskId) : undefined
+        const removed = item.taskId !== null ? removedTasks.get(item.taskId) : undefined
+        const gone = removed && removed.title === title ? removed : undefined
         const info = db
           .prepare(
             `INSERT INTO tasks (id, notebook_id, note_id, title, status, due_date, created_at, completed_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .run(
-            gone && !known ? gone.id : null,
+            gone && !taken ? gone.id : null,
             notebookId,
             noteId,
             title,
@@ -124,7 +132,8 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
 
 /**
  * Older builds made a row titled "Untitled task" for an empty checkbox line, and it showed on
- * Today. Drops the rows whose line is still empty. Safe to run on every start.
+ * Today. Blanks the title of the rows whose line is still empty, which hides them, and keeps
+ * the row so its id is not handed to another line. Safe to run on every start.
  */
 export function dropBlankTasks(): number {
   const db = getDb()
@@ -142,7 +151,7 @@ export function dropBlankTasks(): number {
       }
       const line = extractNoteTaskItems(doc).find((i) => i.taskId === row.id)
       if (!line || line.title) continue
-      db.prepare(`DELETE FROM tasks WHERE id = ?`).run(row.id)
+      db.prepare(`UPDATE tasks SET title = '' WHERE id = ?`).run(row.id)
       ftsDelete('task', row.id)
       dropped++
     }
