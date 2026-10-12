@@ -6,7 +6,7 @@ import { openSqlite } from './sqlite'
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
 vi.mock('better-sqlite3', () => ({ default: class {} }))
 
-const { migrate } = await import('../src/main/db')
+const { migrate, settleTheme } = await import('../src/main/db')
 
 const open = openSqlite
 
@@ -198,5 +198,41 @@ describe('migrate to v13', () => {
 
     expect(version(raw)).toBe(13)
     expect(indexed(raw)).toEqual(once)
+  })
+})
+
+describe('the theme of a database without one', () => {
+  const theme = (raw: DatabaseSync): unknown => (raw.prepare(`SELECT value FROM settings WHERE key = 'theme'`).get() as { value: string } | undefined)?.value
+
+  it('is light in a database made fresh', () => {
+    const { raw, db } = open()
+    migrate(db)
+    expect(theme(raw)).toBe('light')
+  })
+
+  it('stays dark for data from before 0.8.0, which read a missing theme as dark', () => {
+    const { raw, db } = open()
+    migrate(db)
+    raw.exec(`DELETE FROM settings`)
+    raw.exec(`INSERT INTO notebooks (name, color, created_at) VALUES ('My Notebook', 'teal', '2026-09-20 08:00:00')`)
+    raw.exec(`INSERT INTO notes (notebook_id, content, created_at) VALUES (1, '{}', '2026-09-21T08:00:00.000Z')`)
+
+    settleTheme(db)
+
+    expect(theme(raw)).toBe('dark')
+  })
+
+  it('is light for data 0.8 made, and a chosen theme is never changed', () => {
+    const { raw, db } = open()
+    migrate(db)
+    raw.exec(`DELETE FROM settings`)
+    raw.exec(`INSERT INTO notebooks (name, color, created_at) VALUES ('Notes', 'teal', '2026-10-11 08:00:00')`)
+    settleTheme(db)
+    expect(theme(raw)).toBe('light')
+
+    raw.exec(`UPDATE notebooks SET created_at = '2026-09-20 08:00:00'`)
+    raw.exec(`UPDATE settings SET value = 'light' WHERE key = 'theme'`)
+    settleTheme(db)
+    expect(theme(raw)).toBe('light')
   })
 })

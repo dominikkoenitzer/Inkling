@@ -104,7 +104,32 @@ export function openDb(dir: string): Database.Database {
     console.error('backup failed', err)
   }
   migrate(db)
+  settleTheme(db)
   return db
+}
+
+/** When 0.8.0 shipped (UTC). It reads a missing theme as light; 0.7 read it as dark. */
+const V080_RELEASED = '2026-10-10 18:13:06'
+
+/**
+ * Stores the theme once in a database that has none, so an upgrade keeps the look it had:
+ * dark for data from before 0.8.0, light otherwise. Fresh databases get light on creation.
+ */
+export function settleTheme(d: Database.Database): void {
+  if (d.prepare(`SELECT 1 FROM settings WHERE key = 'theme'`).get()) return
+  // 0.7 and 0.8 share schema 13, so the age of the oldest row is what tells them apart.
+  const oldest = d
+    .prepare(
+      `SELECT MIN(t) AS t FROM (
+         SELECT MIN(datetime(created_at)) AS t FROM notebooks
+         UNION ALL SELECT MIN(datetime(created_at)) FROM notes
+         UNION ALL SELECT MIN(datetime(created_at)) FROM tasks
+         UNION ALL SELECT MIN(datetime(reviewed_at)) FROM review_log
+       )`
+    )
+    .get() as { t: string | null }
+  const theme = oldest.t !== null && oldest.t < V080_RELEASED ? 'dark' : 'light'
+  d.prepare(`INSERT INTO settings (key, value) VALUES ('theme', ?)`).run(theme)
 }
 
 /**
@@ -193,6 +218,7 @@ export function migrate(d: Database.Database): void {
       d.exec(GRADES_SCHEMA)
       d.exec(REVIEW_LOG_SCHEMA)
       d.exec(`CREATE INDEX IF NOT EXISTS idx_notes_deleted ON notes(deleted_at)`)
+      d.exec(`INSERT INTO settings (key, value) VALUES ('theme', 'light')`)
       d.pragma(`user_version = ${CURRENT_VERSION}`)
     })()
     return
