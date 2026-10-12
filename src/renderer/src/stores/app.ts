@@ -214,10 +214,21 @@ export function registerFlush(noteId: number, flush: () => void): () => void {
   }
 }
 
-/** Starts a note's pending save, then resolves once every save of it has landed or failed. */
+/** How long a delete waits for a save that does not come back. */
+const SETTLE_TIMEOUT_MS = 4000
+
+/**
+ * Starts a note's pending save, then resolves once every save of it has landed or failed,
+ * or after a few seconds, so a save that hangs cannot hold the delete up for good.
+ */
 export async function settleNote(noteId: number): Promise<void> {
   flushers.get(noteId)?.()
-  await Promise.allSettled([...(pendingSaves.get(noteId) ?? [])])
+  const saves = [...(pendingSaves.get(noteId) ?? [])]
+  if (saves.length === 0) return
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, SETTLE_TIMEOUT_MS)))
+  await Promise.race([Promise.allSettled(saves), timeout])
+  clearTimeout(timer)
 }
 
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)

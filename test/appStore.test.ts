@@ -95,6 +95,21 @@ describe('settleNote', () => {
     unregister()
   })
 
+  it('stops waiting after a few seconds for a save that never comes back', async () => {
+    vi.useFakeTimers()
+    try {
+      void trackSave(10, new Promise<void>(() => {}))
+      let settled = false
+      void settleNote(10).then(() => (settled = true))
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(settled).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('waits for failed saves too and resolves at once when nothing is pending', async () => {
     void trackSave(8, Promise.reject(new Error('offline'))).catch(() => undefined)
     await expect(settleNote(8)).resolves.toBeUndefined()
