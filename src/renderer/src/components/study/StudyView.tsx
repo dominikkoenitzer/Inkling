@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2, Plus, ArrowLeft, Layers } from 'lucide-react'
+import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { hasCloze } from '@shared/cloze'
 import { Inky } from '@/components/Inky'
@@ -97,7 +97,6 @@ export function StudyView(): React.JSX.Element {
                   onClick={() => useApp.getState().openDeck(d.id)}
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-3 text-left transition-colors hover:bg-hover"
                 >
-                  <Layers size={16} className="shrink-0 text-faint" />
                   <span className="min-w-0 flex-1 truncate text-[15px]">{d.name}</span>
                   <span className="shrink-0 pr-2 text-xs text-faint">
                     {d.card_count} card{d.card_count === 1 ? '' : 's'}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Layers, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { localDay } from '@shared/day'
 import { Inky } from '@/components/Inky'
@@ -126,7 +126,6 @@ export function TodayView(): React.JSX.Element {
           <Section title="Study" count={decks.reduce((n, d) => n + d.due_count, 0)}>
             {decks.map((d) => (
               <li key={d.id} className="flex items-center gap-3 border-b border-edge py-2.5">
-                <Layers size={16} className="shrink-0 text-faint" />
                 <span className="min-w-0 flex-1 truncate text-[15px]">{d.name}</span>
                 <span className="shrink-0 text-xs text-faint">
                   {d.due_count} card{d.due_count === 1 ? '' : 's'} due

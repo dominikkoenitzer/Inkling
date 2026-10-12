@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FileText, Layers, Plus, Settings, Sun, Trash2 } from 'lucide-react'
+import { Layers, Plus, Settings, Sun, Trash2 } from 'lucide-react'
 import { useApp, useVersion, bumpData, type View } from '@/stores/app'
 import type { Note } from '@shared/types'
 
@@ -157,7 +157,6 @@ function NotesList(): React.JSX.Element {
               aria-current={active ? 'page' : undefined}
               className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-2.5 text-left"
             >
-              <FileText size={15} className="shrink-0 text-faint" />
               <span className="min-w-0 flex-1 truncate">{title}</span>
             </button>
             <button
