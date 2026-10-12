@@ -11,6 +11,7 @@ import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn } from '@/components/ui'
+import { tickTodo } from '@/lib/keys'
 import type { Note, NoteTaskItem } from '@shared/types'
 
 const api = window.inkling
@@ -67,19 +68,7 @@ const ToggleTodo = Extension.create({
   priority: 101,
   addKeyboardShortcuts() {
     return {
-      'Mod-Enter': () =>
-        this.editor.commands.command(({ tr, dispatch }) => {
-          const { $from } = tr.selection
-          // In a code block the key leaves the block, as it always did.
-          if ($from.parent.type.spec.code) return false
-          for (let depth = $from.depth; depth > 0; depth--) {
-            const node = $from.node(depth)
-            if (node.type.name !== 'taskItem') continue
-            if (dispatch) tr.setNodeMarkup($from.before(depth), undefined, { ...node.attrs, checked: !node.attrs.checked })
-            return true
-          }
-          return false
-        })
+      'Mod-Enter': () => this.editor.commands.command(({ tr, dispatch }) => tickTodo(tr, !!dispatch))
     }
   }
 })
