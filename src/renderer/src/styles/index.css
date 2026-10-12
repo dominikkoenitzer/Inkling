@@ -65,6 +65,7 @@
   --accent-text: #3a4daa;
   --accent-ink: #17204a;
   --danger: #c2412f;
+  --mark: #f8e9bc;
   --shadow: 0 12px 32px rgba(30, 26, 20, 0.1), 0 1px 3px rgba(30, 26, 20, 0.06);
   color-scheme: light;
 }
@@ -86,6 +87,7 @@
   --accent-text: #a5b2f5;
   --accent-ink: #10163a;
   --danger: #e2685a;
+  --mark: #66572a;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   color-scheme: dark;
 }
@@ -236,7 +238,7 @@ textarea:focus {
   margin: 1.4em 0;
 }
 .tiptap mark {
-  background: color-mix(in srgb, #f2c94c 35%, transparent);
+  background: var(--mark);
   color: inherit;
   border-radius: 3px;
   padding: 0 2px;

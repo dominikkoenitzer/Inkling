@@ -36,7 +36,7 @@ export function Button({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${styles} ${className}`}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:border-edge disabled:bg-panel disabled:text-faint disabled:brightness-100 ${styles} ${className}`}
     >
       {children}
     </button>
@@ -116,7 +116,7 @@ export function Modal({
     }
   }, [])
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 p-6" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onMouseDown={onClose}>
       <div
         ref={panelRef}
         role="dialog"
