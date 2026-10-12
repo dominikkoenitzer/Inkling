@@ -53,7 +53,7 @@ export function CommandPalette(): React.JSX.Element {
   }))
   const items: Item[] = [
     ...found,
-    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl N', run: () => void app.newNote().then(close) }
+    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl+N', run: () => void app.newNote().then(close) }
   ]
   const clamped = Math.min(selected, items.length - 1)
 

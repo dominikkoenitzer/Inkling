@@ -27,6 +27,7 @@ export function Sidebar(): React.JSX.Element {
         <NavRow view="study" current={view} icon={<Layers size={16} />} label="Study" count={due} />
         <button
           type="button"
+          title="Settings (Ctrl+,)"
           onClick={() => useApp.getState().setSettingsOpen(true)}
           className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
         >

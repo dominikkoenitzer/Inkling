@@ -97,7 +97,7 @@ export default function App(): React.JSX.Element {
         >
           <Search size={15} />
           Search
-          <span className="ml-auto text-xs">Ctrl K</span>
+          <span className="ml-auto text-xs">Ctrl+K</span>
         </button>
       </header>
 

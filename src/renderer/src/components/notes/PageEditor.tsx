@@ -404,32 +404,32 @@ function Toolbar({
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-wrap items-center gap-0.5 px-8 pt-3">
-      <ToolbarButton icon={<Bold size={16} />} title="Bold (Ctrl+B)" active={editor.isActive('bold')} action={run((c) => c.toggleBold())} />
-      <ToolbarButton icon={<Italic size={16} />} title="Italic (Ctrl+I)" active={editor.isActive('italic')} action={run((c) => c.toggleItalic())} />
+      <ToolbarButton icon={<Bold size={16} />} title="Bold · Ctrl+B" active={editor.isActive('bold')} action={run((c) => c.toggleBold())} />
+      <ToolbarButton icon={<Italic size={16} />} title="Italic · Ctrl+I" active={editor.isActive('italic')} action={run((c) => c.toggleItalic())} />
       <Divider />
       <ToolbarButton
         icon={<Heading1 size={16} />}
-        title="Heading 1 (or type #)"
+        title="Heading 1 · Ctrl+Alt+1 or type #"
         active={editor.isActive('heading', { level: 1 })}
         action={run((c) => c.toggleHeading({ level: 1 }))}
       />
       <ToolbarButton
         icon={<Heading2 size={16} />}
-        title="Heading 2"
+        title="Heading 2 · Ctrl+Alt+2 or type ##"
         active={editor.isActive('heading', { level: 2 })}
         action={run((c) => c.toggleHeading({ level: 2 }))}
       />
       <Divider />
-      <ToolbarButton icon={<List size={16} />} title="Bullet list (or type -)" active={editor.isActive('bulletList')} action={run((c) => c.toggleBulletList())} />
+      <ToolbarButton icon={<List size={16} />} title="Bullet list · Ctrl+Shift+8 or type -" active={editor.isActive('bulletList')} action={run((c) => c.toggleBulletList())} />
       <ToolbarButton
         icon={<ListOrdered size={16} />}
-        title="Numbered list (or type 1.)"
+        title="Numbered list · Ctrl+Shift+7 or type 1."
         active={editor.isActive('orderedList')}
         action={run((c) => c.toggleOrderedList())}
       />
       <ToolbarButton
         icon={<ListChecks size={16} />}
-        title="Task list (or type []). Items become real tasks"
+        title="To-do · Ctrl+Shift+9 or type [ ]. Ctrl+Enter ticks it."
         active={editor.isActive('taskList')}
         action={run((c) => c.toggleTaskList())}
       />
