@@ -92,13 +92,8 @@ function itemsEqual(a: NoteTaskItem[], b: NoteTaskItem[]): boolean {
 export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const [title, setTitle] = useState('')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
-  const [flashMsg, setFlash] = useState<string | null>(null)
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const setFlashMsg = (msg: string | null, ms = 3000): void => {
-    if (flashTimer.current) clearTimeout(flashTimer.current)
-    setFlash(msg)
-    if (msg) flashTimer.current = setTimeout(() => setFlash(null), ms)
-  }
+  // Messages go to the app's toast, so the note never moves under them.
+  const say = (message: string, durationMs: number): void => useApp.getState().showToast({ message, durationMs })
 
   const syncingRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -247,7 +242,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     if (!editor || notebookIdRef.current === null) return
     const lines = extractNoteCardLines(editor.getJSON() as Record<string, unknown>)
     if (lines.length === 0) {
-      setFlashMsg('Write a line like Term :: Definition or {{c1::word}} first.', 3500)
+      say('Write a line like Term :: Definition or {{c1::word}} first.', 3500)
       return
     }
     // The note's own deck: made on the first run, updated in place on every later one.
@@ -274,20 +269,15 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
     const res = await api.app.saveFile(`${base}.md`, md)
     if (res.saved) {
-      setFlashMsg('Saved as Markdown', 2500)
+      say('Saved as Markdown', 2500)
     } else if (res.error) {
-      setFlashMsg('Could not save the file.', 3500)
+      say('Could not save the file.', 3500)
     }
   }
 
   return (
     <div className="flex h-full flex-col">
       {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExportMd={() => void exportMarkdown()} savedAt={savedAt} />}
-      {flashMsg && (
-        <div role="status" className="mx-auto mt-1 rounded-md bg-hover px-3 py-1 text-xs text-muted">
-          {flashMsg}
-        </div>
-      )}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[720px] px-10 pb-32 pt-10">
           <input
