@@ -13,7 +13,7 @@ function welcomeDoc(taskId: number | null): string {
     content: [
       p(text('This is a note. Type anywhere, it saves as you go.')),
       h2('To-dos'),
-      p(text('Start a line with [] to make a checkbox. Open ones show up on Today.')),
+      p(text('Start a line with [ ] to make a to-do. Open ones show up on Today.')),
       {
         type: 'taskList',
         content: [{ type: 'taskItem', attrs: { checked: false, taskId }, content: [p(text('Tick me off'))] }]
