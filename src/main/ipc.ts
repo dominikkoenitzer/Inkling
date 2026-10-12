@@ -5,8 +5,8 @@ import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 import { RATINGS } from '@shared/fsrs'
 import type { ReviewGrade } from '@shared/types'
 
-/** The only setting the renderer writes; the rest are read-only from there. */
-const WRITABLE_SETTINGS = new Set(['theme'])
+/** The only setting the renderer writes and the values it may take; the rest are read-only from there. */
+const WRITABLE_SETTINGS = new Map([['theme', new Set(['light', 'dark'])]])
 const GRADES = new Set(Object.keys(RATINGS))
 
 type Handler = (...args: never[]) => unknown
@@ -46,7 +46,7 @@ export function registerIpc(): void {
 
   handle('settings.all', repos.allSettings)
   handle('settings.set', (key: string, value: string) => {
-    if (!WRITABLE_SETTINGS.has(key) || typeof value !== 'string') throw new Error(`setting cannot be written: ${String(key)}`)
+    if (!WRITABLE_SETTINGS.get(key)?.has(value)) throw new Error(`setting cannot be written: ${String(key)}`)
     repos.setSetting(key, value)
   })
 

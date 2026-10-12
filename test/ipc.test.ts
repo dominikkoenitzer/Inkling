@@ -35,6 +35,15 @@ describe('settings.set', () => {
     expect(() => call('settings.set', 'fsrs_params', '[1,2,3]')).toThrow()
     expect(mocks.setSetting).not.toHaveBeenCalled()
   })
+
+  it('takes only light or dark for the theme', () => {
+    call('settings.set', 'theme', 'light')
+    expect(mocks.setSetting).toHaveBeenCalledWith('theme', 'light')
+    mocks.setSetting.mockClear()
+    for (const value of ['blue', '', 'Dark', 'toString', 1]) expect(() => call('settings.set', 'theme', value)).toThrow()
+    for (const key of ['toString', '__proto__']) expect(() => call('settings.set', key, 'dark')).toThrow()
+    expect(mocks.setSetting).not.toHaveBeenCalled()
+  })
 })
 
 describe('decks.review', () => {
