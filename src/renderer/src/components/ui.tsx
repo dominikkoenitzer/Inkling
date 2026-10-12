@@ -47,12 +47,16 @@ export function IconBtn({
   children,
   onClick,
   title,
+  label,
   active,
   className = ''
 }: {
   children: ReactNode
   onClick?: (e: React.MouseEvent) => void
   title?: string
+  /** A short name for screen readers when the tooltip is long; defaults to the tooltip. */
+  label?: string
+  /** Set on toggles: shown pressed when true. */
   active?: boolean
   className?: string
 }): React.JSX.Element {
@@ -60,7 +64,8 @@ export function IconBtn({
     <button
       type="button"
       title={title}
-      aria-label={title}
+      aria-label={label ?? title}
+      aria-pressed={active}
       onClick={onClick}
       className={`no-drag inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
         active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'

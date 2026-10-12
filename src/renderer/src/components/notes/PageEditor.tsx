@@ -359,7 +359,8 @@ function ToolbarButton({
   active?: boolean
 }): React.JSX.Element {
   return (
-    <IconBtn title={title} active={active} onClick={action}>
+    // The name before the shortcut is what a screen reader says.
+    <IconBtn title={title} label={title.split(' · ')[0]} active={active} onClick={action}>
       {icon}
     </IconBtn>
   )
@@ -424,7 +425,7 @@ function Toolbar({
         action={run((c) => c.toggleTaskList())}
       />
       <Divider />
-      <IconBtn title="Turn Term :: Definition and {{c1::cloze}} lines into cards" onClick={onFlashcards} className="!w-auto gap-1.5 px-2 text-sm">
+      <IconBtn title="Turn Term :: Definition and {{c1::cloze}} lines into cards" label="Flashcards" onClick={onFlashcards} className="!w-auto gap-1.5 px-2 text-sm">
         <Layers size={15} />
         Flashcards
       </IconBtn>

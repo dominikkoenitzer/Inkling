@@ -92,6 +92,9 @@ export function CommandPalette(): React.JSX.Element {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onMouseDown={close}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search"
         className="w-[560px] overflow-hidden rounded-lg border border-edge bg-raised"
         style={{ boxShadow: 'var(--shadow)' }}
         onMouseDown={(e) => {
@@ -111,6 +114,7 @@ export function CommandPalette(): React.JSX.Element {
             }}
             onKeyDown={onKey}
             placeholder="Search notes, to-dos and decks"
+            aria-label="Search"
             className="h-12 flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
         </div>
