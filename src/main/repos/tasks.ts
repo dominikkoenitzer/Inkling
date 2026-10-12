@@ -117,8 +117,8 @@ export function dropBlankTasks(): number {
 
 /**
  * Tasks made before checkboxes were the only kind have no note, and older versions left the
- * tasks of a purged note without one too. Each notebook's loose tasks become one "Tasks" note
- * with a checklist, so nothing disappears. Safe to run on every start.
+ * tasks of a purged note without one too. They all become one "Tasks" note with a checklist
+ * in the home notebook, so nothing disappears. Safe to run on every start.
  */
 export function adoptLooseTasks(): number {
   const db = getDb()
@@ -126,36 +126,27 @@ export function adoptLooseTasks(): number {
   db.transaction(() => {
     // A task pointing at a note that no longer exists counts as loose too.
     db.prepare(`UPDATE tasks SET note_id = NULL WHERE note_id IS NOT NULL AND note_id NOT IN (SELECT id FROM notes)`).run()
-    const loose = db.prepare(`SELECT * FROM tasks WHERE note_id IS NULL ORDER BY notebook_id, id`).all() as Task[]
-    if (loose.length === 0) return
-    const notebooks = new Set((db.prepare(`SELECT id FROM notebooks`).all() as Array<{ id: number }>).map((n) => n.id))
-    const byNotebook = new Map<number, Task[]>()
-    for (const t of loose) {
-      // A task whose notebook is gone goes to the home notebook rather than nowhere.
-      const nb = notebooks.has(t.notebook_id) ? t.notebook_id : homeNotebookId()
-      const list = byNotebook.get(nb)
-      if (list) list.push(t)
-      else byNotebook.set(nb, [t])
+    const tasks = db.prepare(`SELECT * FROM tasks WHERE note_id IS NULL ORDER BY notebook_id, id`).all() as Task[]
+    if (tasks.length === 0) return
+    // Notebooks are hidden, so one note in the home notebook rather than one per notebook.
+    const notebookId = homeNotebookId()
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'taskList',
+          content: tasks.map((t) => ({
+            type: 'taskItem',
+            attrs: { checked: t.status === 'done', taskId: t.id },
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: t.title || 'Untitled task' }] }]
+          }))
+        }
+      ]
     }
+    const note = createNote({ notebook_id: notebookId, title: 'Tasks', content: JSON.stringify(doc) })
     const link = db.prepare(`UPDATE tasks SET note_id = ?, notebook_id = ? WHERE id = ?`)
-    for (const [notebookId, tasks] of byNotebook) {
-      const doc = {
-        type: 'doc',
-        content: [
-          {
-            type: 'taskList',
-            content: tasks.map((t) => ({
-              type: 'taskItem',
-              attrs: { checked: t.status === 'done', taskId: t.id },
-              content: [{ type: 'paragraph', content: [{ type: 'text', text: t.title || 'Untitled task' }] }]
-            }))
-          }
-        ]
-      }
-      const note = createNote({ notebook_id: notebookId, title: 'Tasks', content: JSON.stringify(doc) })
-      for (const t of tasks) link.run(note.id, notebookId, t.id)
-      adopted += tasks.length
-    }
+    for (const t of tasks) link.run(note.id, notebookId, t.id)
+    adopted = tasks.length
   })()
   return adopted
 }

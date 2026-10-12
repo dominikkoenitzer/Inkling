@@ -145,20 +145,19 @@ describe('an empty checkbox line', () => {
 })
 
 describe('adoptLooseTasks', () => {
-  it('gives tasks without a note a "Tasks" note per notebook', () => {
+  it('gives tasks without a note one "Tasks" note in the home notebook', () => {
     raw.exec(`INSERT INTO tasks (notebook_id, note_id, title, status) VALUES (1, NULL, 'Call Anna', 'todo'), (1, NULL, 'Pay rent', 'done'), (2, NULL, 'Read', 'todo')`)
 
     expect(adoptLooseTasks()).toBe(3)
 
     const notes = raw.prepare(`SELECT id, notebook_id, title, content FROM notes ORDER BY id`).all() as Array<{ id: number; notebook_id: number; title: string; content: string }>
-    expect(notes.map((n) => [n.notebook_id, n.title])).toEqual([
-      [1, 'Tasks'],
-      [2, 'Tasks']
-    ])
+    expect(notes.map((n) => [n.notebook_id, n.title])).toEqual([[1, 'Tasks']])
     expect(itemsOf(notes[0].content).map((i) => [i.title, i.checked])).toEqual([
       ['Call Anna', false],
-      ['Pay rent', true]
+      ['Pay rent', true],
+      ['Read', false]
     ])
+    expect(tasksForNote(notes[0].id).every((t) => t.notebook_id === 1)).toBe(true)
     // The next editor sync matches the same rows instead of making new ones.
     const ids = tasksForNote(notes[0].id).map((t) => t.id)
     expect(syncNoteTasks(notes[0].id, 1, itemsOf(notes[0].content))).toEqual(ids)
