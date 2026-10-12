@@ -39,6 +39,11 @@
   ::file-selector-button {
     border-color: var(--border, currentColor);
   }
+  /* In the base layer, so a field's own background class still wins. */
+  input,
+  textarea {
+    background: transparent;
+  }
 }
 
 :root {
@@ -140,10 +145,6 @@ body {
   background: transparent;
 }
 
-input,
-textarea {
-  background: transparent;
-}
 button:focus-visible,
 [tabindex]:focus-visible,
 input[type='checkbox']:focus-visible,
