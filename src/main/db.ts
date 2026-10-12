@@ -104,7 +104,13 @@ export function openDb(dir: string): Database.Database {
     console.error('backup failed', err)
   }
   migrate(db)
-  settleTheme(db)
+  // Only a default for upgraders: if the write fails (the MCP server may hold the lock),
+  // the app starts anyway and tries again next time.
+  try {
+    settleTheme(db)
+  } catch (err) {
+    console.error('settling the theme failed', err)
+  }
   return db
 }
 

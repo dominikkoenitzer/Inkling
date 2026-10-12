@@ -1,12 +1,23 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { DatabaseSync } from 'node:sqlite'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { openSqlite } from './sqlite'
 
 // The migration runs in Electron against better-sqlite3; here against Node's own SQLite.
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
-vi.mock('better-sqlite3', () => ({ default: class {} }))
+const opening = vi.hoisted(() => ({ db: {} as object }))
+// `new Database(file)` in openDb hands back the database a test put in `opening`.
+vi.mock('better-sqlite3', () => ({
+  default: class {
+    constructor() {
+      return opening.db
+    }
+  }
+}))
 
-const { migrate, settleTheme } = await import('../src/main/db')
+const { migrate, openDb, settleTheme } = await import('../src/main/db')
 
 const open = openSqlite
 
@@ -234,5 +245,29 @@ describe('the theme of a database without one', () => {
     raw.exec(`UPDATE settings SET value = 'light' WHERE key = 'theme'`)
     settleTheme(db)
     expect(theme(raw)).toBe('light')
+  })
+
+  it('does not stop the app from starting when it cannot be written', () => {
+    const { raw, db } = open()
+    migrate(db)
+    raw.exec(`DELETE FROM settings`)
+    // The MCP server holds the write lock.
+    const prepare = raw.prepare.bind(raw)
+    opening.db = Object.assign(db, {
+      prepare: (sql: string) => {
+        if (sql.startsWith('INSERT INTO settings')) throw Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' })
+        return prepare(sql)
+      }
+    })
+    const dir = mkdtempSync(join(tmpdir(), 'inkling-db-'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      expect(openDb(dir)).toBe(db)
+      expect(quiet).toHaveBeenCalledWith('settling the theme failed', expect.any(Error))
+      expect(theme(raw)).toBeUndefined()
+    } finally {
+      quiet.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
