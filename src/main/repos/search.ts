@@ -23,7 +23,7 @@ export function searchQuery(q: string, limit = 20): SearchResult[] {
     .filter(Boolean)
   if (tokens.length === 0) return []
   const match = tokens.map((t) => `"${t.replace(/"/g, '')}"*`).join(' AND ')
-  // Hits whose target is gone (a trashed note, a task in one) are dropped before the limit,
+  // Hits whose target is gone (a trashed note, a task or deck of one) are dropped before the limit,
   // so they can never crowd live results out. A task opens the note it lives in.
   const rows = getDb()
     .prepare(
@@ -34,6 +34,7 @@ export function searchQuery(q: string, limit = 20): SearchResult[] {
        LEFT JOIN tasks t ON s.source_type = 'task' AND t.id = s.source_id
        LEFT JOIN notes tn ON tn.id = t.note_id AND tn.deleted_at IS NULL
        LEFT JOIN flashcard_decks d ON s.source_type = 'deck' AND d.id = s.source_id
+         AND NOT EXISTS (SELECT 1 FROM notes dn WHERE dn.id = d.note_id AND dn.deleted_at IS NOT NULL)
        WHERE search_index MATCH ?
          AND (n.id IS NOT NULL OR tn.id IS NOT NULL OR d.id IS NOT NULL)
        ORDER BY rank LIMIT ?`

@@ -6,17 +6,26 @@ import { RATINGS, parseParams, schedule } from '@shared/fsrs'
 import { clozeNumbers } from '@shared/cloze'
 import type { Card, Deck, NoteCardLine, ReviewGrade } from '@shared/types'
 
-export function listDecks(notebookId?: number): Deck[] {
-  const nowIso = now()
-  const base = `
+/** A deck made from a note that is in the trash: hidden with the note until it comes back. */
+const TRASHED_DECK = `EXISTS (SELECT 1 FROM notes n WHERE n.id = d.note_id AND n.deleted_at IS NOT NULL)`
+
+const DECK_ROWS = `
     SELECT d.*,
       (SELECT COUNT(*) FROM flashcards c WHERE c.deck_id = d.id) AS card_count,
       (SELECT COUNT(*) FROM flashcards c WHERE c.deck_id = d.id AND c.next_review_date <= ?) AS due_count
     FROM flashcard_decks d`
+
+export function listDecks(notebookId?: number): Deck[] {
+  const nowIso = now()
+  const base = `${DECK_ROWS} WHERE NOT ${TRASHED_DECK}`
   if (notebookId !== undefined) {
-    return getDb().prepare(`${base} WHERE d.notebook_id = ? ORDER BY d.id`).all(nowIso, notebookId) as Deck[]
+    return getDb().prepare(`${base} AND d.notebook_id = ? ORDER BY d.id`).all(nowIso, notebookId) as Deck[]
   }
   return getDb().prepare(`${base} ORDER BY d.id`).all(nowIso) as Deck[]
+}
+
+function getDeck(id: number): Deck {
+  return getDb().prepare(`${DECK_ROWS} WHERE d.id = ?`).get(now(), id) as Deck
 }
 
 /** Inserts a deck with its search entry and returns the new id. */
@@ -30,8 +39,7 @@ function insertDeck(notebookId: number, name: string, noteId: number | null = nu
 }
 
 export function createDeck(notebookId: number, name: string): Deck {
-  const id = insertDeck(notebookId, name)
-  return listDecks(notebookId).find((d) => d.id === id)!
+  return getDeck(insertDeck(notebookId, name))
 }
 
 export function renameDeck(id: number, name: string): void {
@@ -50,7 +58,10 @@ export function listCards(deckId: number): Card[] {
 
 export function dueCards(deckId: number): Card[] {
   return getDb()
-    .prepare(`SELECT * FROM flashcards WHERE deck_id = ? AND next_review_date <= ? ORDER BY next_review_date`)
+    .prepare(
+      `SELECT c.* FROM flashcards c JOIN flashcard_decks d ON d.id = c.deck_id
+       WHERE c.deck_id = ? AND c.next_review_date <= ? AND NOT ${TRASHED_DECK} ORDER BY c.next_review_date`
+    )
     .all(deckId, now()) as Card[]
 }
 
@@ -277,5 +288,5 @@ export function syncNoteCards(
       for (const c of group) db.prepare(`DELETE FROM flashcards WHERE id = ?`).run(c.id)
     }
   }).immediate() // reads before it writes, like syncNoteTasks
-  return { deck: listDecks().find((d) => d.id === deckId)!, lineIds }
+  return { deck: getDeck(deckId), lineIds }
 }

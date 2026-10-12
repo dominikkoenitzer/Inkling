@@ -76,11 +76,16 @@ export function purgeExpiredNotes(): number {
   const del = getDb().prepare(`DELETE FROM notes WHERE id = ?`)
   const taskIds = getDb().prepare(`SELECT id FROM tasks WHERE note_id = ?`)
   const delTasks = getDb().prepare(`DELETE FROM tasks WHERE note_id = ?`)
+  const freeCards = getDb().prepare(
+    `UPDATE flashcards SET source_line = NULL WHERE deck_id IN (SELECT id FROM flashcard_decks WHERE note_id = ?)`
+  )
   const tx = getDb().transaction(() => {
     for (const n of stale) {
       // A note's checkboxes go with it.
       for (const t of taskIds.all(n.id) as Array<{ id: number }>) ftsDelete('task', t.id)
       delTasks.run(n.id)
+      // Its deck stays as a deck of its own, with cards that can be edited again.
+      freeCards.run(n.id)
       del.run(n.id)
       ftsDelete('note', n.id)
     }

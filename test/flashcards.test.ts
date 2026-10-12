@@ -13,7 +13,9 @@ vi.mock('better-sqlite3', () => ({ default: class {} }))
 vi.mock('../src/main/db', async (orig) => ({ ...(await orig<object>()), getDb: () => db }))
 
 const { migrate } = await import('../src/main/db')
-const { addCard, listCards, listDecks, reviewCard, syncNoteCards, updateCard } = await import('../src/main/repos/flashcards')
+const { addCard, dueCards, listCards, listDecks, reviewCard, syncNoteCards, updateCard } = await import('../src/main/repos/flashcards')
+const { purgeExpiredNotes, removeNote, restoreNote } = await import('../src/main/repos/notes')
+const { searchQuery } = await import('../src/main/repos/search')
 
 const NOTE = 7
 
@@ -118,6 +120,36 @@ describe('syncNoteCards', () => {
     raw.exec(`DELETE FROM flashcard_decks WHERE id = ${first.deckId}`)
     const again = sync(first.lines)
     expect(listDecks()).toMatchObject([{ id: again.deckId, note_id: NOTE, card_count: 1 }])
+  })
+})
+
+describe('cards of a note in the trash', () => {
+  const deckHits = (): number[] => searchQuery('cells').filter((r) => r.source_type === 'deck').map((r) => r.source_id)
+
+  it('stop counting while the note is trashed and come back with it', () => {
+    const first = sync([line('Osmosis', 'water'), line('Mitochondria', 'powerhouse')])
+
+    removeNote(NOTE)
+    expect(listDecks()).toEqual([])
+    expect(dueCards(first.deckId)).toEqual([])
+    expect(deckHits()).toEqual([])
+
+    restoreNote(NOTE)
+    expect(listDecks()).toMatchObject([{ id: first.deckId, note_id: NOTE, card_count: 2, due_count: 2 }])
+    expect(dueCards(first.deckId).map((c) => c.id).sort()).toEqual(first.cards.map((c) => c.id).sort())
+    expect(listCards(first.deckId)).toEqual(first.cards)
+    expect(deckHits()).toEqual([first.deckId])
+  })
+
+  it('become editable once the note is purged for good', () => {
+    const first = sync([line('Osmosis', 'water')])
+    raw.exec(`UPDATE notes SET deleted_at = '2020-01-01T00:00:00.000Z' WHERE id = ${NOTE}`)
+
+    expect(purgeExpiredNotes()).toBe(1)
+
+    expect(listDecks()).toMatchObject([{ id: first.deckId, note_id: null, due_count: 1 }])
+    expect(listCards(first.deckId)).toMatchObject([{ id: first.cards[0].id, front: 'Osmosis', source_line: null }])
+    expect(deckHits()).toEqual([first.deckId])
   })
 })
 

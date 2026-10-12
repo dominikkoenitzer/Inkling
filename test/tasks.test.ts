@@ -54,7 +54,7 @@ beforeEach(() => {
   raw.exec(`
     CREATE TABLE notebooks (id INTEGER PRIMARY KEY, name TEXT, color TEXT, sort_order INTEGER DEFAULT 0, created_at DATETIME);
     INSERT INTO notebooks (id, name, color) VALUES (1, 'Notes', 'teal'), (2, 'Maths', 'teal');
-    CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT);
+    CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT, note_id INTEGER);
     CREATE TABLE notes (
       id INTEGER PRIMARY KEY, notebook_id INTEGER, title TEXT, content TEXT NOT NULL,
       created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
