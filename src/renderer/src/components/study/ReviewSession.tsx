@@ -176,7 +176,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                         meaningful if you can see what it costs. */}
                     <div className="text-xs font-normal text-faint">
                       {intervals ? (intervals[g.rating] === 0 ? `${RELEARN_MINUTES}m` : formatInterval(intervals[g.rating])) : ''}
-                      <span className="ml-1 opacity-60">{i + 1}</span>
+                      <span className="ml-1">{i + 1}</span>
                     </div>
                   </button>
                 ))}

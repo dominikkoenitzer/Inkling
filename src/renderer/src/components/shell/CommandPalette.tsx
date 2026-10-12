@@ -126,7 +126,7 @@ export function CommandPalette(): React.JSX.Element {
             >
               <span className="text-faint">{item.icon}</span>
               <span className="shrink-0">{item.label}</span>
-              {item.detail && <span className="ml-auto truncate pl-3 text-xs text-faint">{item.detail}</span>}
+              {item.detail && <span className={`ml-auto truncate pl-3 text-xs ${clamped === i ? 'text-muted' : 'text-faint'}`}>{item.detail}</span>}
             </button>
           ))}
         </div>

@@ -81,7 +81,7 @@ function NavRow({
     >
       {icon}
       {label}
-      {!!count && <span className="ml-auto text-xs tabular-nums text-faint">{count}</span>}
+      {!!count && <span className={`ml-auto text-xs tabular-nums ${active ? 'text-muted' : 'text-faint'}`}>{count}</span>}
     </button>
   )
 }

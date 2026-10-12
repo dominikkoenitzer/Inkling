@@ -93,7 +93,7 @@ export default function App(): React.JSX.Element {
         <button
           type="button"
           onClick={() => useApp.getState().setPaletteOpen(true)}
-          className="no-drag ml-4 flex h-8 w-80 items-center gap-2 rounded-md bg-hover px-3 text-sm text-faint transition-colors hover:text-muted"
+          className="no-drag ml-4 flex h-8 w-80 items-center gap-2 rounded-md bg-hover px-3 text-sm text-muted transition-colors hover:text-ink"
         >
           <Search size={15} />
           Search
