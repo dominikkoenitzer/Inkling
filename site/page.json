@@ -136,13 +136,11 @@
     "code": "{\n  \"mcpServers\": {\n    \"inkling\": {\n      \"command\": \"C:\\\\Users\\\\<you>\\\\AppData\\\\Local\\\\Programs\\\\Inkling\\\\Inkling.exe\",\n      \"args\": [\"--mcp\"]\n    }\n  }\n}"
   },
   "new": {
-    "version": "0.8.0",
+    "version": "0.8.1",
     "items": [
-      "One quiet sidebar: Today, Study and Settings, then all your notes.",
-      "To-dos live in your notes, and every open one shows up on Today.",
-      "New light and dark themes.",
-      "An AI assistant can work with your notes through <code>--mcp</code>.",
-      "A one-click installer."
+      "Today shows how to make a to-do with a framed <code>[ ]</code>, and Ctrl+Enter ticks the one you are on.",
+      "Clearer text and tooltips with their shortcuts, and nothing on screen is see-through.",
+      "Fixes for to-dos, cards from deleted notes and the first start after an update."
     ]
   },
   "requirements": [
