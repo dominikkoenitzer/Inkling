@@ -6,7 +6,7 @@ import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown } from 'lucide-react'
-import { useApp, bumpData } from '@/stores/app'
+import { useApp, bumpData, registerFlush, trackSave } from '@/stores/app'
 import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
@@ -128,7 +128,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     timerRef.current = setTimeout(() => void doSave(), 400)
   }
 
-  const doSave = async (): Promise<void> => {
+  const save = async (): Promise<void> => {
     const notebookId = notebookIdRef.current
     if (!editor || editor.isDestroyed || notebookId === null) return
     if (timerRef.current) {
@@ -165,6 +165,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       savingRef.current--
     }
   }
+  // Tracked, so deleting this note waits for the save to land.
+  const doSave = (): Promise<void> => trackSave(noteId, save())
 
   /** Puts a stored note into the editor, kept out of the undo history. */
   const showNote = (note: Note): void => {
@@ -228,9 +230,12 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     const flush = (): void => {
       if (timerRef.current) void doSave()
     }
+    // A delete from the sidebar starts the pending save first and waits for it.
+    const unregister = registerFlush(noteId, flush)
     window.addEventListener('blur', flush)
     window.addEventListener('beforeunload', flush)
     return () => {
+      unregister()
       window.removeEventListener('blur', flush)
       window.removeEventListener('beforeunload', flush)
       flush()

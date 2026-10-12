@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Layers, Plus, Settings, Sun, Trash2 } from 'lucide-react'
-import { useApp, useVersion, bumpData, type View } from '@/stores/app'
+import { useApp, useVersion, bumpData, settleNote, type View } from '@/stores/app'
 import type { Note } from '@shared/types'
 
 const api = window.inkling
@@ -106,35 +106,34 @@ function NotesList(): React.JSX.Element {
   const remove = (n: Note, row: HTMLElement | null): void => {
     // Keep the keyboard in the list: the next row, or the one before, takes focus.
     const next = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('button') as HTMLElement | null
+    // The open editor's last edit lands first, then the note goes.
+    const settled = settleNote(n.id)
     if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
-    // Let the open editor flush its last edit before the note goes.
-    setTimeout(() => {
-      void api.notes.remove(n.id).then(() => {
-        bumpData('notes')
-        bumpData('tasks')
-        // Opened again in the meantime: it is gone now, so close it.
-        if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
-        // The list only grows while its own toast is still the one on screen.
-        if (!useApp.getState().toast?.message.startsWith('Deleted')) undoable = []
-        if (!undoable.includes(n.id)) undoable = [...undoable, n.id]
-        const ids = undoable
-        useApp.getState().showToast({
-          message: ids.length === 1 ? `Deleted “${n.title?.trim() || 'Untitled'}”` : `Deleted ${ids.length} notes`,
-          actionLabel: 'Undo',
-          onAction: () => {
-            undoable = []
-            Promise.all(ids.map((id) => api.notes.restore(id))).then(
-              () => {
-                bumpData('notes')
-                bumpData('tasks')
-                useApp.getState().openNote(ids[ids.length - 1])
-              },
-              () => useApp.getState().showToast({ message: 'Could not bring the note back.' })
-            )
-          }
-        })
+    void settled.then(() => api.notes.remove(n.id)).then(() => {
+      bumpData('notes')
+      bumpData('tasks')
+      // Opened again in the meantime: it is gone now, so close it.
+      if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
+      // The list only grows while its own toast is still the one on screen.
+      if (!useApp.getState().toast?.message.startsWith('Deleted')) undoable = []
+      if (!undoable.includes(n.id)) undoable = [...undoable, n.id]
+      const ids = undoable
+      useApp.getState().showToast({
+        message: ids.length === 1 ? `Deleted “${n.title?.trim() || 'Untitled'}”` : `Deleted ${ids.length} notes`,
+        actionLabel: 'Undo',
+        onAction: () => {
+          undoable = []
+          Promise.all(ids.map((id) => api.notes.restore(id))).then(
+            () => {
+              bumpData('notes')
+              bumpData('tasks')
+              useApp.getState().openNote(ids[ids.length - 1])
+            },
+            () => useApp.getState().showToast({ message: 'Could not bring the note back.' })
+          )
+        }
       })
-    }, 50)
+    })
     next?.focus()
   }
 

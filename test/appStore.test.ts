@@ -12,7 +12,7 @@ const inkling = vi.hoisted(() => {
   return api
 })
 
-import { useApp, useData, watchFocus } from '../src/renderer/src/stores/app'
+import { useApp, useData, watchFocus, trackSave, registerFlush, settleNote } from '../src/renderer/src/stores/app'
 
 beforeEach(() => {
   useApp.setState({ view: 'notes', selectedNoteId: null, reviewingDeckId: null, homeNotebookId: 3 })
@@ -74,5 +74,29 @@ describe('watchFocus', () => {
     stop()
     target.dispatchEvent(new Event('focus'))
     expect(useData.getState().versions['notes']).toBe(after['notes'])
+  })
+})
+
+describe('settleNote', () => {
+  it("starts the open editor's pending save and waits for every save of that note", async () => {
+    const order: string[] = []
+    let finishEarlier!: () => void
+    void trackSave(5, new Promise<void>((r) => (finishEarlier = r)).then(() => void order.push('earlier save')))
+    const unregister = registerFlush(5, () => {
+      void trackSave(5, Promise.resolve().then(() => void order.push('flushed save')))
+    })
+    // Another note's save is not waited for.
+    void trackSave(6, new Promise<void>(() => {}))
+    const settled = settleNote(5).then(() => void order.push('settled'))
+    setTimeout(finishEarlier, 5)
+    await settled
+    expect(order).toEqual(['flushed save', 'earlier save', 'settled'])
+    unregister()
+  })
+
+  it('waits for failed saves too and resolves at once when nothing is pending', async () => {
+    void trackSave(8, Promise.reject(new Error('offline'))).catch(() => undefined)
+    await expect(settleNote(8)).resolves.toBeUndefined()
+    await expect(settleNote(9)).resolves.toBeUndefined()
   })
 })

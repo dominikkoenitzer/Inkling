@@ -180,5 +180,36 @@ export function watchFocus(target: EventTarget = window): () => void {
   return () => target.removeEventListener('focus', onFocus)
 }
 
+/* Note saves on their way to the main process, so a delete can wait for the last edit. */
+const pendingSaves = new Map<number, Set<Promise<unknown>>>()
+const flushers = new Map<number, () => void>()
+
+/** Registers a note save until it lands or fails; returns the same promise. */
+export function trackSave<T>(noteId: number, save: Promise<T>): Promise<T> {
+  const set = pendingSaves.get(noteId) ?? new Set()
+  pendingSaves.set(noteId, set)
+  set.add(save)
+  const done = (): void => {
+    set.delete(save)
+    if (set.size === 0 && pendingSaves.get(noteId) === set) pendingSaves.delete(noteId)
+  }
+  save.then(done, done)
+  return save
+}
+
+/** The open editor's way to start its pending save now. Returns the unregister call. */
+export function registerFlush(noteId: number, flush: () => void): () => void {
+  flushers.set(noteId, flush)
+  return () => {
+    if (flushers.get(noteId) === flush) flushers.delete(noteId)
+  }
+}
+
+/** Starts a note's pending save, then resolves once every save of it has landed or failed. */
+export async function settleNote(noteId: number): Promise<void> {
+  flushers.get(noteId)?.()
+  await Promise.allSettled([...(pendingSaves.get(noteId) ?? [])])
+}
+
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
