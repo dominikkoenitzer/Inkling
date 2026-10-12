@@ -29,8 +29,12 @@ export default function App(): React.JSX.Element {
   useEffect(() => watchFocus(), [])
 
   // Cards answered "Again" come due again within minutes: recount every few minutes.
+  // The day is checked too: after sleep the midnight timer can land late, with focus never lost.
   useEffect(() => {
-    const id = setInterval(() => bumpData('decks'), 5 * 60_000)
+    const id = setInterval(() => {
+      useApp.getState().syncDay()
+      bumpData('decks')
+    }, 5 * 60_000)
     return () => clearInterval(id)
   }, [])
 
