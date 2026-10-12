@@ -194,17 +194,22 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
               </Button>
             )}
             {confirmDelete ? (
-              <Button
-                variant="danger"
-                onClick={() =>
-                  void api.decks.remove(deck.id).then(() => {
-                    bumpData('decks')
-                    useApp.getState().openDeck(null)
-                  })
-                }
-              >
-                Delete deck and cards
-              </Button>
+              <>
+                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+                  Keep it
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() =>
+                    void api.decks.remove(deck.id).then(() => {
+                      bumpData('decks')
+                      useApp.getState().openDeck(null)
+                    })
+                  }
+                >
+                  Delete deck and cards
+                </Button>
+              </>
             ) : (
               <IconBtn title="Delete deck" onClick={() => setConfirmDelete(true)}>
                 <Trash2 size={15} />
