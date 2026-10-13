@@ -22,7 +22,7 @@ Only one copy of Inkling runs at a time; a second launch brings the open window 
 
 ## Format
 
-SQLite in WAL mode. `PRAGMA user_version` holds the schema version (13 at the time of writing). A database from an older version is upgraded at the next start, after the backup.
+SQLite in WAL mode. `PRAGMA user_version` holds the schema version (14 at the time of writing). A database from an older version is upgraded at the next start, after the backup.
 
 | Table | What it holds |
 |---|---|

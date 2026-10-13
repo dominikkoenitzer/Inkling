@@ -79,7 +79,7 @@ describe('migrate to v11', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(13)
+    expect(version(raw)).toBe(14)
     expect(columns(raw, 'flashcard_decks')).toContain('note_id')
     expect(columns(raw, 'flashcards')).toEqual(expect.arrayContaining(['source_line', 'cloze']))
     expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
@@ -112,7 +112,7 @@ describe('migrate to v11', () => {
     const fresh = open()
     migrate(fresh.db)
 
-    expect(version(fresh.raw)).toBe(13)
+    expect(version(fresh.raw)).toBe(14)
     for (const table of ['flashcard_decks', 'flashcards']) {
       expect(columns(fresh.raw, table)).toEqual(columns(upgraded.raw, table))
     }
@@ -122,7 +122,7 @@ describe('migrate to v11', () => {
     const { raw, db } = open()
     migrate(db)
     migrate(db)
-    expect(version(raw)).toBe(13)
+    expect(version(raw)).toBe(14)
   })
 })
 
@@ -143,7 +143,7 @@ describe('migrate to v12', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(13)
+    expect(version(raw)).toBe(14)
     expect(columns(raw, 'flashcards')).toContain('external_id')
     expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
       front: 'Osmosis',
@@ -191,7 +191,7 @@ describe('migrate to v13', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(13)
+    expect(version(raw)).toBe(14)
     expect(raw.prepare(`SELECT source_id FROM search_index WHERE search_index MATCH '"photosynthesis"*'`).all()).toEqual([{ source_id: '1' }])
     expect(indexed(raw)).toEqual([
       { title: 'Plants', content_text: 'Photosynthesis', source_type: 'note', source_id: '1' },
@@ -207,8 +207,193 @@ describe('migrate to v13', () => {
     raw.exec(`PRAGMA user_version = 12`)
     migrate(db)
 
-    expect(version(raw)).toBe(13)
+    expect(version(raw)).toBe(14)
     expect(indexed(raw)).toEqual(once)
+  })
+})
+
+describe('migrate to v14', () => {
+  /** A database exactly as Inkling 0.8.1 creates it at schema 13. */
+  const V13 = `
+CREATE TABLE notebooks (id INTEGER PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL, sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE notes (
+  id INTEGER PRIMARY KEY,
+  notebook_id INTEGER REFERENCES notebooks(id) ON DELETE CASCADE,
+  title TEXT,
+  content TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  deleted_at DATETIME
+);
+CREATE TABLE tasks (
+  id INTEGER PRIMARY KEY,
+  notebook_id INTEGER REFERENCES notebooks(id) ON DELETE CASCADE,
+  note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  status TEXT CHECK(status IN ('todo','done')) DEFAULT 'todo',
+  due_date DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME
+);
+CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER REFERENCES notebooks(id) ON DELETE CASCADE, name TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL);
+CREATE TABLE flashcards (id INTEGER PRIMARY KEY, deck_id INTEGER REFERENCES flashcard_decks(id) ON DELETE CASCADE, front TEXT NOT NULL, back TEXT NOT NULL, ease_factor REAL DEFAULT 2.5, interval_days INTEGER DEFAULT 0, repetitions INTEGER DEFAULT 0, next_review_date DATETIME DEFAULT CURRENT_TIMESTAMP, stability REAL, difficulty REAL, state TEXT NOT NULL DEFAULT 'new', last_review DATETIME, source_line INTEGER, cloze INTEGER NOT NULL DEFAULT 0, external_id TEXT);
+CREATE TABLE focus_sessions (id INTEGER PRIMARY KEY, task_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL, deck_id INTEGER REFERENCES flashcard_decks(id) ON DELETE SET NULL, duration_minutes INTEGER, started_at DATETIME, completed BOOLEAN DEFAULT 0);
+CREATE VIRTUAL TABLE search_index USING fts5(title, content_text, source_type UNINDEXED, source_id UNINDEXED);
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE INDEX idx_notes_notebook ON notes(notebook_id);
+CREATE INDEX idx_tasks_notebook ON tasks(notebook_id);
+CREATE INDEX idx_tasks_due ON tasks(due_date);
+CREATE INDEX idx_tasks_note ON tasks(note_id);
+CREATE INDEX idx_cards_deck ON flashcards(deck_id);
+CREATE INDEX idx_decks_note ON flashcard_decks(note_id);
+CREATE UNIQUE INDEX idx_cards_external ON flashcards(external_id) WHERE external_id IS NOT NULL;
+CREATE TABLE grades (id INTEGER PRIMARY KEY, notebook_id INTEGER REFERENCES notebooks(id) ON DELETE CASCADE, title TEXT NOT NULL, score REAL NOT NULL, max REAL NOT NULL DEFAULT 100, weight REAL NOT NULL DEFAULT 1, system TEXT NOT NULL DEFAULT 'percent', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX idx_grades_notebook ON grades(notebook_id);
+CREATE TABLE review_log (id INTEGER PRIMARY KEY, card_id INTEGER REFERENCES flashcards(id) ON DELETE SET NULL, deck_id INTEGER, rating INTEGER NOT NULL, state TEXT NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, elapsed_days REAL NOT NULL DEFAULT 0, scheduled_days REAL NOT NULL DEFAULT 0, reviewed_at DATETIME NOT NULL);
+CREATE INDEX idx_review_log_time ON review_log(reviewed_at);
+CREATE INDEX idx_review_log_card ON review_log(card_id);
+CREATE INDEX idx_review_log_deck ON review_log(deck_id);
+CREATE INDEX idx_notes_deleted ON notes(deleted_at);
+INSERT INTO settings (key, value) VALUES ('theme', 'light');
+PRAGMA user_version = 13;
+`
+  const lines = (...ids: number[]): string =>
+    JSON.stringify({
+      type: 'doc',
+      content: [{ type: 'taskList', content: ids.map((taskId) => ({ type: 'taskItem', attrs: { checked: false, taskId }, content: [] })) }]
+    })
+
+  /** Schema 13 with to-dos in two notebooks, gaps where rows were deleted, and a focus session. */
+  function v13(): ReturnType<typeof open> {
+    const opened = open()
+    opened.raw.exec(V13)
+    opened.raw.exec(`
+      INSERT INTO notebooks (id, name, color) VALUES (1, 'Home', 'teal'), (2, 'Maths', 'teal');
+      INSERT INTO notes (id, notebook_id, title, content) VALUES (1, 1, 'Week', '${lines(1, 2, 5)}'), (2, 2, 'Exam', '${lines(7)}');
+      INSERT INTO notes (id, notebook_id, title, content, deleted_at) VALUES (3, 1, 'Old', '${lines(9)}', '2026-10-12 13:02:00');
+      INSERT INTO tasks (id, notebook_id, note_id, title, status, due_date, created_at, completed_at) VALUES
+        (1, 1, 1, 'Buy agar', 'todo', '2026-10-20', '2026-10-01 08:00:00', NULL),
+        (2, 1, 1, 'Book the lab', 'done', NULL, '2026-10-02 08:00:00', '2026-10-03 09:00:00'),
+        (5, 1, 1, '', 'todo', NULL, '2026-10-04 08:00:00', NULL),
+        (7, 2, 2, 'Learn the proofs', 'todo', '2026-11-02', '2026-10-05 08:00:00', NULL);
+      INSERT INTO focus_sessions (id, task_id, duration_minutes, started_at, completed) VALUES (1, 7, 25, '2026-10-06 10:00:00', 1);
+      INSERT INTO search_index (title, content_text, source_type, source_id) VALUES ('Buy agar', '', 'task', '1');
+    `)
+    return opened
+  }
+  const tasks = (raw: DatabaseSync): unknown[] => raw.prepare(`SELECT * FROM tasks ORDER BY id`).all()
+  const tasksSql = (raw: DatabaseSync): string => (raw.prepare(`SELECT sql FROM sqlite_master WHERE name = 'tasks'`).get() as { sql: string }).sql
+  const indexes = (raw: DatabaseSync): unknown[] =>
+    raw.prepare(`SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'tasks' ORDER BY name`).all()
+  const links = (raw: DatabaseSync, table: string): unknown[] => raw.prepare(`SELECT "table", "from", "to", on_delete FROM pragma_foreign_key_list('${table}') ORDER BY "from"`).all()
+  const foreignKeys = (raw: DatabaseSync): unknown => (raw.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys
+  const add = (raw: DatabaseSync, title: string): number =>
+    Number(raw.prepare(`INSERT INTO tasks (notebook_id, note_id, title) VALUES (1, 1, ?)`).run(title).lastInsertRowid)
+
+  it('rebuilds tasks with AUTOINCREMENT and keeps every row, id, link and index', () => {
+    const { raw, db } = v13()
+    const rows = tasks(raw)
+    const taskLinks = links(raw, 'tasks')
+    const sessionLinks = links(raw, 'focus_sessions')
+    const named = indexes(raw)
+
+    migrate(db)
+
+    expect(version(raw)).toBe(14)
+    expect(tasksSql(raw)).toMatch(/id INTEGER PRIMARY KEY AUTOINCREMENT/)
+    expect(tasks(raw)).toEqual(rows)
+    expect(links(raw, 'tasks')).toEqual(taskLinks)
+    expect(links(raw, 'focus_sessions')).toEqual(sessionLinks)
+    expect(indexes(raw)).toEqual(named)
+    expect(raw.prepare(`SELECT task_id FROM focus_sessions`).all()).toEqual([{ task_id: 7 }])
+    expect(raw.prepare(`SELECT name FROM sqlite_master WHERE name = 'tasks_v14'`).all()).toEqual([])
+    expect(raw.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+    expect(foreignKeys(raw)).toBe(1)
+  })
+
+  it('never hands a deleted id to a new task', () => {
+    const { raw, db } = v13()
+    migrate(db)
+
+    // 9 is stamped in a trashed note although its row is gone, so new ids start above it.
+    const first = add(raw, 'Call Anna')
+    expect(first).toBe(10)
+    raw.exec(`DELETE FROM tasks WHERE id = ${first}`)
+    const second = add(raw, 'Pay rent')
+    expect(second).toBe(11)
+    raw.exec(`DELETE FROM tasks WHERE id IN (7, ${second})`)
+    expect(add(raw, 'Water the plants')).toBe(12)
+
+    // A line pasted back still gets its own id again.
+    raw.exec(`INSERT INTO tasks (id, notebook_id, note_id, title) VALUES (${first}, 1, 1, 'Call Anna')`)
+    expect(raw.prepare(`SELECT id FROM tasks ORDER BY id`).all().map((r) => (r as { id: number }).id)).toEqual([1, 2, 5, 10, 12])
+  })
+
+  it('starts above the highest row when no note carries a higher id', () => {
+    const { raw, db } = v13()
+    raw.exec(`UPDATE notes SET content = '{"type":"doc"}' WHERE id = 3`)
+    raw.exec(`UPDATE notes SET content = 'not json' WHERE id = 2`)
+    migrate(db)
+    expect(add(raw, 'Call Anna')).toBe(8)
+  })
+
+  it('keeps the foreign keys working on the new table', () => {
+    const { raw, db } = v13()
+    migrate(db)
+
+    raw.exec(`DELETE FROM tasks WHERE id = 7`)
+    expect(raw.prepare(`SELECT task_id FROM focus_sessions`).all()).toEqual([{ task_id: null }])
+    raw.exec(`DELETE FROM notes WHERE id = 1`)
+    expect(raw.prepare(`SELECT id, note_id FROM tasks ORDER BY id`).all()).toEqual([
+      { id: 1, note_id: null },
+      { id: 2, note_id: null },
+      { id: 5, note_id: null }
+    ])
+    raw.exec(`DELETE FROM notebooks WHERE id = 1`)
+    expect(tasks(raw)).toEqual([])
+    expect(() => raw.exec(`INSERT INTO tasks (notebook_id, title) VALUES (99, 'Nowhere')`)).toThrow()
+  })
+
+  it('gives the same table when it runs again', () => {
+    const { raw, db } = v13()
+    migrate(db)
+    add(raw, 'Call Anna')
+    const once = { rows: tasks(raw), sql: tasksSql(raw), named: indexes(raw), seq: raw.prepare(`SELECT * FROM sqlite_sequence`).all() }
+
+    raw.exec(`PRAGMA user_version = 13`)
+    migrate(db)
+
+    expect(version(raw)).toBe(14)
+    expect({ rows: tasks(raw), sql: tasksSql(raw), named: indexes(raw), seq: raw.prepare(`SELECT * FROM sqlite_sequence`).all() }).toEqual(once)
+    expect(foreignKeys(raw)).toBe(1)
+  })
+
+  it('leaves the database at schema 13 when the rebuild fails', () => {
+    const { raw, db } = v13()
+    const rows = tasks(raw)
+    const sql = tasksSql(raw)
+    // A view in the way makes the rebuild throw halfway.
+    raw.exec(`CREATE VIEW tasks_v14 AS SELECT 1`)
+
+    expect(() => migrate(db)).toThrow()
+
+    expect(version(raw)).toBe(13)
+    expect(tasksSql(raw)).toBe(sql)
+    expect(tasks(raw)).toEqual(rows)
+    expect(raw.prepare(`SELECT task_id FROM focus_sessions`).all()).toEqual([{ task_id: 7 }])
+    expect(foreignKeys(raw)).toBe(1)
+  })
+
+  it('creates a fresh database with the same tasks table the upgrade makes', () => {
+    const upgraded = v13()
+    migrate(upgraded.db)
+    const fresh = open()
+    migrate(fresh.db)
+
+    expect(tasksSql(fresh.raw)).toMatch(/id INTEGER PRIMARY KEY AUTOINCREMENT/)
+    expect(columns(fresh.raw, 'tasks')).toEqual(columns(upgraded.raw, 'tasks'))
+    expect(links(fresh.raw, 'tasks')).toEqual(links(upgraded.raw, 'tasks'))
+    expect(indexes(fresh.raw)).toEqual(indexes(upgraded.raw))
   })
 })
 

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { join } from 'path'
 import fs from 'fs'
 import { tiptapToText } from './repos/text'
+import { extractNoteTaskItems } from '@shared/noteTasks'
 
 let db: Database.Database | null = null
 
@@ -25,7 +26,7 @@ CREATE TABLE notes (
 );
 
 CREATE TABLE tasks (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   notebook_id INTEGER REFERENCES notebooks(id) ON DELETE CASCADE,
   note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
@@ -209,7 +210,7 @@ CREATE INDEX IF NOT EXISTS idx_review_log_deck ON review_log(deck_id);
 `
 
 /** The schema version the code in this build expects. */
-const CURRENT_VERSION = 13
+const CURRENT_VERSION = 14
 
 /** Exported for the migration tests; `openDb` is the only caller in the app. */
 export function migrate(d: Database.Database): void {
@@ -364,8 +365,69 @@ export function migrate(d: Database.Database): void {
         drop.run(String(n.id))
         add.run(n.title ?? 'Untitled', tiptapToText(n.content), String(n.id))
       }
-      d.pragma(`user_version = ${CURRENT_VERSION}`)
+      d.pragma('user_version = 13')
     })()
+  }
+  if (version < 14) {
+    // Task ids are never handed out twice from here on, so a line cut and pasted back
+    // cannot meet a new line that took its id in the meantime.
+    taskIdsAutoincrement(d)
+  }
+}
+
+/**
+ * Rebuilds `tasks` with AUTOINCREMENT, keeping every row, id, index and trigger, then sets
+ * schema 14. Foreign keys are off for the swap, or dropping the old table would clear
+ * `focus_sessions.task_id`. Safe to run again.
+ */
+function taskIdsAutoincrement(d: Database.Database): void {
+  const enforced = d.pragma('foreign_keys', { simple: true }) === 1
+  d.pragma('foreign_keys = OFF')
+  if (d.pragma('foreign_keys', { simple: true }) !== 0) throw new Error('could not turn foreign keys off to rebuild tasks')
+  try {
+    d.transaction(() => {
+      const table = d.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tasks'`).get() as
+        | { sql: string }
+        | undefined
+      const sql = table?.sql ?? ''
+      const head = /^CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:"tasks"|`tasks`|\[tasks\]|tasks)\s*\(/i
+      const idColumn = /\bid\s+INTEGER\s+PRIMARY\s+KEY\b/i
+      if (head.test(sql) && idColumn.test(sql) && !/\bAUTOINCREMENT\b/i.test(sql)) {
+        // Made from the table's own definition, so every column and constraint comes along.
+        const extras = d
+          .prepare(`SELECT sql FROM sqlite_master WHERE tbl_name = 'tasks' AND type IN ('index', 'trigger') AND sql IS NOT NULL`)
+          .all() as Array<{ sql: string }>
+        const cols = (d.prepare(`PRAGMA table_info(tasks)`).all() as Array<{ name: string }>).map((c) => `"${c.name}"`).join(', ')
+        const rows = (): string => JSON.stringify(d.prepare(`SELECT COUNT(*) AS n, TOTAL(id) AS sum, MAX(id) AS top FROM tasks`).get())
+        const before = rows()
+        d.exec(`DROP TABLE IF EXISTS tasks_v14`)
+        d.exec(sql.replace(head, 'CREATE TABLE tasks_v14 (').replace(idColumn, 'id INTEGER PRIMARY KEY AUTOINCREMENT'))
+        d.exec(`INSERT INTO tasks_v14 (${cols}) SELECT ${cols} FROM tasks`)
+        d.exec(`DROP TABLE tasks`)
+        d.exec(`ALTER TABLE tasks_v14 RENAME TO tasks`)
+        for (const e of extras) d.exec(e.sql)
+        if (rows() !== before) throw new Error('rebuilding tasks changed its rows')
+      }
+      // A note can still carry the id of a row deleted before this, so new ids start above it.
+      let top = (d.prepare(`SELECT COALESCE(MAX(id), 0) AS top FROM tasks`).get() as { top: number }).top
+      for (const n of d.prepare(`SELECT content FROM notes`).all() as Array<{ content: string }>) {
+        try {
+          for (const { taskId } of extractNoteTaskItems(JSON.parse(n.content) as Record<string, unknown>)) {
+            if (taskId !== null && Number.isSafeInteger(taskId) && taskId > top) top = taskId
+          }
+        } catch {
+          // malformed content holds no lines
+        }
+      }
+      const sequence = d.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'`).get()
+      if (sequence && top > 0) {
+        const raised = d.prepare(`UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'tasks'`).run(top)
+        if (raised.changes === 0) d.prepare(`INSERT INTO sqlite_sequence (name, seq) VALUES ('tasks', ?)`).run(top)
+      }
+      d.pragma('user_version = 14')
+    })()
+  } finally {
+    if (enforced) d.pragma('foreign_keys = ON')
   }
 }
 
