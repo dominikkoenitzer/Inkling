@@ -4,6 +4,12 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] - 2026-10-14
+
+### Fixed
+- Cutting a to-do line and pasting it back can no longer swap two tasks: a task's id is never
+  given to another one. Your data is backed up before the update changes it, as with every update.
+
 ## [0.8.1] - 2026-10-12
 
 ### Changed
