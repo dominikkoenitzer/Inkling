@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/shell/Sidebar'
 import { MainPane } from '@/components/shell/MainPane'
 import { CommandPalette } from '@/components/shell/CommandPalette'
 import { SettingsModal } from '@/components/shell/SettingsModal'
+import { ShortcutsModal } from '@/components/shell/ShortcutsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 
@@ -16,6 +17,7 @@ export default function App(): React.JSX.Element {
   const theme = useApp((s) => s.theme)
   const paletteOpen = useApp((s) => s.paletteOpen)
   const settingsOpen = useApp((s) => s.settingsOpen)
+  const shortcutsOpen = useApp((s) => s.shortcutsOpen)
 
   useEffect(() => {
     void useApp.getState().init()
@@ -46,9 +48,14 @@ export default function App(): React.JSX.Element {
     void api.app.setTitlebar(theme)
   }, [ready, failed, theme])
 
-  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Study, Ctrl+, settings.
+  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Study, Ctrl+, settings, F1 shortcuts.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'F1' && !e.repeat) {
+        e.preventDefault()
+        useApp.getState().setShortcutsOpen(!useApp.getState().shortcutsOpen)
+        return
+      }
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.repeat) return
       const key = e.key.toLowerCase()
       const app = useApp.getState()
@@ -62,6 +69,7 @@ export default function App(): React.JSX.Element {
         e.preventDefault()
         app.setView(key === '1' ? 'today' : 'study')
         app.setSettingsOpen(false)
+        app.setShortcutsOpen(false)
       } else if (key === ',') {
         e.preventDefault()
         app.setSettingsOpen(true)
@@ -118,6 +126,7 @@ export default function App(): React.JSX.Element {
 
       {paletteOpen && <CommandPalette />}
       {settingsOpen && <SettingsModal />}
+      {shortcutsOpen && <ShortcutsModal />}
       <Toaster />
     </div>
   )

@@ -6,6 +6,7 @@ const inkling = vi.hoisted(() => {
     notebooks: { home: vi.fn(async () => 3) },
     notes: {
       restore: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
       create: vi.fn(async () => ({ id: 77 }))
     }
   }
@@ -61,6 +62,18 @@ describe('newNote', () => {
     expect(inkling.notes.create).toHaveBeenCalledWith({ notebook_id: 3 })
     expect(useApp.getState().view).toBe('notes')
     expect(useApp.getState().selectedNoteId).toBe(77)
+  })
+})
+
+describe('overlays', () => {
+  it('shows one at a time', () => {
+    const app = useApp.getState()
+    app.setPaletteOpen(true)
+    app.setShortcutsOpen(true)
+    expect(useApp.getState()).toMatchObject({ shortcutsOpen: true, paletteOpen: false, settingsOpen: false })
+    app.setSettingsOpen(true)
+    expect(useApp.getState()).toMatchObject({ shortcutsOpen: false, paletteOpen: false, settingsOpen: true })
+    app.setSettingsOpen(false)
   })
 })
 
