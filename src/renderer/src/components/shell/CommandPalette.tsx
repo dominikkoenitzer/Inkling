@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Search, FileText, CheckSquare, Layers, Plus } from 'lucide-react'
+import { Search, FileText, CheckSquare, Layers, Plus, Sun, Keyboard, Settings } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import type { SearchResult } from '@shared/types'
 
@@ -13,7 +13,7 @@ interface Item {
   run: () => void
 }
 
-/** Ctrl+K: search notes, to-dos and decks, or start a new note. */
+/** Ctrl+K: search notes, to-dos and decks, or jump to a place or action by name. */
 export function CommandPalette(): React.JSX.Element {
   const [query, setQuery] = useState('')
   // Results remember the query they answer, so Enter never acts on an older one.
@@ -51,10 +51,18 @@ export function CommandPalette(): React.JSX.Element {
     detail: r.snippet.replace(/[⟪⟫]/g, ''),
     run: () => (r.note_id !== null ? app.openNote(r.note_id) : app.openDeck(r.source_id))
   }))
-  const items: Item[] = [
-    ...found,
-    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl+N', run: () => void app.newNote().then(close) }
+  const actions: Item[] = [
+    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl+N', run: () => void app.newNote().then(close) },
+    { key: 'today', icon: <Sun size={16} />, label: 'Today', detail: 'Ctrl+1', run: () => app.setView('today') },
+    { key: 'study', icon: <Layers size={16} />, label: 'Study', detail: 'Ctrl+2', run: () => app.setView('study') },
+    { key: 'shortcuts', icon: <Keyboard size={16} />, label: 'Keyboard shortcuts', detail: 'F1', run: () => app.setShortcutsOpen(true) },
+    { key: 'settings', icon: <Settings size={16} />, label: 'Settings', detail: 'Ctrl+,', run: () => app.setSettingsOpen(true) }
   ]
+  // With nothing typed every action shows; while searching, the ones whose name matches,
+  // and New note always, so Enter on a miss still starts one.
+  const lower = q.toLowerCase()
+  const matching = q ? actions.filter((a) => a.key === 'new-note' || a.label.toLowerCase().includes(lower)) : actions
+  const items: Item[] = [...found, ...matching]
   const clamped = Math.min(selected, items.length - 1)
 
   const enterWaiting = useRef(false)
@@ -119,7 +127,7 @@ export function CommandPalette(): React.JSX.Element {
           />
         </div>
         <div ref={listRef} className="max-h-[46vh] overflow-y-auto p-1.5">
-          {q && !pending && found.length === 0 && <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>}
+          {q && !pending && found.length === 0 && matching.length === 1 && <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>}
           {items.map((item, i) => (
             <button
               key={item.key}
