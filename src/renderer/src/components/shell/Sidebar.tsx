@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Layers, Plus, Settings, Sun, Trash2 } from 'lucide-react'
-import { useApp, useVersion, bumpData, settleNote, type View } from '@/stores/app'
+import { Layers, Plus, Settings, Sun } from 'lucide-react'
+import { useApp, useVersion, type View } from '@/stores/app'
 import type { Note } from '@shared/types'
 
 const api = window.inkling
@@ -86,9 +86,6 @@ function NavRow({
   )
 }
 
-// Notes deleted while one undo toast is up: its Undo brings all of them back.
-let undoable: number[] = []
-
 function NotesList(): React.JSX.Element {
   const view = useApp((s) => s.view)
   const selectedNoteId = useApp((s) => s.selectedNoteId)
@@ -103,40 +100,6 @@ function NotesList(): React.JSX.Element {
     }
   }, [version])
 
-  const remove = (n: Note, row: HTMLElement | null): void => {
-    // Keep the keyboard in the list: the next row, or the one before, takes focus.
-    const next = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('button') as HTMLElement | null
-    // The open editor's last edit lands first, then the note goes.
-    const settled = settleNote(n.id)
-    if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
-    void settled.then(() => api.notes.remove(n.id)).then(() => {
-      bumpData('notes')
-      bumpData('tasks')
-      // Opened again in the meantime: it is gone now, so close it.
-      if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
-      // The list only grows while its own toast is still the one on screen.
-      if (!useApp.getState().toast?.message.startsWith('Deleted')) undoable = []
-      if (!undoable.includes(n.id)) undoable = [...undoable, n.id]
-      const ids = undoable
-      useApp.getState().showToast({
-        message: ids.length === 1 ? `Deleted “${n.title?.trim() || 'Untitled'}”` : `Deleted ${ids.length} notes`,
-        actionLabel: 'Undo',
-        onAction: () => {
-          undoable = []
-          Promise.all(ids.map((id) => api.notes.restore(id))).then(
-            () => {
-              bumpData('notes')
-              bumpData('tasks')
-              useApp.getState().openNote(ids[ids.length - 1])
-            },
-            () => useApp.getState().showToast({ message: 'Could not bring the note back.' })
-          )
-        }
-      })
-    })
-    next?.focus()
-  }
-
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
       {notes.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
@@ -146,7 +109,7 @@ function NotesList(): React.JSX.Element {
         return (
           <div
             key={n.id}
-            className={`group flex h-8 items-center rounded-md pr-1 text-sm transition-colors ${
+            className={`flex h-8 items-center rounded-md pr-1 text-sm transition-colors ${
               active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
             }`}
           >
@@ -157,15 +120,6 @@ function NotesList(): React.JSX.Element {
               className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-2.5 text-left"
             >
               <span className="min-w-0 flex-1 truncate">{title}</span>
-            </button>
-            <button
-              type="button"
-              title="Delete note"
-              aria-label={`Delete ${title}`}
-              onClick={(e) => remove(n, (e.currentTarget.parentElement as HTMLElement | null) ?? null)}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-            >
-              <Trash2 size={14} />
             </button>
           </div>
         )

@@ -5,8 +5,8 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown } from 'lucide-react'
-import { useApp, bumpData, registerFlush, trackSave } from '@/stores/app'
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown, Trash2 } from 'lucide-react'
+import { useApp, bumpData, registerFlush, trackSave, deleteNote } from '@/stores/app'
 import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
@@ -271,7 +271,15 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExportMd={() => void exportMarkdown()} savedAt={savedAt} />}
+      {editor && (
+        <Toolbar
+          editor={editor}
+          onFlashcards={() => void makeFlashcards()}
+          onExportMd={() => void exportMarkdown()}
+          onDelete={() => void deleteNote(noteId, titleRef.current)}
+          savedAt={savedAt}
+        />
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Study. */}
         <div className="mx-auto max-w-[720px] px-10 pb-32 pt-3">
@@ -365,11 +373,13 @@ function Toolbar({
   editor,
   onFlashcards,
   onExportMd,
+  onDelete,
   savedAt
 }: {
   editor: Editor
   onFlashcards: () => void
   onExportMd: () => void
+  onDelete: () => void
   savedAt: Date | null
 }): React.JSX.Element {
   // subscribe to selection/transaction changes so active states repaint
@@ -427,7 +437,10 @@ function Toolbar({
       <IconBtn title="Export as Markdown" onClick={onExportMd}>
         <FileDown size={16} />
       </IconBtn>
-      <span className="ml-auto pr-1 text-xs text-faint">{savedAt ? 'Saved' : ''}</span>
+      <span className="ml-auto pr-2 text-xs text-faint">{savedAt ? 'Saved' : ''}</span>
+      <IconBtn title="Delete note" onClick={onDelete} className="hover:!text-danger">
+        <Trash2 size={16} />
+      </IconBtn>
     </div>
   )
 }
