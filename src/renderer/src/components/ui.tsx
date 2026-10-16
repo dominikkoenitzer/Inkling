@@ -184,6 +184,15 @@ export function Code({ children }: { children: ReactNode }): React.JSX.Element {
   return <code className="rounded border border-edge bg-panel px-1 font-mono text-[13px] text-ink">{children}</code>
 }
 
+/** A key to press, as a small solid chip. */
+export function Kbd({ children, className = '' }: { children: ReactNode; className?: string }): React.JSX.Element {
+  return (
+    <kbd className={`inline-flex h-5 min-w-5 items-center justify-center rounded border border-edge bg-panel px-1.5 font-sans text-xs text-muted ${className}`}>
+      {children}
+    </kbd>
+  )
+}
+
 export const inputCls =
   'w-full rounded-md border border-edge bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-accent'
 

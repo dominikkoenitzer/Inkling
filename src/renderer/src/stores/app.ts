@@ -45,6 +45,7 @@ interface AppState {
   reviewingDeckId: number | null
   paletteOpen: boolean
   settingsOpen: boolean
+  shortcutsOpen: boolean
   toast: Toast | null
 
   init(): Promise<void>
@@ -61,6 +62,7 @@ interface AppState {
   reviewDeck(deckId: number | null): void
   setPaletteOpen(v: boolean): void
   setSettingsOpen(v: boolean): void
+  setShortcutsOpen(v: boolean): void
   showToast(t: Omit<Toast, 'id'>): void
   dismissToast(): void
 }
@@ -78,6 +80,7 @@ export const useApp = create<AppState>((set, get) => ({
   reviewingDeckId: null,
   paletteOpen: false,
   settingsOpen: false,
+  shortcutsOpen: false,
   toast: null,
 
   init: async () => {
@@ -121,7 +124,7 @@ export const useApp = create<AppState>((set, get) => ({
       const home = get().homeNotebookId ?? (await api.notebooks.home())
       const note = await api.notes.create({ notebook_id: home })
       bumpData('notes')
-      set({ paletteOpen: false, settingsOpen: false })
+      set({ paletteOpen: false, settingsOpen: false, shortcutsOpen: false })
       get().openNote(note.id)
     } finally {
       creatingNote = false
@@ -135,8 +138,9 @@ export const useApp = create<AppState>((set, get) => ({
   openDeck: (deckId) => set({ view: 'study', selectedDeckId: deckId, reviewingDeckId: null, paletteOpen: false }),
   reviewDeck: (deckId) => set({ view: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
   // One overlay at a time.
-  setPaletteOpen: (paletteOpen) => set(paletteOpen ? { paletteOpen, settingsOpen: false } : { paletteOpen }),
-  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, paletteOpen: false } : { settingsOpen }),
+  setPaletteOpen: (paletteOpen) => set(paletteOpen ? { paletteOpen, settingsOpen: false, shortcutsOpen: false } : { paletteOpen }),
+  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, paletteOpen: false, shortcutsOpen: false } : { settingsOpen }),
+  setShortcutsOpen: (shortcutsOpen) => set(shortcutsOpen ? { shortcutsOpen, paletteOpen: false, settingsOpen: false } : { shortcutsOpen }),
 
   showToast: (t) => {
     const id = ++toastSeq
@@ -233,3 +237,4 @@ export async function settleNote(noteId: number): Promise<void> {
 
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
+
