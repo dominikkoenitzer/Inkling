@@ -126,13 +126,14 @@
   },
   "assistant": {
     "label": "AI assistant",
-    "title": "Works with your AI assistant",
+    "title": "Use Inkling with your AI assistant",
     "body": [
-      "Start Inkling with <code>--mcp</code> and an assistant on your computer can search your notes, write new ones, tick off to-dos and add flashcards.",
-      "It cannot delete anything or rewrite what a note already says. The assistant starts Inkling itself and nothing goes over the network.",
+      "Open Settings in Inkling and click Connect next to Claude Desktop or Claude Code, then restart the assistant. It can now search your notes, tidy them up, plan your day with you and quiz you on the flashcards that are due.",
+      "Another assistant? Click Copy setup in the same place and paste it into its MCP settings. Inkling fills in where it is installed.",
+      "Nothing is deleted for good: a deleted note waits in the trash for 30 days, the assistant can undo its edits, and your data is backed up before its first change. The assistant starts Inkling itself and nothing goes over the network.",
       "Want your assistant to know Inkling inside out? <a href=\"/skill/inkling.zip\">Download the skill</a>."
     ],
-    "caption": "Add Inkling to your MCP client",
+    "caption": "Copy setup gives you this, with your own path",
     "code": "{\n  \"mcpServers\": {\n    \"inkling\": {\n      \"command\": \"C:\\\\Users\\\\<you>\\\\AppData\\\\Local\\\\Programs\\\\Inkling\\\\Inkling.exe\",\n      \"args\": [\"--mcp\"]\n    }\n  }\n}"
   },
   "new": {
@@ -236,6 +237,12 @@
       "q": "Does it work offline?",
       "a": [
         "Yes, all of it. Inkling only goes online at start, to look for a new version."
+      ]
+    },
+    {
+      "q": "Which AI assistants work with Inkling?",
+      "a": [
+        "Any app that takes MCP servers. Settings connects Claude Desktop and Claude Code in one click; for any other, Copy setup gives you what to paste."
       ]
     },
     {
