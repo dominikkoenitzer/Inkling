@@ -412,13 +412,14 @@ footer p { margin: 0.3rem 0; }
 <section class="assistant" aria-labelledby="ai-h">
 <div class="text">
 <p class="label">AI assistant</p>
-<h2 id="ai-h">Works with your AI assistant</h2>
-<p>Start Inkling with <code>--mcp</code> and an assistant on your computer can search your notes, write new ones, tick off to-dos and add flashcards.</p>
-<p>It cannot delete anything or rewrite what a note already says. The assistant starts Inkling itself and nothing goes over the network.</p>
+<h2 id="ai-h">Use Inkling with your AI assistant</h2>
+<p>Open Settings in Inkling and click Connect next to Claude Desktop or Claude Code, then restart the assistant. It can now search your notes, tidy them up, plan your day with you and quiz you on the flashcards that are due.</p>
+<p>Another assistant? Click Copy setup in the same place and paste it into its MCP settings. Inkling fills in where it is installed.</p>
+<p>Nothing is deleted for good: a deleted note waits in the trash for 30 days, the assistant can undo its edits, and your data is backed up before its first change. The assistant starts Inkling itself and nothing goes over the network.</p>
 <p>Want your assistant to know Inkling inside out? <a href="/skill/inkling.zip">Download the skill</a>.</p>
 </div>
-<div class="codecard" tabindex="0" role="region" aria-label="Add Inkling to your MCP client">
-<p class="cap">Add Inkling to your MCP client</p>
+<div class="codecard" tabindex="0" role="region" aria-label="Copy setup gives you this, with your own path">
+<p class="cap">Copy setup gives you this, with your own path</p>
 <pre><code>{
   &quot;mcpServers&quot;: {
     &quot;inkling&quot;: {
@@ -507,6 +508,10 @@ footer p { margin: 0.3rem 0; }
 <details>
 <summary>Does it work offline?</summary>
 <div class="answer"><p>Yes, all of it. Inkling only goes online at start, to look for a new version.</p></div>
+</details>
+<details>
+<summary>Which AI assistants work with Inkling?</summary>
+<div class="answer"><p>Any app that takes MCP servers. Settings connects Claude Desktop and Claude Code in one click; for any other, Copy setup gives you what to paste.</p></div>
 </details>
 <details>
 <summary>Can I take my notes with me?</summary>
