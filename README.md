@@ -37,9 +37,12 @@ For macOS and Linux, see [Other ways to install](#other-ways-to-install).
 
 | Keys | What it does |
 |---|---|
-| `Ctrl+K` | Search |
+| `Ctrl+K` | Search, or jump to Today, Study and Settings |
 | `Ctrl+N` | New note |
+| `Ctrl+1`, `Ctrl+2` | Today, Study |
 | `Ctrl+,` | Settings |
+| `F1` | All shortcuts |
+| `Ctrl+Enter` | In a note: tick the to-do the cursor is in |
 | `Space`, then `1` to `4` | In a review: show the answer, then Again, Hard, Good or Easy |
 
 ## Other ways to install
