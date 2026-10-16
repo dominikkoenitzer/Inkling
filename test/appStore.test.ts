@@ -14,7 +14,7 @@ const inkling = vi.hoisted(() => {
   return api
 })
 
-import { useApp, useData, watchFocus, trackSave, registerFlush, settleNote } from '../src/renderer/src/stores/app'
+import { useApp, useData, watchFocus, trackSave, registerFlush, settleNote, deleteNote } from '../src/renderer/src/stores/app'
 
 beforeEach(() => {
   useApp.setState({ view: 'notes', selectedNoteId: null, reviewingDeckId: null, homeNotebookId: 3 })
@@ -74,6 +74,20 @@ describe('overlays', () => {
     app.setSettingsOpen(true)
     expect(useApp.getState()).toMatchObject({ shortcutsOpen: false, paletteOpen: false, settingsOpen: true })
     app.setSettingsOpen(false)
+  })
+})
+
+describe('deleteNote', () => {
+  it('closes the open note, trashes it and offers undo', async () => {
+    useApp.setState({ selectedNoteId: 5, toast: null })
+    await deleteNote(5, 'Lab report')
+    expect(inkling.notes.remove).toHaveBeenCalledWith(5)
+    const s = useApp.getState()
+    expect(s.selectedNoteId).toBeNull()
+    expect(s.toast?.message).toBe('Deleted “Lab report”')
+    s.toast?.onAction?.()
+    await vi.waitFor(() => expect(useApp.getState().selectedNoteId).toBe(5))
+    expect(inkling.notes.restore).toHaveBeenCalledWith(5)
   })
 })
 

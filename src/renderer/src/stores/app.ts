@@ -238,3 +238,37 @@ export async function settleNote(noteId: number): Promise<void> {
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
 
+// Notes deleted while one undo toast is up: its Undo brings all of them back.
+let undoable: number[] = []
+
+/** Moves a note to the trash once its last edit has landed, with an undo toast. */
+export async function deleteNote(noteId: number, title: string | null): Promise<void> {
+  // The open editor's last edit lands first, then the note goes.
+  const settled = settleNote(noteId)
+  if (useApp.getState().selectedNoteId === noteId) useApp.setState({ selectedNoteId: null })
+  await settled
+  await api.notes.remove(noteId)
+  bumpData('notes')
+  bumpData('tasks')
+  // Opened again in the meantime: it is gone now, so close it.
+  if (useApp.getState().selectedNoteId === noteId) useApp.setState({ selectedNoteId: null })
+  // The list only grows while its own toast is still the one on screen.
+  if (!useApp.getState().toast?.message.startsWith('Deleted')) undoable = []
+  if (!undoable.includes(noteId)) undoable = [...undoable, noteId]
+  const ids = undoable
+  useApp.getState().showToast({
+    message: ids.length === 1 ? `Deleted “${title?.trim() || 'Untitled'}”` : `Deleted ${ids.length} notes`,
+    actionLabel: 'Undo',
+    onAction: () => {
+      undoable = []
+      Promise.all(ids.map((id) => api.notes.restore(id))).then(
+        () => {
+          bumpData('notes')
+          bumpData('tasks')
+          useApp.getState().openNote(ids[ids.length - 1])
+        },
+        () => useApp.getState().showToast({ message: 'Could not bring the note back.' })
+      )
+    }
+  })
+}
