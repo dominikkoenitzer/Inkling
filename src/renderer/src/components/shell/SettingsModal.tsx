@@ -80,7 +80,7 @@ function Assistants(): React.JSX.Element {
       <h3 id="assistants-title" className="text-sm font-medium">
         Connect an AI assistant
       </h3>
-      <p className="mt-1 text-xs text-muted">Let an assistant on this computer read and add to your notes, to-dos and flashcards.</p>
+      <p className="mt-1 text-xs text-muted">Let an assistant on this computer work with your notes, to-dos and flashcards.</p>
       <ul className="mt-3">
         {(list ?? []).map((a) => (
           <li key={a.id} className="flex items-center gap-3 border-b border-edge py-2.5">
