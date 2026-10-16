@@ -164,11 +164,19 @@
   "keys": [
     [
       "Ctrl+K",
-      "Search"
+      "Search, or jump to Today, Study and Settings"
     ],
     [
       "Ctrl+N",
       "New note"
+    ],
+    [
+      "Ctrl+1 Ctrl+2",
+      "Today, Study"
+    ],
+    [
+      "F1",
+      "All shortcuts"
     ],
     [
       "Ctrl+,",
