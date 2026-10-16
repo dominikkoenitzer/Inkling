@@ -193,7 +193,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, noteId])
 
-  // Reload on focus when the note changed outside, unless an edit here is pending or saving.
+  // Reload on focus or a write from outside when the note changed, unless an edit here is pending or saving.
   useEffect(() => {
     if (!editor) return
     let alive = true
@@ -210,9 +210,11 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       })
     }
     window.addEventListener('focus', onFocus)
+    window.addEventListener('inkling:outside-write', onFocus)
     return () => {
       alive = false
       window.removeEventListener('focus', onFocus)
+      window.removeEventListener('inkling:outside-write', onFocus)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, noteId])

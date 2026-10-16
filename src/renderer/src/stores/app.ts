@@ -183,14 +183,21 @@ export function watchDay(target: EventTarget = window): () => void {
   }
 }
 
-/** Refetches notes, tasks and decks when the window regains focus: another process may have written them. */
+/**
+ * Refetches notes, tasks and decks when the window regains focus, or when the main process
+ * reports a write from another process: an assistant may have changed them.
+ */
 export function watchFocus(target: EventTarget = window): () => void {
   const onFocus = (): void => {
     const { bump } = useData.getState()
     for (const domain of ['notes', 'tasks', 'decks']) bump(domain)
   }
   target.addEventListener('focus', onFocus)
-  return () => target.removeEventListener('focus', onFocus)
+  target.addEventListener('inkling:outside-write', onFocus)
+  return () => {
+    target.removeEventListener('focus', onFocus)
+    target.removeEventListener('inkling:outside-write', onFocus)
+  }
 }
 
 /* Note saves on their way to the main process, so a delete can wait for the last edit. */
