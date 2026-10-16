@@ -410,4 +410,9 @@ Final QA pass: 15 defects found by an adversarially-verified review and fixed:
 - Nested subtask text no longer folds into the parent task’s title.
 - A quick-add of only a date (e.g. `friday`) gets a neutral title instead of the raw date word.
 
-[0.1.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.1.0
+[0.8.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.2
+[0.8.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.1
+[0.8.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.0
+[0.7.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.7.0
+[0.6.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.6.0
+[0.5.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.5.0
