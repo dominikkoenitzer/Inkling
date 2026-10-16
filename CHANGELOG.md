@@ -8,6 +8,7 @@ All notable changes to Inkling are documented here. The format is based on
 
 ### Changed
 - Study is now called Flashcards, in the sidebar, on Today and everywhere else.
+- A new note you leave completely empty is removed when you move on, so no blank notes pile up.
 - New note sits at the top of the sidebar; Shortcuts and Settings moved to its foot.
 - F1 shows every keyboard shortcut. Ctrl+1 opens Today, Ctrl+2 opens Flashcards.
 - Search lists Today, Flashcards, Settings and the shortcuts too, so you can jump there by name.

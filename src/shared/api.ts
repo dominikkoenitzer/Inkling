@@ -23,6 +23,8 @@ export interface InklingApi {
     /** Soft delete, undoable from the toast and cleared for good after the retention window. */
     remove(id: number): Promise<void>
     restore(id: number): Promise<Note | null>
+    /** Deletes the note for good if it is still completely empty; true if it went. */
+    dropIfEmpty(id: number): Promise<boolean>
     syncTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): Promise<Array<number>>
     /** Syncs the note's card lines into its linked deck, made on the first run and named `name`. */
     syncCards(noteId: number, notebookId: number, name: string, lines: NoteCardLine[]): Promise<{ deck: Deck; lineIds: number[] }>

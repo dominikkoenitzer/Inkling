@@ -173,6 +173,12 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('trash purge failed', err)
   }
+  // Notes left completely empty last time go without a trace.
+  try {
+    repos.dropEmptyNotes()
+  } catch (err) {
+    console.error('dropping empty notes failed', err)
+  }
   if (devHooks && process.env['INKLING_SEED']) seedDemo()
   // Tasks from before checkboxes lived only in notes get a note of their own, and rows for
   // empty lines go. No step may keep the window from opening.
