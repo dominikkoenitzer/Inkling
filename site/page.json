@@ -62,7 +62,7 @@
       }
     },
     {
-      "label": "Study",
+      "label": "Flashcards",
       "title": "Flashcards from your notes",
       "body": [
         "Write <kbd>Term :: Definition</kbd> in any note and that line becomes a flashcard. Each card comes back right before you would forget it.",
@@ -164,7 +164,7 @@
   "keys": [
     [
       "Ctrl+K",
-      "Search, or jump to Today, Study and Settings"
+      "Search, or jump to Today, Flashcards and Settings"
     ],
     [
       "Ctrl+N",
@@ -172,7 +172,7 @@
     ],
     [
       "Ctrl+1 Ctrl+2",
-      "Today, Study"
+      "Today, Flashcards"
     ],
     [
       "F1",

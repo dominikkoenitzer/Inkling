@@ -8,7 +8,7 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string[]]> }> = [
       ['Search', ['Ctrl+K']],
       ['New note', ['Ctrl+N']],
       ['Today', ['Ctrl+1']],
-      ['Study', ['Ctrl+2']],
+      ['Flashcards', ['Ctrl+2']],
       ['Settings', ['Ctrl+,']],
       ['These shortcuts', ['F1']]
     ]

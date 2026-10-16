@@ -22,7 +22,7 @@ function welcomeDoc(taskId: number | null): string {
       p(text('Write a term, two colons, then what it means:')),
       p(text('Photosynthesis :: How plants turn light into energy')),
       p(text('Mitochondria :: Makes the energy the cell runs on')),
-      p(text('Then press Flashcards above the note. Study shows you each card when it is due.'))
+      p(text('Then press Flashcards above the note. Under Flashcards in the sidebar, each card comes back when it is due.'))
     ]
   })
 }

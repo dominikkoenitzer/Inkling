@@ -69,3 +69,6 @@ export function extractNoteCardLines(doc: Record<string, unknown>): NoteCardLine
 
 /* ---- Task items inside a note's TipTap JSON (checkbox → real task, §7) ---- */
 export { extractNoteTaskItems } from '@shared/noteTasks'
+
+/** A title field holds one line: Enter is handled by the caller and pasted breaks become spaces. */
+export const oneLine = (value: string): string => value.replace(/\r?\n/g, ' ')

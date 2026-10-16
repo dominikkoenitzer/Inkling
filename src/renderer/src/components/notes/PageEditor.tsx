@@ -7,10 +7,10 @@ import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown, Trash2 } from 'lucide-react'
 import { useApp, bumpData, registerFlush, trackSave, deleteNote } from '@/stores/app'
-import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
+import { extractNoteTaskItems, extractNoteCardLines, oneLine } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
-import { IconBtn } from '@/components/ui'
+import { IconBtn, titleFieldCls } from '@/components/ui'
 import { tickTodo } from '@/lib/keys'
 import type { Note, NoteTaskItem } from '@shared/types'
 
@@ -92,7 +92,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   // The content as last loaded or saved here, to spot a change made outside (an assistant via MCP).
   const contentRef = useRef<string | null>(null)
   const savingRef = useRef(0)
-  const titleInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLTextAreaElement>(null)
 
   const editor = useEditor({
     // Read-only until the note has loaded, so nothing typed early is overwritten.
@@ -284,14 +284,16 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
         />
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Study. */}
+        {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Flashcards. */}
         <div className="mx-auto max-w-[720px] px-10 pb-32 pt-3">
-          <input
+          <textarea
             ref={titleInputRef}
+            rows={1}
             value={title}
             onChange={(e) => {
-              setTitle(e.target.value)
-              titleRef.current = e.target.value
+              const next = oneLine(e.target.value)
+              setTitle(next)
+              titleRef.current = next
               scheduleSave()
             }}
             onKeyDown={(e) => {
@@ -302,7 +304,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
             }}
             placeholder="Title"
             aria-label="Title"
-            className="font-display mb-4 w-full bg-transparent text-[32px] font-semibold leading-tight tracking-tight text-ink placeholder:text-faint"
+            className={`${titleFieldCls} mb-[calc(1rem-0.25em)] text-ink placeholder:text-faint`}
           />
           <EditorContent editor={editor} className="text-[15.5px] [&>div]:min-h-[50vh]" />
         </div>

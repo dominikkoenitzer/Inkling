@@ -37,7 +37,7 @@ export function Sidebar(): React.JSX.Element {
 
       <nav className="space-y-px px-2 pt-3">
         <NavRow view="today" current={view} icon={<Sun size={16} />} label="Today" hint="Ctrl+1" />
-        <NavRow view="study" current={view} icon={<Layers size={16} />} label="Study" hint="Ctrl+2" count={due} />
+        <NavRow view="study" current={view} icon={<Layers size={16} />} label="Flashcards" hint="Ctrl+2" count={due} />
       </nav>
 
       <div className="mx-4 mb-2 mt-3 border-t border-edge" />

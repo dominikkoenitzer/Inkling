@@ -20,7 +20,7 @@ For macOS and Linux, see [Other ways to install](#other-ways-to-install).
 
 - Type anywhere in a note and it saves as you go. `#` makes a heading, `-` a list, `[]` a to-do.
 - Every open to-do from every note shows up on Today, next to the flashcard decks with cards due. Tick a to-do there or in the note; it is the same box.
-- Write `Term :: Definition` in a note and press Flashcards, and the note becomes a deck. Cloze lines such as `{{c1::Bern}} is the capital of Switzerland` work too. Under Study you can also make a deck by hand.
+- Write `Term :: Definition` in a note and press Flashcards, and the note becomes a deck. Cloze lines such as `{{c1::Bern}} is the capital of Switzerland` work too. On the Flashcards page you can also make a deck by hand.
 - Each card comes back right before you would forget it. The scheduler is FSRS-6.
 - `Ctrl+K` finds any note, to-do or deck.
 - Light and dark themes.
@@ -30,16 +30,16 @@ For macOS and Linux, see [Other ways to install](#other-ways-to-install).
 </p>
 
 <p align="center">
-  <img src="docs/study.png" width="880" alt="Study in Inkling: flashcard decks with cards due" />
+  <img src="docs/study.png" width="880" alt="Flashcards in Inkling: decks with cards due" />
 </p>
 
 ## Keyboard
 
 | Keys | What it does |
 |---|---|
-| `Ctrl+K` | Search, or jump to Today, Study and Settings |
+| `Ctrl+K` | Search, or jump to Today, Flashcards and Settings |
 | `Ctrl+N` | New note |
-| `Ctrl+1`, `Ctrl+2` | Today, Study |
+| `Ctrl+1`, `Ctrl+2` | Today, Flashcards |
 | `Ctrl+,` | Settings |
 | `F1` | All shortcuts |
 | `Ctrl+Enter` | In a note: tick the to-do the cursor is in |
@@ -126,7 +126,7 @@ bun run test        # unit tests
 bun run typecheck   # TypeScript
 bun run lint        # ESLint
 bun run build       # production bundle into out/
-bun run smoke       # starts the built app off screen and checks notes, to-dos, search and reviews
+bun run smoke       # starts the built app off screen and checks notes, to-dos, search, reviews and that no view cuts off a letter
 bun run mcp         # runs the MCP server from the built app, on stdin and stdout
 bun run mcp:smoke   # talks to the built app's MCP server over stdio and checks every tool
 bun run dist        # Windows installer into release/

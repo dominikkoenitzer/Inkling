@@ -1,6 +1,6 @@
 ---
 name: inkling
-description: How the Inkling desktop app handles notes, to-dos and flashcards, and how to write text in the formats it reads. Use when the user asks for help with Inkling notes, to-dos, the Today or Study pages, flashcard reviews, backups or where the data is stored, updating or removing Inkling, or wants text turned into Inkling flashcards or to-dos, or wants to connect an assistant to Inkling through its MCP server.
+description: How the Inkling desktop app handles notes, to-dos and flashcards, and how to write text in the formats it reads. Use when the user asks for help with Inkling notes, to-dos, the Today or Flashcards pages, flashcard reviews, backups or where the data is stored, updating or removing Inkling, or wants text turned into Inkling flashcards or to-dos, or wants to connect an assistant to Inkling through its MCP server.
 ---
 
 # Inkling
@@ -16,7 +16,7 @@ Inkling is a desktop app for Windows, macOS and Linux. It keeps notes, to-dos an
 
 ## Notes
 
-- The sidebar shows New note, Today and Study, then every note in one list, newest edit first, with Shortcuts and Settings at its foot. There are no folders. The arrow keys walk the note list.
+- The sidebar shows New note, Today and Flashcards, then every note in one list, newest edit first, with Shortcuts and Settings at its foot. There are no folders. The arrow keys walk the note list.
 - A note has a title and a body. The title is optional. The note saves while the user types.
 - Typed at the start of a line in the body, `# `, `## ` or `### ` makes a heading, `- ` a bullet list, `1. ` a numbered list, `[] ` a to-do and `> ` a quote.
 - The toolbar above the body has Bold, Italic, Heading 1, Heading 2, Bullet list, Numbered list, Task list, Flashcards and Export as Markdown.
@@ -46,15 +46,15 @@ Decks:
 
 - Each note has one deck, named after the note title when it is first made. Renaming the note later does not rename the deck.
 - Clicking Flashcards again updates changed lines in place and keeps their review history, adds new lines and removes cards whose lines are gone.
-- In Study, cards made from a note's lines show as plain text and cannot be edited or deleted there. The deck page says they are edited in the note and has an Open the note link. Change the note, then click Flashcards.
-- Study also has New deck, for a deck without a note. Every deck page has Front and Back fields to add a card by hand. Such cards can be edited in Study, and clicking Flashcards leaves them alone, also in a note's deck.
+- On the Flashcards page, cards made from a note's lines show as plain text and cannot be edited or deleted there. The deck page says they are edited in the note and has an Open the note link. Change the note, then click Flashcards.
+- The Flashcards page also has New deck, for a deck without a note. Every deck page has Front and Back fields to add a card by hand. Such cards can be edited there, and clicking Flashcards leaves them alone, also in a note's deck.
 
 To turn text into card lines, follow [references/cards.md](references/cards.md).
 
-## Today and Study
+## Today and Flashcards
 
-- Today is the page Inkling opens on. It has a To-do section with every open checkbox, and a Study section with each deck that has cards due and a Review button.
-- Study lists every deck with its card count, and a Review button when cards are due. A review takes every card that is due now. There is no daily limit for new cards.
+- Today is the page Inkling opens on. It has a To-do section with every open checkbox, and a Flashcards section with each deck that has cards due and a Review button.
+- The Flashcards page lists every deck with its card count, and a Review button when cards are due. A review takes every card that is due now. There is no daily limit for new cards.
 - In a review, Space (or a click on the card) shows the answer. Then 1, 2, 3 or 4 rates it Again, Hard, Good or Easy. Esc ends the review.
 - Scheduling is FSRS-6 with a fixed recall target of 90%. A new card is due at once. Again brings the card back in 10 minutes and once more at the end of the review. Hard, Good and Easy schedule it at least a day out. Each button shows the interval it would give.
 
@@ -62,9 +62,9 @@ To turn text into card lines, follow [references/cards.md](references/cards.md).
 
 | Keys | What it does |
 |---|---|
-| Ctrl+K | Search, also from inside a note; it also jumps to Today, Study and Settings |
+| Ctrl+K | Search, also from inside a note; it also jumps to Today, Flashcards and Settings |
 | Ctrl+N | New note |
-| Ctrl+1, Ctrl+2 | Today, Study |
+| Ctrl+1, Ctrl+2 | Today, Flashcards |
 | F1 | All shortcuts |
 | Ctrl+, | Settings, which hold only the theme: Light or Dark |
 | Ctrl+B, Ctrl+I | Bold, italic |
