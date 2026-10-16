@@ -85,8 +85,8 @@ export function StudyView(): React.JSX.Element {
           <div className="mt-16 flex flex-col items-center text-center">
             <Inky size={44} className="mb-4" />
             <p className="text-[15px]">No decks yet.</p>
-            <p className="mt-1 max-w-sm text-sm text-muted">
-              In any note, write a line like <Code>Term :: Definition</Code>, then press Flashcards above the note. Or press New deck and type the cards in.
+            <p className="mt-1 max-w-md text-sm text-muted">
+              Write a line like <Code>Term :: Definition</Code> in a note, then press Flashcards. Or press New deck.
             </p>
           </div>
         ) : (
