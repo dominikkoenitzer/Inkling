@@ -10,7 +10,7 @@
  * Exits non-zero if any check fails.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -114,7 +114,11 @@ try {
   const init = await s.start()
   ok('initialize names the server', init.result?.serverInfo?.name === 'inkling', init.result?.serverInfo?.name)
   const tools = (await s.request('tools/list', {})).result.tools.map((t) => t.name).sort()
-  const want = ['add_flashcards', 'append_to_note', 'complete_todo', 'create_note', 'list_decks', 'list_notes', 'list_open_todos', 'read_note', 'reopen_todo', 'search']
+  const want = [
+    'add_flashcards', 'append_to_note', 'complete_todo', 'create_note', 'delete_note', 'edit_note', 'grade_flashcard',
+    'list_decks', 'list_due_flashcards', 'list_notes', 'list_open_todos', 'make_flashcards_from_note', 'read_note',
+    'rename_note', 'reopen_todo', 'replace_section', 'restore_note', 'search', 'today', 'undo_edit'
+  ]
   ok('tools/list has every tool', JSON.stringify(tools) === JSON.stringify(want), tools.join(','))
 
   const created = await s.call('create_note', {
@@ -152,6 +156,113 @@ try {
 
   const resource = (await s.request('resources/read', { uri: `inkling://note/${note.id}` })).result
   ok('the note reads as a resource', resource?.contents?.[0]?.mimeType === 'text/markdown' && resource.contents[0].text.includes('Write it up'))
+
+  const backups = existsSync(join(profile, 'backups')) ? readdirSync(join(profile, 'backups')).filter((f) => f.startsWith('assistant-')) : []
+  ok('the first write of a session backs the data up first', backups.length === 1, backups.join(','))
+
+  // Sections, edits and undo.
+  const plan = (await s.call('create_note', { title: 'Smoke week', markdown: '## Monday\n\nRead chapter 1\n- [ ] Buy agar\n\n## Tuesday\n\nLab day' })).structuredContent
+  const monday = (await s.call('read_note', { id: plan.id, heading: 'Monday' })).structuredContent.markdown
+  ok('read_note reads one section', monday.startsWith('## Monday') && !monday.includes('Tuesday'), JSON.stringify(monday))
+
+  await s.call('append_to_note', { id: plan.id, heading: 'Monday', markdown: 'Write notes' })
+  const replaced = (await s.call('replace_section', { id: plan.id, heading: 'Tuesday', markdown: 'Lab day, bring gloves' })).structuredContent
+  const edited = (await s.call('edit_note', { id: plan.id, oldText: 'Read chapter 1', newText: 'Read chapter 2' })).structuredContent
+  let week = (await s.call('read_note', { id: plan.id })).structuredContent.markdown
+  ok(
+    'append_to_note, replace_section and edit_note change only their part',
+    week === '## Monday\n\nRead chapter 2\n\n- [ ] Buy agar\n\nWrite notes\n\n## Tuesday\n\nLab day, bring gloves\n' && replaced.previous === 'Lab day\n' && edited.replaced === 1,
+    JSON.stringify(week)
+  )
+  const unclear = await s.call('edit_note', { id: plan.id, oldText: 'day', newText: 'night' })
+  ok('edit_note refuses an unclear match', unclear.isError === true && /3 times/.test(unclear.content[0].text))
+
+  for (let i = 0; i < 3; i++) await s.call('undo_edit', { id: plan.id })
+  week = (await s.call('read_note', { id: plan.id })).structuredContent.markdown
+  ok('undo_edit takes the edits back', week === '## Monday\n\nRead chapter 1\n\n- [ ] Buy agar\n\n## Tuesday\n\nLab day\n', JSON.stringify(week))
+
+  const renamed = (await s.call('rename_note', { id: plan.id, title: 'Smoke week 2' })).structuredContent
+  ok('rename_note renames', renamed.title === 'Smoke week 2' && renamed.previousTitle === 'Smoke week')
+
+  const since = (await s.call('list_notes', { changedSince: new Date(Date.now() - 3600_000).toISOString() })).structuredContent.notes
+  ok('list_notes shows recent changes', since[0]?.id === plan.id && since.some((n) => n.id === note.id), JSON.stringify(since.map((n) => n.id)))
+
+  // The trash.
+  const trashed = (await s.call('delete_note', { id: plan.id })).structuredContent
+  const inTrash = (await s.call('list_notes', { inTrash: true })).structuredContent.notes
+  const hidden = await s.call('read_note', { id: plan.id })
+  ok('delete_note moves the note to the trash', trashed.inTrash === true && inTrash.some((n) => n.id === plan.id) && hidden.isError === true)
+  const back = (await s.call('restore_note', { id: plan.id })).structuredContent
+  ok('restore_note brings it back', back.id === plan.id && !(await s.call('read_note', { id: plan.id })).isError)
+
+  // Today and flashcards.
+  const today = (await s.call('today')).structuredContent
+  ok('today lists open to-dos and cards due', today.todos.some((t) => t.text === 'Buy agar') && today.flashcardsDue === 3, JSON.stringify({ todos: today.openTodos, due: today.flashcardsDue }))
+
+  const due = (await s.call('list_due_flashcards', { deckId: cards.deckId })).structuredContent
+  const cloze = due.cards.find((c) => c.question.includes('[…]'))
+  ok('list_due_flashcards asks cloze gaps', due.due === 3 && !!cloze && !cloze.answer.includes('{{'), JSON.stringify(due.cards.map((c) => c.question)))
+  const graded = (await s.call('grade_flashcard', { id: due.cards[0].id, grade: 'good' })).structuredContent
+  const left = (await s.call('list_decks')).structuredContent.decks.find((d) => d.id === cards.deckId)
+  ok('grade_flashcard schedules the card', Date.parse(graded.nextReview) > Date.now() && left.due === 2)
+
+  const bio = (await s.call('create_note', { title: 'Smoke bio', markdown: 'Cell :: The smallest unit of life\nThe {{c1::heart}} pumps blood' })).structuredContent
+  const made = (await s.call('make_flashcards_from_note', { id: bio.id })).structuredContent
+  const linked = (await s.call('list_decks')).structuredContent.decks.find((d) => d.id === made.deckId)
+  ok('make_flashcards_from_note makes the note its deck', made.added === 2 && linked?.noteId === bio.id, JSON.stringify(made))
+
+  // Prompts and the Today resource.
+  const prompts = (await s.request('prompts/list', {})).result.prompts.map((p) => p.name).sort()
+  ok('prompts/list has the prompts', JSON.stringify(prompts) === JSON.stringify(['flashcards_from_note', 'plan_my_day', 'quiz_me']), prompts.join(','))
+  const quiz = (await s.request('prompts/get', { name: 'quiz_me', arguments: { deck: 'Smoke deck' } })).result
+  ok('a prompt reads as a message', /list_due_flashcards/.test(quiz?.messages?.[0]?.content?.text ?? ''))
+  const todayRes = (await s.request('resources/read', { uri: 'inkling://today' })).result
+  ok('Today reads as a resource', JSON.parse(todayRes.contents[0].text).openTodos === today.openTodos)
+
+  // Two assistants writing at once: each waits its turn and nothing is lost.
+  const other = session()
+  await other.start()
+  const both = await Promise.all(
+    Array.from({ length: 10 }, (_, i) => [
+      s.call('append_to_note', { id: bio.id, markdown: `Line a${i}` }),
+      other.call('append_to_note', { id: bio.id, markdown: `Line b${i}` })
+    ]).flat()
+  )
+  const full = (await s.call('read_note', { id: bio.id })).structuredContent.markdown
+  const lines = Array.from({ length: 10 }, (_, i) => [`Line a${i}`, `Line b${i}`]).flat()
+  ok('two servers can write at the same time', both.every((r) => !r.isError) && lines.every((l) => full.includes(l)), both.find((r) => r.isError)?.content?.[0]?.text)
+  await other.close()
+
+  // The open app hears an assistant's write while it has no focus: it renders off screen and
+  // can never take focus, so only the push from the main process can tell it.
+  const watchJs = `(async function () {
+    await new Promise((res) => { const tick = () => (window.inkling ? res() : setTimeout(tick, 50)); tick() })
+    const heard = await new Promise((res) => {
+      const off = window.inkling.events.onDataChanged(() => { off(); res(true) })
+      setTimeout(() => res(false), 30000)
+    })
+    const notes = await window.inkling.notes.list()
+    return (heard ? 'heard' : 'silent') + ':' + notes.some((n) => n.title === 'Written while open')
+  })()`
+  const watchResult = join(profile, 'watch.txt')
+  const app = spawn(electron, [root, ...sandbox], {
+    env: { ...env, INKLING_SCREENSHOT: join(profile, 'watch.png'), INKLING_EVAL: watchJs, INKLING_EVAL_RESULT: watchResult },
+    stdio: 'ignore',
+    windowsHide: true
+  })
+  let appRunning = true
+  app.on('exit', () => (appRunning = false))
+  const deadline = Date.now() + 60_000
+  let wrote = false
+  while (appRunning && Date.now() < deadline) {
+    await new Promise((res) => setTimeout(res, 1000))
+    if (!wrote) await s.call('create_note', { title: 'Written while open' })
+    else await s.call('append_to_note', { id: bio.id, markdown: 'ping' })
+    wrote = true
+  }
+  if (appRunning) app.kill()
+  const heard = existsSync(watchResult) ? readFileSync(watchResult, 'utf8') : ''
+  ok('the open app hears an assistant write at once', heard === 'heard:true', heard || 'no result')
 
   // Electron itself can print an empty line on Windows before any script runs; clients skip it.
   const stray = s.stray.filter((l) => l.trim())
