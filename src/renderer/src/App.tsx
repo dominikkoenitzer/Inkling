@@ -46,7 +46,7 @@ export default function App(): React.JSX.Element {
     void api.app.setTitlebar(theme)
   }, [ready, failed, theme])
 
-  // Ctrl+K search, Ctrl+N new note, Ctrl+, settings.
+  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Study, Ctrl+, settings.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.repeat) return
@@ -58,6 +58,10 @@ export default function App(): React.JSX.Element {
       } else if (key === 'n') {
         e.preventDefault()
         void app.newNote()
+      } else if (key === '1' || key === '2') {
+        e.preventDefault()
+        app.setView(key === '1' ? 'today' : 'study')
+        app.setSettingsOpen(false)
       } else if (key === ',') {
         e.preventDefault()
         app.setSettingsOpen(true)
