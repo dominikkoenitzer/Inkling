@@ -30,6 +30,9 @@ export default function App(): React.JSX.Element {
   // Pick up what an assistant wrote through the MCP server while the window was in the background.
   useEffect(() => watchFocus(), [])
 
+  // And while it is in front: the main process says when another process has written.
+  useEffect(() => api.events.onDataChanged(() => window.dispatchEvent(new Event('inkling:outside-write'))), [])
+
   // Cards answered "Again" come due again within minutes: recount every few minutes.
   // The day is checked too: after sleep the midnight timer can land late, with focus never lost.
   useEffect(() => {
