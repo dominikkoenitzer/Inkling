@@ -3,7 +3,8 @@ import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { hasCloze } from '@shared/cloze'
 import { Inky } from '@/components/Inky'
-import { Button, IconBtn, inputCls } from '@/components/ui'
+import { Button, Code, IconBtn, inputCls } from '@/components/ui'
+import { ignoresShortcut } from '@/lib/keys'
 import { ReviewSession } from './ReviewSession'
 import type { Deck, Card } from '@shared/types'
 
@@ -151,18 +152,33 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     }
   }, [deck.note_id, notesVersion])
   const adding = useRef(false)
+  const frontRef = useRef<HTMLInputElement>(null)
+  const backRef = useRef<HTMLInputElement>(null)
+
+  // Esc goes back to the deck list, unless a field or a dialog has it.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const app = useApp.getState()
+      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
+      if (e.key === 'Escape' && !ignoresShortcut(e, overlayOpen)) app.openDeck(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // A cloze front is a whole card on its own; the back is then an optional extra.
   const canAdd = !!front.trim() && (!!back.trim() || hasCloze(front))
 
-  const add = async (): Promise<void> => {
-    if (!canAdd || adding.current) return
+  /** True once the card is in. */
+  const add = async (): Promise<boolean> => {
+    if (!canAdd || adding.current) return false
     adding.current = true
     try {
       await api.decks.addCard(deck.id, front.trim(), back.trim())
       setFront('')
       setBack('')
       bumpData('decks')
+      return true
     } finally {
       adding.current = false
     }
@@ -182,7 +198,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           onClick={() => useApp.getState().openDeck(null)}
           className="-ml-2 mb-6 flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
         >
-          <ArrowLeft size={15} /> Study
+          <ArrowLeft size={15} /> All decks
         </button>
 
         <input
@@ -245,21 +261,41 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
         )}
 
         <div className="mt-8 grid grid-cols-[1fr_1fr_auto] gap-2">
-          <input className={inputCls} placeholder="Front, or a {{c1::cloze}}" value={front} onChange={(e) => setFront(e.target.value)} />
           <input
             className={inputCls}
-            placeholder="Back"
+            placeholder="Question"
+            aria-label="Front"
+            value={front}
+            onChange={(e) => setFront(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              // A cloze is a whole card; anything else still needs its answer.
+              if (hasCloze(front) && !back.trim()) void add()
+              else if (front.trim()) backRef.current?.focus()
+            }}
+          />
+          <input
+            ref={backRef}
+            className={inputCls}
+            placeholder="Answer"
+            aria-label="Back"
             value={back}
             onChange={(e) => setBack(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && void add()}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              void add().then((added) => added && frontRef.current?.focus())
+            }}
           />
-          <Button variant="primary" ariaLabel="Add card" onClick={() => void add()} disabled={!canAdd}>
-            <Plus size={15} />
+          <Button variant="primary" onClick={() => void add()} disabled={!canAdd}>
+            <Plus size={15} /> Add
           </Button>
         </div>
+        <p className="mt-2 text-xs text-faint">
+          Press Enter to go on. For a fill-in-the-blank card, write <Code>{'{{c1::word}}'}</Code> in the question.
+        </p>
 
         {cards.length === 0 ? (
-          <p className="py-10 text-center text-sm text-faint">No cards yet. Add the first one above.</p>
+          <p className="py-10 text-center text-sm text-faint">No cards yet. Type a question and its answer above.</p>
         ) : (
           <ul className="mt-6 border-t border-edge">
             {cards.map((c) => (
