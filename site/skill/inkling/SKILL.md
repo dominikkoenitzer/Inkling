@@ -16,12 +16,12 @@ Inkling is a desktop app for Windows, macOS and Linux. It keeps notes, to-dos an
 
 ## Notes
 
-- The sidebar shows Today, Study and Settings, then every note in one list, newest edit first. There are no folders.
+- The sidebar shows New note, Today and Study, then every note in one list, newest edit first, with Shortcuts and Settings at its foot. There are no folders. The arrow keys walk the note list.
 - A note has a title and a body. The title is optional. The note saves while the user types.
 - Typed at the start of a line in the body, `# `, `## ` or `### ` makes a heading, `- ` a bullet list, `1. ` a numbered list, `[] ` a to-do and `> ` a quote.
 - The toolbar above the body has Bold, Italic, Heading 1, Heading 2, Bullet list, Numbered list, Task list, Flashcards and Export as Markdown.
 - Pasted plain text becomes one paragraph per line. Markdown markers in pasted text, such as `# ` or `- [ ] `, are not turned into headings or to-dos.
-- A note is deleted with the trash icon that appears when the pointer is over it in the sidebar. There is no confirmation. Undo shows for about six seconds; there is no trash to browse later.
+- A note is deleted with the trash icon in the note's toolbar. There is no confirmation. Undo shows for about six seconds; there is no trash to browse later.
 
 ## To-dos
 
@@ -62,15 +62,17 @@ To turn text into card lines, follow [references/cards.md](references/cards.md).
 
 | Keys | What it does |
 |---|---|
-| Ctrl+K | Search, also from inside a note |
+| Ctrl+K | Search, also from inside a note; it also jumps to Today, Study and Settings |
 | Ctrl+N | New note |
+| Ctrl+1, Ctrl+2 | Today, Study |
+| F1 | All shortcuts |
 | Ctrl+, | Settings, which hold only the theme: Light or Dark |
 | Ctrl+B, Ctrl+I | Bold, italic |
 | Ctrl+Shift+9 | Turn the selected lines into to-dos, or back |
 | Space, then 1 to 4 | In a review: show the answer, then Again, Hard, Good or Easy |
 | Esc | End a review |
 
-On macOS, press Cmd where the table says Ctrl. Ctrl+K, Ctrl+N and Ctrl+, work with either key there.
+On macOS, press Cmd where the table says Ctrl. Ctrl+K, Ctrl+N, Ctrl+1, Ctrl+2 and Ctrl+, work with either key there.
 
 Search matches note titles and text, to-do text and deck names. It does not search card text.
 
