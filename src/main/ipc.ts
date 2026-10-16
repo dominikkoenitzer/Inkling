@@ -24,6 +24,7 @@ export function registerIpc(): void {
   handle('notes.update', repos.updateNote)
   handle('notes.remove', repos.removeNote)
   handle('notes.restore', repos.restoreNote)
+  handle('notes.dropIfEmpty', repos.dropIfEmpty)
   handle('notes.syncTasks', repos.syncNoteTasks)
   handle('notes.syncCards', repos.syncNoteCards)
 

@@ -41,7 +41,7 @@ interface AppState {
   view: View
   selectedNoteId: number | null
   selectedDeckId: number | null
-  /** The deck whose review session Study is showing. Any navigation leaves the session. */
+  /** The deck whose review session Flashcards is showing. Any navigation leaves the session. */
   reviewingDeckId: number | null
   paletteOpen: boolean
   settingsOpen: boolean
@@ -240,14 +240,30 @@ export const bumpData = (domain: string): void => useData.getState().bump(domain
 
 // Notes deleted while one undo toast is up: its Undo brings all of them back.
 let undoable: number[] = []
+// Notes on their way to the trash, which the empty-note cleanup leaves to the delete.
+const deleting = new Set<number>()
+
+// A note left completely empty goes once the user moves on and its last edit has landed.
+const showing = (s: AppState): number | null => (s.view === 'notes' ? s.selectedNoteId : null)
+useApp.subscribe((state, prev) => {
+  const left = showing(prev)
+  if (left === null || left === showing(state) || deleting.has(left)) return
+  void settleNote(left).then(async () => {
+    if (showing(useApp.getState()) === left || deleting.has(left)) return
+    if (!(await api.notes.dropIfEmpty(left))) return
+    bumpData('notes')
+    if (useApp.getState().selectedNoteId === left) useApp.setState({ selectedNoteId: null })
+  })
+})
 
 /** Moves a note to the trash once its last edit has landed, with an undo toast. */
 export async function deleteNote(noteId: number, title: string | null): Promise<void> {
+  deleting.add(noteId)
   // The open editor's last edit lands first, then the note goes.
   const settled = settleNote(noteId)
   if (useApp.getState().selectedNoteId === noteId) useApp.setState({ selectedNoteId: null })
   await settled
-  await api.notes.remove(noteId)
+  await api.notes.remove(noteId).finally(() => deleting.delete(noteId))
   bumpData('notes')
   bumpData('tasks')
   // Opened again in the meantime: it is gone now, so close it.
