@@ -7,14 +7,19 @@ All notable changes to Inkling are documented here. The format is based on
 ## [Unreleased]
 
 ### Changed
+- Study is now called Flashcards, in the sidebar, on Today and everywhere else.
 - New note sits at the top of the sidebar; Shortcuts and Settings moved to its foot.
-- F1 shows every keyboard shortcut. Ctrl+1 opens Today, Ctrl+2 opens Study.
-- Search lists Today, Study, Settings and the shortcuts too, so you can jump there by name.
+- F1 shows every keyboard shortcut. Ctrl+1 opens Today, Ctrl+2 opens Flashcards.
+- Search lists Today, Flashcards, Settings and the shortcuts too, so you can jump there by name.
 - A new note starts with the cursor in its title.
 - Delete is now in the note's toolbar, not on the note list.
 - Clicking a to-do's text on Today ticks it.
 - Adding a card: Enter moves from the question to the answer, then adds the card.
 - Review buttons show their keys, and the review lines up with the other pages.
+- A long note or deck title wraps onto a second line instead of scrolling out of sight.
+
+### Fixed
+- Big titles no longer cut off the bottom of letters like g and y, or accents, at any zoom.
 
 ## [0.8.2] - 2026-10-14
 

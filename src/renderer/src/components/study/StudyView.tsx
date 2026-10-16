@@ -3,8 +3,9 @@ import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { hasCloze } from '@shared/cloze'
 import { Inky } from '@/components/Inky'
-import { Button, Code, IconBtn, inputCls } from '@/components/ui'
+import { Button, Code, IconBtn, inputCls, titleFieldCls } from '@/components/ui'
 import { ignoresShortcut } from '@/lib/keys'
+import { oneLine } from '@/lib/parse'
 import { ReviewSession } from './ReviewSession'
 import type { Deck, Card } from '@shared/types'
 
@@ -56,7 +57,7 @@ export function StudyView(): React.JSX.Element {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
         <div className="flex items-end justify-between gap-4">
-          <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Study</h1>
+          <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
           <Button onClick={() => setAdding(true)}>
             <Plus size={15} /> New deck
           </Button>
@@ -201,13 +202,18 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           <ArrowLeft size={15} /> All decks
         </button>
 
-        <input
+        <textarea
+          rows={1}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(oneLine(e.target.value))}
           onBlur={rename}
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            e.preventDefault()
+            e.currentTarget.blur()
+          }}
           aria-label="Deck name"
-          className="font-display -mx-1.5 w-full rounded-md bg-transparent px-1.5 text-[32px] font-semibold leading-tight tracking-tight focus:bg-raised focus:ring-1 focus:ring-accent"
+          className={`${titleFieldCls} -mx-1.5 rounded-md px-1.5 focus:bg-raised focus:ring-1 focus:ring-accent`}
         />
         <div className="mt-2 flex items-center gap-3 text-sm text-muted">
           <span>

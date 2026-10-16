@@ -48,7 +48,7 @@ export default function App(): React.JSX.Element {
     void api.app.setTitlebar(theme)
   }, [ready, failed, theme])
 
-  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Study, Ctrl+, settings, F1 shortcuts.
+  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'F1' && !e.repeat) {

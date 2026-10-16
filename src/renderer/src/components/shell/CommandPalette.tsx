@@ -54,7 +54,7 @@ export function CommandPalette(): React.JSX.Element {
   const actions: Item[] = [
     { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl+N', run: () => void app.newNote().then(close) },
     { key: 'today', icon: <Sun size={16} />, label: 'Today', detail: 'Ctrl+1', run: () => app.setView('today') },
-    { key: 'study', icon: <Layers size={16} />, label: 'Study', detail: 'Ctrl+2', run: () => app.setView('study') },
+    { key: 'study', icon: <Layers size={16} />, label: 'Flashcards', detail: 'Ctrl+2', run: () => app.setView('study') },
     { key: 'shortcuts', icon: <Keyboard size={16} />, label: 'Keyboard shortcuts', detail: 'F1', run: () => app.setShortcutsOpen(true) },
     { key: 'settings', icon: <Settings size={16} />, label: 'Settings', detail: 'Ctrl+,', run: () => app.setSettingsOpen(true) }
   ]

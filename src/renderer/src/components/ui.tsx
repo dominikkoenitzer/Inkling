@@ -193,6 +193,13 @@ export function Kbd({ children, className = '' }: { children: ReactNode; classNa
   )
 }
 
+/**
+ * A big editable title. A textarea that grows with its text, so a long title wraps; the
+ * padding gives descenders and accents room inside the clip box and the margin takes it back.
+ */
+export const titleFieldCls =
+  'font-display block w-full resize-none overflow-hidden bg-transparent field-sizing-content -my-[0.25em] py-[0.25em] text-[32px] font-semibold leading-tight tracking-tight'
+
 export const inputCls =
   'w-full rounded-md border border-edge bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-accent'
 

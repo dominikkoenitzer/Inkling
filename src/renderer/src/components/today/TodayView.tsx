@@ -127,7 +127,7 @@ export function TodayView(): React.JSX.Element {
         )}
 
         {decks.length > 0 && (
-          <Section title="Study" count={decks.reduce((n, d) => n + d.due_count, 0)}>
+          <Section title="Flashcards" count={decks.reduce((n, d) => n + d.due_count, 0)}>
             {decks.map((d) => (
               <li key={d.id} className="flex items-center gap-3 border-b border-edge py-2.5">
                 <span className="min-w-0 flex-1 truncate text-[15px]">{d.name}</span>
