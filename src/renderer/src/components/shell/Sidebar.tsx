@@ -117,8 +117,18 @@ function NotesList(): React.JSX.Element {
     }
   }, [version])
 
+  // Up and Down walk the list once a note in it has focus.
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    const rows = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement)
+    if (at < 0) return
+    e.preventDefault()
+    rows[Math.max(0, Math.min(rows.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))]?.focus()
+  }
+
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4" onKeyDown={onKey}>
       {notes.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
       {notes.map((n) => {
         const active = view === 'notes' && selectedNoteId === n.id
