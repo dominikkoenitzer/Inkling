@@ -92,6 +92,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   // The content as last loaded or saved here, to spot a change made outside (an assistant via MCP).
   const contentRef = useRef<string | null>(null)
   const savingRef = useRef(0)
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
   const editor = useEditor({
     // Read-only until the note has loaded, so nothing typed early is overwritten.
@@ -183,6 +184,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
         return
       }
       showNote(note)
+      // A blank note starts at its title, so typing names it right away.
+      if (!note.title && editor.isEmpty) titleInputRef.current?.focus()
     })
     return () => {
       alive = false
@@ -284,6 +287,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
         {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Study. */}
         <div className="mx-auto max-w-[720px] px-10 pb-32 pt-3">
           <input
+            ref={titleInputRef}
             value={title}
             onChange={(e) => {
               setTitle(e.target.value)
@@ -296,7 +300,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
                 editor?.commands.focus('start')
               }
             }}
-            placeholder="Untitled"
+            placeholder="Title"
             aria-label="Title"
             className="font-display mb-4 w-full bg-transparent text-[32px] font-semibold leading-tight tracking-tight text-ink placeholder:text-faint"
           />
