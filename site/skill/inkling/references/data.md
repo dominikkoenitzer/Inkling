@@ -17,6 +17,7 @@ In the folder:
 - `inkling.db` is the whole library: notes, to-dos, decks, cards, review history and the theme.
 - `inkling.db-wal` and `inkling.db-shm` sit next to it while Inkling runs. Recent changes can be in the `-wal` file and not yet in `inkling.db`.
 - `backups/inkling-YYYY-MM-DDTHH-MM-SS.db` is a full copy made at every start, before anything else touches the file. The time is UTC. The newest five are kept.
+- `backups/assistant-YYYY-MM-DDTHH-MM-SS.db` is a full copy the MCP server makes before its first change in a session. The newest three are kept.
 
 Only one copy of Inkling runs at a time; a second launch brings the open window to the front. Inkling started with `--mcp` is the exception: it opens no window, runs beside the app and keeps its scratch files in `inkling-mcp` in the system temp folder, not in the data folder.
 
@@ -48,7 +49,7 @@ A deleted note stays in `notes` with `deleted_at` set and is removed for good at
 
 Do not change `inkling.db`, its `-wal` or `-shm` files, or a backup, whether Inkling is open or not.
 
-- Inkling does not watch the file. It reloads the open note only when its window gets focus, and an edit still waiting to be saved there is written over an outside change.
+- Inkling reloads the open note when another program commits to the file, but an edit still waiting to be saved there is written over the outside change.
 - To-do rows, card links and the search index only follow the notes when Inkling itself makes the change, so a hand edit leaves them out of step.
 
 If the user wants something changed, tell them how to do it in Inkling.
