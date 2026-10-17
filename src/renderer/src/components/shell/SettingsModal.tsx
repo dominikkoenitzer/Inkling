@@ -36,7 +36,7 @@ export function SettingsModal(): React.JSX.Element {
   )
 }
 
-/** Adds Inkling to the assistant apps on this computer, or copies the setup for any other. */
+/** Adds Inkling to the assistant apps found on this computer, or copies the setup for any other. */
 function Assistants(): React.JSX.Element {
   const [list, setList] = useState<AssistantStatus[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -58,7 +58,7 @@ function Assistants(): React.JSX.Element {
     try {
       const connect = a.state !== 'on'
       setList(await (connect ? api.assistants.connect(a.id) : api.assistants.disconnect(a.id)))
-      say(connect ? `Connected. Restart ${a.name} to use Inkling there.` : `Disconnected from ${a.name}.`)
+      say(connect ? `Connected. Restart the ${a.name.toLowerCase()} to use Inkling there.` : `Disconnected from the ${a.name.toLowerCase()}.`)
     } catch (err) {
       say(err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err))
     } finally {
@@ -82,7 +82,9 @@ function Assistants(): React.JSX.Element {
       </h3>
       <p className="mt-1 text-xs text-muted">Let an assistant on this computer work with your notes, to-dos and flashcards.</p>
       <ul className="mt-3">
-        {(list ?? []).map((a) => (
+        {(list ?? [])
+          .filter((a) => a.state !== 'missing')
+          .map((a) => (
           <li key={a.id} className="flex items-center gap-3 border-b border-edge py-2.5">
             <div className="min-w-0 flex-1">
               <p className="text-sm">{a.name}</p>

@@ -92,7 +92,7 @@ Search matches note titles and text, to-do text and deck names. It does not sear
 
 Inkling runs as an MCP server when started with `--mcp`. The client talks to it over standard input and output; nothing goes over the network.
 
-To connect it, the user opens Settings (Ctrl+,) in Inkling. Under Connect an AI assistant, Connect adds Inkling to Claude Desktop or Claude Code; the assistant needs a restart afterwards. Copy setup puts the JSON for any other MCP client on the clipboard, with the real install path. By hand, the command is the full path to Inkling and the arguments are `["--mcp"]`:
+To connect it, the user opens Settings (Ctrl+,) in Inkling. Under Connect an AI assistant, Connect adds Inkling to the assistant apps it finds on the computer; the assistant needs a restart afterwards. Copy setup puts the JSON for any other MCP client on the clipboard, with the real install path. By hand, the command is the full path to Inkling and the arguments are `["--mcp"]`:
 
 - Windows: `C:\Users\<you>\AppData\Local\Programs\Inkling\Inkling.exe` (doubled backslashes in JSON; most clients do not expand `%LOCALAPPDATA%`)
 - macOS: `/Applications/Inkling.app/Contents/MacOS/Inkling`

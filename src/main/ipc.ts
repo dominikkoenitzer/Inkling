@@ -12,7 +12,7 @@ const GRADES = new Set(Object.keys(RATINGS))
 
 type Handler = (...args: never[]) => unknown
 
-const ASSISTANTS = new Set<AssistantId>(['claude-desktop', 'claude-code'])
+const ASSISTANTS = new Set<AssistantId>(['desktop', 'terminal'])
 
 /** How an assistant starts this copy of Inkling's MCP server, with the profile it shows. */
 function mcpLaunch(): Launch {

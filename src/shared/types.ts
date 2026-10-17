@@ -93,7 +93,7 @@ export interface NoteCardLine {
 
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy'
 
-export type AssistantId = 'claude-desktop' | 'claude-code'
+export type AssistantId = 'desktop' | 'terminal'
 
 /** An assistant app on this computer and whether Inkling is in its MCP server list. */
 export interface AssistantStatus {
