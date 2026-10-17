@@ -24,7 +24,7 @@ export interface Places {
   appData: string
   localAppData: string
   platform: NodeJS.Platform
-  /** Set when the CLI keeps its files somewhere else than the home folder. */
+  /** Set when the terminal assistant keeps its files somewhere else than the home folder. */
   cliConfigDir?: string
 }
 
@@ -77,17 +77,17 @@ function targets(p: Places): Target[] {
   const cliFile = join(p.cliConfigDir ?? p.home, '.claude.json')
   return [
     {
-      id: 'claude-desktop',
-      name: 'Claude Desktop',
+      id: 'desktop',
+      name: 'Desktop assistant',
       file: join(desktop, 'claude_desktop_config.json'),
       installed: fs.existsSync(desktop),
       entry: (l) => ({ command: l.command, args: l.args, ...(l.env ? { env: l.env } : {}) })
     },
     {
-      id: 'claude-code',
-      name: 'Claude Code',
+      id: 'terminal',
+      name: 'Terminal assistant',
       file: cliFile,
-      // The CLI writes this file on its first run.
+      // The terminal assistant writes this file on its first run.
       installed: fs.existsSync(cliFile),
       entry: (l) => ({ type: 'stdio', command: l.command, args: l.args, env: l.env ?? {} })
     }
@@ -160,7 +160,7 @@ function rewrite(file: string, change: (data: Json) => void): void {
   try {
     current = readJson(file)
   } catch {
-    throw new Error(`${file} is not valid JSON, so it was left alone. Fix it, or use Copy setup and add Inkling by hand.`)
+    throw new Error("The assistant's settings file is not valid JSON, so it was left alone. Fix it, or use Copy setup and add Inkling by hand.")
   }
   const before = JSON.stringify(current.data)
   change(current.data)
@@ -184,7 +184,7 @@ function rewrite(file: string, change: (data: Json) => void): void {
   } catch (err) {
     if (current.exists) fs.copyFileSync(copy, file)
     else fs.rmSync(file, { force: true })
-    throw new Error(`Could not write ${file}: ${err instanceof Error ? err.message : String(err)}`, { cause: err })
+    throw new Error(`Could not write the assistant's settings file: ${err instanceof Error ? err.message : String(err)}`, { cause: err })
   } finally {
     for (const f of current.exists ? [temp, copy] : [temp]) {
       try {
@@ -199,7 +199,7 @@ function rewrite(file: string, change: (data: Json) => void): void {
 function target(p: Places, id: AssistantId): Target {
   const t = targets(p).find((x) => x.id === id)
   if (!t) throw new Error(`unknown assistant: ${String(id)}`)
-  if (!t.installed) throw new Error(`${t.name} is not on this computer.`)
+  if (!t.installed) throw new Error(`The ${t.name.toLowerCase()} is not on this computer.`)
   return t
 }
 
@@ -221,7 +221,10 @@ export function disconnectAssistant(p: Places, id: AssistantId, l: Launch): Assi
   rewrite(t.file, (data) => {
     if (!isObject(data.mcpServers)) return
     const key = findKey(data.mcpServers)
-    if (key !== null) delete data.mcpServers[key]
+    if (key === null) return
+    delete data.mcpServers[key]
+    // A list that only ever held Inkling goes too, so the file is as it was before Connect.
+    if (Object.keys(data.mcpServers).length === 0) delete data.mcpServers
   })
   return assistantStatus(p, l)
 }

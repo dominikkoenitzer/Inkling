@@ -28,16 +28,16 @@ afterEach(() => fs.rmSync(home, { recursive: true, force: true }))
 
 describe('assistantStatus', () => {
   it('finds nothing in an empty home', () => {
-    expect(states()).toEqual({ 'claude-desktop': 'missing', 'claude-code': 'missing' })
+    expect(states()).toEqual({ 'desktop': 'missing', 'terminal': 'missing' })
   })
 
   it('tells installed, connected, another copy and a broken file apart', () => {
     fs.mkdirSync(join(home, '.config', 'Claude'), { recursive: true })
     write(cliFile(), JSON.stringify({ mcpServers: { inkling: { type: 'stdio', command: '/old/Inkling', args: ['--mcp'] } } }))
-    expect(states()).toEqual({ 'claude-desktop': 'off', 'claude-code': 'stale' })
+    expect(states()).toEqual({ 'desktop': 'off', 'terminal': 'stale' })
 
     write(desktopFile(), '{ "mcpServers": { ')
-    expect(states()['claude-desktop']).toBe('unreadable')
+    expect(states()['desktop']).toBe('unreadable')
   })
 
   it('looks inside the Store package on Windows, then in AppData', () => {
@@ -58,7 +58,7 @@ describe('connectAssistant', () => {
       mcpServers: { files: { type: 'stdio', command: 'files-server', args: ['--root', '/x'], env: { A: '1' } } }
     }
     write(cliFile(), JSON.stringify(before, null, 2) + '\n')
-    connectAssistant(places, 'claude-code', launch)
+    connectAssistant(places, 'terminal', launch)
 
     const after = read(cliFile())
     expect(after).toEqual({
@@ -66,17 +66,17 @@ describe('connectAssistant', () => {
       mcpServers: { ...before.mcpServers, inkling: { type: 'stdio', command: launch.command, args: ['--mcp'], env: {} } }
     })
     expect(fs.readFileSync(cliFile(), 'utf8').endsWith('}\n')).toBe(true)
-    expect(states()['claude-code']).toBe('on')
+    expect(states()['terminal']).toBe('on')
     expect(leftovers(home)).toEqual([])
   })
 
   it('makes the desktop file when the app has none yet, and keeps tabs and a BOM', () => {
     fs.mkdirSync(join(home, '.config', 'Claude'), { recursive: true })
-    connectAssistant(places, 'claude-desktop', launch)
+    connectAssistant(places, 'desktop', launch)
     expect(read(desktopFile())).toEqual({ mcpServers: { inkling: { command: launch.command, args: ['--mcp'] } } })
 
     write(desktopFile(), '\uFEFF{\n\t"theme": "dark"\n}')
-    connectAssistant(places, 'claude-desktop', launch)
+    connectAssistant(places, 'desktop', launch)
     const text = fs.readFileSync(desktopFile(), 'utf8')
     expect(text.startsWith('\uFEFF{\n\t"theme"')).toBe(true)
     expect(read(desktopFile())).toEqual({ theme: 'dark', mcpServers: { inkling: { command: launch.command, args: ['--mcp'] } } })
@@ -84,20 +84,20 @@ describe('connectAssistant', () => {
 
   it('points an old entry at this copy under the name it already has', () => {
     write(cliFile(), JSON.stringify({ mcpServers: { notes: { command: 'C:\\Old\\Inkling.exe', args: ['--mcp'] } } }))
-    connectAssistant(places, 'claude-code', launch)
+    connectAssistant(places, 'terminal', launch)
     expect(Object.keys(read(cliFile()).mcpServers as object)).toEqual(['notes'])
-    expect(states()['claude-code']).toBe('on')
+    expect(states()['terminal']).toBe('on')
   })
 
   it('leaves a broken file untouched and says so', () => {
     write(cliFile(), '{ broken')
-    expect(() => connectAssistant(places, 'claude-code', launch)).toThrow(/not valid JSON, so it was left alone/)
+    expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/not valid JSON, so it was left alone/)
     expect(fs.readFileSync(cliFile(), 'utf8')).toBe('{ broken')
     expect(leftovers(home)).toEqual([])
   })
 
   it('refuses an assistant that is not installed', () => {
-    expect(() => connectAssistant(places, 'claude-desktop', launch)).toThrow(/not on this computer/)
+    expect(() => connectAssistant(places, 'desktop', launch)).toThrow(/not on this computer/)
     expect(fs.existsSync(desktopFile())).toBe(false)
   })
 
@@ -106,7 +106,7 @@ describe('connectAssistant', () => {
     write(cliFile(), original)
     // A folder where the temporary file goes makes the write fail half-way.
     fs.mkdirSync(`${cliFile()}.inkling-tmp`)
-    expect(() => connectAssistant(places, 'claude-code', launch)).toThrow(/Could not write/)
+    expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/Could not write/)
     expect(fs.readFileSync(cliFile(), 'utf8')).toBe(original)
     expect(fs.existsSync(`${cliFile()}.inkling-backup`)).toBe(false)
   })
@@ -115,16 +115,25 @@ describe('connectAssistant', () => {
 describe('disconnectAssistant', () => {
   it('takes only Inkling out', () => {
     write(cliFile(), JSON.stringify({ mcpServers: { files: { command: 'f', args: [] } }, other: 1 }))
-    connectAssistant(places, 'claude-code', launch)
-    disconnectAssistant(places, 'claude-code', launch)
+    connectAssistant(places, 'terminal', launch)
+    disconnectAssistant(places, 'terminal', launch)
     expect(read(cliFile())).toEqual({ mcpServers: { files: { command: 'f', args: [] } }, other: 1 })
-    expect(states()['claude-code']).toBe('off')
+    expect(states()['terminal']).toBe('off')
+  })
+
+  it('leaves the file as it was before Connect', () => {
+    fs.mkdirSync(join(home, '.config', 'Claude'), { recursive: true })
+    const text = JSON.stringify({ preferences: { sidebar: 'open' } }, null, 2) + '\n'
+    write(desktopFile(), text)
+    connectAssistant(places, 'desktop', launch)
+    disconnectAssistant(places, 'desktop', launch)
+    expect(fs.readFileSync(desktopFile(), 'utf8')).toBe(text)
   })
 
   it('does not rewrite a file that has no Inkling in it', () => {
     const text = '{"compact":true}'
     write(cliFile(), text)
-    disconnectAssistant(places, 'claude-code', launch)
+    disconnectAssistant(places, 'terminal', launch)
     expect(fs.readFileSync(cliFile(), 'utf8')).toBe(text)
   })
 })

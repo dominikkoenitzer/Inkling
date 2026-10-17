@@ -55,7 +55,7 @@ For macOS and Linux, see [Other ways to install](#other-ways-to-install).
 
 Inkling has an MCP server built in, so an AI assistant on your computer can look through your notes, write and tidy them, keep your to-dos going and quiz you on your flashcards.
 
-Open Settings (Ctrl+,) and find Connect an AI assistant. Inkling finds Claude Desktop and Claude Code on your computer: click Connect, then restart the assistant. Disconnect takes Inkling out again. Every other server in the assistant's settings stays as it was.
+Open Settings (Ctrl+,) and find Connect an AI assistant. It lists the assistant apps on your computer that Inkling can set up by itself: click Connect, then restart the assistant. Disconnect takes Inkling out again. Every other server in the assistant's settings stays as it was.
 
 For any other assistant, click Copy setup in the same place and paste it into the assistant's MCP settings. It holds the path where Inkling is installed. By hand, on Windows, it looks like this:
 
