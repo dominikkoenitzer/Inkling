@@ -79,3 +79,7 @@ jobs:
       # Electron needs a display even when the window is only captured and closed.
       - name: Smoke test
         run: xvfb-run --auto-servernum bun run smoke
+
+      # The MCP server talked to over stdio, as an assistant app does, next to the open app.
+      - name: MCP check
+        run: xvfb-run --auto-servernum bun run mcp:smoke

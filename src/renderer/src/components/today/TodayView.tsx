@@ -98,14 +98,18 @@ export function TodayView(): React.JSX.Element {
               const overdue = !!due && !done && localDay(due) < today
               return (
                 <li key={t.id} className="flex items-center gap-3 border-b border-edge py-2.5">
-                  <input
-                    type="checkbox"
-                    className="check"
-                    checked={done}
-                    onChange={() => toggle(t)}
-                    aria-label={done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`}
-                  />
-                  <span className={`min-w-0 flex-1 truncate text-[15px] ${done ? 'text-faint line-through' : ''}`}>{t.title}</span>
+                  {/* The whole title ticks the box, not only the box itself. */}
+                  <label className="flex min-w-0 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      className="check"
+                      checked={done}
+                      onChange={() => toggle(t)}
+                      aria-label={done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`}
+                    />
+                    <span className={`min-w-0 truncate text-[15px] ${done ? 'text-faint line-through' : ''}`}>{t.title}</span>
+                  </label>
+                  <span className="flex-1" />
                   {due && <span className={`shrink-0 text-xs ${overdue ? 'text-danger' : 'text-faint'}`}>{shortDate.format(due)}</span>}
                   {t.note_id !== null && (
                     <button
@@ -123,7 +127,7 @@ export function TodayView(): React.JSX.Element {
         )}
 
         {decks.length > 0 && (
-          <Section title="Study" count={decks.reduce((n, d) => n + d.due_count, 0)}>
+          <Section title="Flashcards" count={decks.reduce((n, d) => n + d.due_count, 0)}>
             {decks.map((d) => (
               <li key={d.id} className="flex items-center gap-3 border-b border-edge py-2.5">
                 <span className="min-w-0 flex-1 truncate text-[15px]">{d.name}</span>

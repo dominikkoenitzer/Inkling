@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/shell/Sidebar'
 import { MainPane } from '@/components/shell/MainPane'
 import { CommandPalette } from '@/components/shell/CommandPalette'
 import { SettingsModal } from '@/components/shell/SettingsModal'
+import { ShortcutsModal } from '@/components/shell/ShortcutsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 
@@ -16,6 +17,7 @@ export default function App(): React.JSX.Element {
   const theme = useApp((s) => s.theme)
   const paletteOpen = useApp((s) => s.paletteOpen)
   const settingsOpen = useApp((s) => s.settingsOpen)
+  const shortcutsOpen = useApp((s) => s.shortcutsOpen)
 
   useEffect(() => {
     void useApp.getState().init()
@@ -27,6 +29,9 @@ export default function App(): React.JSX.Element {
 
   // Pick up what an assistant wrote through the MCP server while the window was in the background.
   useEffect(() => watchFocus(), [])
+
+  // And while it is in front: the main process says when another process has written.
+  useEffect(() => api.events.onDataChanged(() => window.dispatchEvent(new Event('inkling:outside-write'))), [])
 
   // Cards answered "Again" come due again within minutes: recount every few minutes.
   // The day is checked too: after sleep the midnight timer can land late, with focus never lost.
@@ -46,9 +51,14 @@ export default function App(): React.JSX.Element {
     void api.app.setTitlebar(theme)
   }, [ready, failed, theme])
 
-  // Ctrl+K search, Ctrl+N new note, Ctrl+, settings.
+  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'F1' && !e.repeat) {
+        e.preventDefault()
+        useApp.getState().setShortcutsOpen(!useApp.getState().shortcutsOpen)
+        return
+      }
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.repeat) return
       const key = e.key.toLowerCase()
       const app = useApp.getState()
@@ -58,6 +68,11 @@ export default function App(): React.JSX.Element {
       } else if (key === 'n') {
         e.preventDefault()
         void app.newNote()
+      } else if (key === '1' || key === '2') {
+        e.preventDefault()
+        app.setView(key === '1' ? 'today' : 'study')
+        app.setSettingsOpen(false)
+        app.setShortcutsOpen(false)
       } else if (key === ',') {
         e.preventDefault()
         app.setSettingsOpen(true)
@@ -114,6 +129,7 @@ export default function App(): React.JSX.Element {
 
       {paletteOpen && <CommandPalette />}
       {settingsOpen && <SettingsModal />}
+      {shortcutsOpen && <ShortcutsModal />}
       <Toaster />
     </div>
   )

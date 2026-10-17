@@ -1,6 +1,6 @@
 ---
 name: inkling
-description: How the Inkling desktop app handles notes, to-dos and flashcards, and how to write text in the formats it reads. Use when the user asks for help with Inkling notes, to-dos, the Today or Study pages, flashcard reviews, backups or where the data is stored, updating or removing Inkling, or wants text turned into Inkling flashcards or to-dos, or wants to connect an assistant to Inkling through its MCP server.
+description: How the Inkling desktop app handles notes, to-dos and flashcards, and how to write text in the formats it reads. Use when the user asks for help with Inkling notes, to-dos, the Today or Flashcards pages, flashcard reviews, backups or where the data is stored, updating or removing Inkling, or wants text turned into Inkling flashcards or to-dos, or wants to connect an assistant to Inkling through its MCP server.
 ---
 
 # Inkling
@@ -16,12 +16,12 @@ Inkling is a desktop app for Windows, macOS and Linux. It keeps notes, to-dos an
 
 ## Notes
 
-- The sidebar shows Today, Study and Settings, then every note in one list, newest edit first. There are no folders.
+- The sidebar shows New note, Today and Flashcards, then every note in one list, newest edit first, with Shortcuts and Settings at its foot. There are no folders. The arrow keys walk the note list.
 - A note has a title and a body. The title is optional. The note saves while the user types.
 - Typed at the start of a line in the body, `# `, `## ` or `### ` makes a heading, `- ` a bullet list, `1. ` a numbered list, `[] ` a to-do and `> ` a quote.
 - The toolbar above the body has Bold, Italic, Heading 1, Heading 2, Bullet list, Numbered list, Task list, Flashcards and Export as Markdown.
 - Pasted plain text becomes one paragraph per line. Markdown markers in pasted text, such as `# ` or `- [ ] `, are not turned into headings or to-dos.
-- A note is deleted with the trash icon that appears when the pointer is over it in the sidebar. There is no confirmation. Undo shows for about six seconds; there is no trash to browse later.
+- A note is deleted with the trash icon in the note's toolbar. There is no confirmation. Undo shows for about six seconds; there is no trash to browse later.
 
 ## To-dos
 
@@ -46,15 +46,15 @@ Decks:
 
 - Each note has one deck, named after the note title when it is first made. Renaming the note later does not rename the deck.
 - Clicking Flashcards again updates changed lines in place and keeps their review history, adds new lines and removes cards whose lines are gone.
-- In Study, cards made from a note's lines show as plain text and cannot be edited or deleted there. The deck page says they are edited in the note and has an Open the note link. Change the note, then click Flashcards.
-- Study also has New deck, for a deck without a note. Every deck page has Front and Back fields to add a card by hand. Such cards can be edited in Study, and clicking Flashcards leaves them alone, also in a note's deck.
+- On the Flashcards page, cards made from a note's lines show as plain text and cannot be edited or deleted there. The deck page says they are edited in the note and has an Open the note link. Change the note, then click Flashcards.
+- The Flashcards page also has New deck, for a deck without a note. Every deck page has Front and Back fields to add a card by hand. Such cards can be edited there, and clicking Flashcards leaves them alone, also in a note's deck.
 
 To turn text into card lines, follow [references/cards.md](references/cards.md).
 
-## Today and Study
+## Today and Flashcards
 
-- Today is the page Inkling opens on. It has a To-do section with every open checkbox, and a Study section with each deck that has cards due and a Review button.
-- Study lists every deck with its card count, and a Review button when cards are due. A review takes every card that is due now. There is no daily limit for new cards.
+- Today is the page Inkling opens on. It has a To-do section with every open checkbox, and a Flashcards section with each deck that has cards due and a Review button.
+- The Flashcards page lists every deck with its card count, and a Review button when cards are due. A review takes every card that is due now. There is no daily limit for new cards.
 - In a review, Space (or a click on the card) shows the answer. Then 1, 2, 3 or 4 rates it Again, Hard, Good or Easy. Esc ends the review.
 - Scheduling is FSRS-6 with a fixed recall target of 90%. A new card is due at once. Again brings the card back in 10 minutes and once more at the end of the review. Hard, Good and Easy schedule it at least a day out. Each button shows the interval it would give.
 
@@ -62,15 +62,17 @@ To turn text into card lines, follow [references/cards.md](references/cards.md).
 
 | Keys | What it does |
 |---|---|
-| Ctrl+K | Search, also from inside a note |
+| Ctrl+K | Search, also from inside a note; it also jumps to Today, Flashcards and Settings |
 | Ctrl+N | New note |
-| Ctrl+, | Settings, which hold only the theme: Light or Dark |
+| Ctrl+1, Ctrl+2 | Today, Flashcards |
+| F1 | All shortcuts |
+| Ctrl+, | Settings: the theme (Light or Dark) and Connect an AI assistant |
 | Ctrl+B, Ctrl+I | Bold, italic |
 | Ctrl+Shift+9 | Turn the selected lines into to-dos, or back |
 | Space, then 1 to 4 | In a review: show the answer, then Again, Hard, Good or Easy |
 | Esc | End a review |
 
-On macOS, press Cmd where the table says Ctrl. Ctrl+K, Ctrl+N and Ctrl+, work with either key there.
+On macOS, press Cmd where the table says Ctrl. Ctrl+K, Ctrl+N, Ctrl+1, Ctrl+2 and Ctrl+, work with either key there.
 
 Search matches note titles and text, to-do text and deck names. It does not search card text.
 
@@ -88,30 +90,45 @@ Search matches note titles and text, to-do text and deck names. It does not sear
 
 ## MCP server
 
-Inkling runs as an MCP server when started with `--mcp`. The client talks to it over standard input and output; nothing goes over the network. To connect it, add a server to the MCP client's config with the full path to Inkling as the command and `["--mcp"]` as the arguments:
+Inkling runs as an MCP server when started with `--mcp`. The client talks to it over standard input and output; nothing goes over the network.
+
+To connect it, the user opens Settings (Ctrl+,) in Inkling. Under Connect an AI assistant, Connect adds Inkling to the assistant apps it finds on the computer; the assistant needs a restart afterwards. Copy setup puts the JSON for any other MCP client on the clipboard, with the real install path. By hand, the command is the full path to Inkling and the arguments are `["--mcp"]`:
 
 - Windows: `C:\Users\<you>\AppData\Local\Programs\Inkling\Inkling.exe` (doubled backslashes in JSON; most clients do not expand `%LOCALAPPDATA%`)
 - macOS: `/Applications/Inkling.app/Contents/MacOS/Inkling`
 - Linux: the full path to `Inkling.AppImage`
 
-Tools:
+Tools for notes:
 
-- `search` finds notes, to-dos and decks by words in them. `list_notes` lists notes, newest edit first. `read_note` returns a note as Markdown. Each note is also the resource `inkling://note/{id}`.
-- `create_note` makes a note from a title and Markdown. `append_to_note` adds Markdown to the end of a note.
-- `list_open_todos` lists every open checkbox with its note. `complete_todo` and `reopen_todo` tick and untick one, in the note too.
-- `list_decks` lists decks with their card and due counts. `add_flashcards` adds `{front, back}` cards to a deck by id, or by name, making the deck if there is none with that name.
+- `search` finds notes, to-dos and decks by words in them. `list_notes` lists notes, newest edit first; `changedSince` gives what changed lately, `offset` pages on while `more` is true, `inTrash` lists deleted notes.
+- `read_note` returns a note as Markdown, or with `heading` only the section under that heading.
+- `create_note` makes a note from a title and Markdown. `append_to_note` adds Markdown to the end of a note, or with `heading` to the end of that section.
+- `replace_section` replaces what stands under a heading, up to the next heading of the same or a higher level, and returns what was there. `edit_note` swaps `oldText` for `newText`; `oldText` must match the Markdown from `read_note` exactly and only once, or set `replaceAll`.
+- `undo_edit` takes back the last edit to a note made in this session, one per call. It refuses if the note changed since.
+- `rename_note` sets a new title. `delete_note` moves a note to the trash for 30 days, its to-dos and deck hidden with it; `restore_note` brings it back.
+
+Tools for to-dos and flashcards:
+
+- `today` returns what the Today page shows: the open to-dos and the decks with cards due. `list_open_todos` lists every open to-do with its note. `complete_todo` and `reopen_todo` tick and untick one, in the note too.
+- `list_decks` lists decks with their card and due counts. `list_due_flashcards` gives the due cards as question and answer; a cloze card asks one gap, shown as `[…]`. `grade_flashcard` records `again`, `hard`, `good` or `easy` and schedules the card, as a review does.
+- `make_flashcards_from_note` does what the Flashcards button does: the note's card lines become its deck. `add_flashcards` adds `{front, back}` cards to a deck by id, or by name, making the deck if there is none.
+
+Each note is also the resource `inkling://note/{id}`, and Today is `inkling://today`. The prompts `plan_my_day`, `quiz_me` and `flashcards_from_note` start those tasks.
 
 Rules:
 
+- Search and read before you write, so you add to the right note instead of making a second one. Prefer `append_to_note`, `replace_section` and `edit_note` over making a new note, and tell the user what you changed and where.
 - Markdown that comes through: headings, paragraphs, bold, italic, strike, `==highlight==`, inline code, links, bullet and numbered lists, quotes, code blocks and rules. Each line becomes its own paragraph. A `- [ ]` or `- [x]` line becomes a real to-do on Today.
-- Nothing can be deleted, and what a note already says cannot be changed. Add to the end, or make a new note. Deleting stays with the user.
-- Card lines like `Term :: Definition` written into a note become cards only when the user clicks Flashcards. To make cards directly, use `add_flashcards`. A cloze front such as `The {{c1::mitochondria}} makes energy` may leave the back empty.
-- Search and read before you write, so you add to the right note instead of making a second one. Tell the user what you added and where.
-- If a tool says Inkling needs to be opened first, ask the user to open Inkling once and try again. This happens before the first start and after an update. If it says the data is newer than this copy of Inkling, the command in the client's config starts an older Inkling than the one that last opened the data; ask the user to update it.
-- Inkling can stay open while you work. The window shows the changes when the user switches back to it.
+- An edit rebuilds only the lines it touches. A to-do line that keeps its text keeps its to-do, and a reworded line keeps it too when edited with `edit_note`.
+- To make cards that stay with a note, write card lines into it, then call `make_flashcards_from_note`. It refuses when it would remove cards whose lines are gone; say so, and leave that to the user's Flashcards click.
+- Quizzing: show the question, wait for the user's answer, then show the answer and grade it by what they said. When unsure, ask them how it went.
+- Nothing can be deleted for good. Ask before `delete_note`. The server cannot change settings.
+- Before the first change in a session, the server copies the data into `backups/` as `assistant-` plus the date and keeps the last three.
+- If a tool says Inkling needs to be opened first, ask the user to open Inkling once and try again. This happens before the first start and after an update. If it says the data is newer than this copy of Inkling, the command in the client's config starts an older Inkling than the one that last opened the data; ask the user to press Fix under Connect an AI assistant, or update the path.
+- Inkling can stay open while you work. The window shows your changes within a couple of seconds.
 
 ## How to help
 
 - Drafting a note: give plain lines the user can paste, and say which lines to turn into headings, lists or to-dos with the toolbar.
-- Making flashcards from pasted text: return only card lines in one plain code block, so the copy button copies plain text. Tell the user to paste them into a note and click Flashcards. With the MCP server connected, add them with `add_flashcards` instead.
+- Making flashcards from pasted text: return only card lines in one plain code block, so the copy button copies plain text. Tell the user to paste them into a note and click Flashcards. With the MCP server connected, write them into the note with `append_to_note` and call `make_flashcards_from_note`.
 - Explaining when a card comes back: use the scheduling rules above. Do not promise exact intervals; the app computes them per card from its review history.

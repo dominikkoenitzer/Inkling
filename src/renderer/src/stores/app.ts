@@ -41,10 +41,11 @@ interface AppState {
   view: View
   selectedNoteId: number | null
   selectedDeckId: number | null
-  /** The deck whose review session Study is showing. Any navigation leaves the session. */
+  /** The deck whose review session Flashcards is showing. Any navigation leaves the session. */
   reviewingDeckId: number | null
   paletteOpen: boolean
   settingsOpen: boolean
+  shortcutsOpen: boolean
   toast: Toast | null
 
   init(): Promise<void>
@@ -61,6 +62,7 @@ interface AppState {
   reviewDeck(deckId: number | null): void
   setPaletteOpen(v: boolean): void
   setSettingsOpen(v: boolean): void
+  setShortcutsOpen(v: boolean): void
   showToast(t: Omit<Toast, 'id'>): void
   dismissToast(): void
 }
@@ -78,6 +80,7 @@ export const useApp = create<AppState>((set, get) => ({
   reviewingDeckId: null,
   paletteOpen: false,
   settingsOpen: false,
+  shortcutsOpen: false,
   toast: null,
 
   init: async () => {
@@ -121,7 +124,7 @@ export const useApp = create<AppState>((set, get) => ({
       const home = get().homeNotebookId ?? (await api.notebooks.home())
       const note = await api.notes.create({ notebook_id: home })
       bumpData('notes')
-      set({ paletteOpen: false, settingsOpen: false })
+      set({ paletteOpen: false, settingsOpen: false, shortcutsOpen: false })
       get().openNote(note.id)
     } finally {
       creatingNote = false
@@ -135,8 +138,9 @@ export const useApp = create<AppState>((set, get) => ({
   openDeck: (deckId) => set({ view: 'study', selectedDeckId: deckId, reviewingDeckId: null, paletteOpen: false }),
   reviewDeck: (deckId) => set({ view: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
   // One overlay at a time.
-  setPaletteOpen: (paletteOpen) => set(paletteOpen ? { paletteOpen, settingsOpen: false } : { paletteOpen }),
-  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, paletteOpen: false } : { settingsOpen }),
+  setPaletteOpen: (paletteOpen) => set(paletteOpen ? { paletteOpen, settingsOpen: false, shortcutsOpen: false } : { paletteOpen }),
+  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, paletteOpen: false, shortcutsOpen: false } : { settingsOpen }),
+  setShortcutsOpen: (shortcutsOpen) => set(shortcutsOpen ? { shortcutsOpen, paletteOpen: false, settingsOpen: false } : { shortcutsOpen }),
 
   showToast: (t) => {
     const id = ++toastSeq
@@ -179,14 +183,21 @@ export function watchDay(target: EventTarget = window): () => void {
   }
 }
 
-/** Refetches notes, tasks and decks when the window regains focus: another process may have written them. */
+/**
+ * Refetches notes, tasks and decks when the window regains focus, or when the main process
+ * reports a write from another process: an assistant may have changed them.
+ */
 export function watchFocus(target: EventTarget = window): () => void {
   const onFocus = (): void => {
     const { bump } = useData.getState()
     for (const domain of ['notes', 'tasks', 'decks']) bump(domain)
   }
   target.addEventListener('focus', onFocus)
-  return () => target.removeEventListener('focus', onFocus)
+  target.addEventListener('inkling:outside-write', onFocus)
+  return () => {
+    target.removeEventListener('focus', onFocus)
+    target.removeEventListener('inkling:outside-write', onFocus)
+  }
 }
 
 /* Note saves on their way to the main process, so a delete can wait for the last edit. */
@@ -233,3 +244,54 @@ export async function settleNote(noteId: number): Promise<void> {
 
 export const useVersion = (domain: string): number => useData((s) => s.versions[domain] ?? 0)
 export const bumpData = (domain: string): void => useData.getState().bump(domain)
+
+// Notes deleted while one undo toast is up: its Undo brings all of them back.
+let undoable: number[] = []
+// Notes on their way to the trash, which the empty-note cleanup leaves to the delete.
+const deleting = new Set<number>()
+
+// A note left completely empty goes once the user moves on and its last edit has landed.
+const showing = (s: AppState): number | null => (s.view === 'notes' ? s.selectedNoteId : null)
+useApp.subscribe((state, prev) => {
+  const left = showing(prev)
+  if (left === null || left === showing(state) || deleting.has(left)) return
+  void settleNote(left).then(async () => {
+    if (showing(useApp.getState()) === left || deleting.has(left)) return
+    if (!(await api.notes.dropIfEmpty(left))) return
+    bumpData('notes')
+    if (useApp.getState().selectedNoteId === left) useApp.setState({ selectedNoteId: null })
+  })
+})
+
+/** Moves a note to the trash once its last edit has landed, with an undo toast. */
+export async function deleteNote(noteId: number, title: string | null): Promise<void> {
+  deleting.add(noteId)
+  // The open editor's last edit lands first, then the note goes.
+  const settled = settleNote(noteId)
+  if (useApp.getState().selectedNoteId === noteId) useApp.setState({ selectedNoteId: null })
+  await settled
+  await api.notes.remove(noteId).finally(() => deleting.delete(noteId))
+  bumpData('notes')
+  bumpData('tasks')
+  // Opened again in the meantime: it is gone now, so close it.
+  if (useApp.getState().selectedNoteId === noteId) useApp.setState({ selectedNoteId: null })
+  // The list only grows while its own toast is still the one on screen.
+  if (!useApp.getState().toast?.message.startsWith('Deleted')) undoable = []
+  if (!undoable.includes(noteId)) undoable = [...undoable, noteId]
+  const ids = undoable
+  useApp.getState().showToast({
+    message: ids.length === 1 ? `Deleted “${title?.trim() || 'Untitled'}”` : `Deleted ${ids.length} notes`,
+    actionLabel: 'Undo',
+    onAction: () => {
+      undoable = []
+      Promise.all(ids.map((id) => api.notes.restore(id))).then(
+        () => {
+          bumpData('notes')
+          bumpData('tasks')
+          useApp.getState().openNote(ids[ids.length - 1])
+        },
+        () => useApp.getState().showToast({ message: 'Could not bring the note back.' })
+      )
+    }
+  })
+}

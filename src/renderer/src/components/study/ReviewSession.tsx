@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
-import { Button, IconBtn } from '@/components/ui'
+import { Button, IconBtn, Kbd } from '@/components/ui'
 import { ignoresShortcut } from '@/lib/keys'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
@@ -107,23 +107,25 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 px-6 pt-4">
-        <h2 className="truncate text-sm font-medium text-muted">{deck.name}</h2>
-        <span className="text-xs tabular-nums text-faint">
-          {Math.min(index, queue.length)}/{queue.length}
-        </span>
-        <div className="ml-auto">
-          <IconBtn title="End session (Esc)" onClick={finish}>
-            <X size={16} />
-          </IconBtn>
+      {/* Same column as every other page, so the deck name sits where titles do. */}
+      <div className="mx-auto w-full max-w-[680px] px-10 pt-8">
+        <div className="flex items-center gap-3">
+          <h2 className="truncate text-sm font-medium text-muted">{deck.name}</h2>
+          <span className="text-xs tabular-nums text-faint">
+            {Math.min(index, queue.length)} of {queue.length}
+          </span>
+          <div className="ml-auto">
+            <IconBtn title="End session (Esc)" onClick={finish}>
+              <X size={16} />
+            </IconBtn>
+          </div>
         </div>
-      </div>
-
-      <div className="mx-6 mt-3 h-0.5 rounded-full bg-hover">
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${queue.length ? (Math.min(index, queue.length) / queue.length) * 100 : 0}%`, background: 'var(--accent)' }}
-        />
+        <div className="mt-2 h-0.5 rounded-full bg-hover">
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${queue.length ? (Math.min(index, queue.length) / queue.length) * 100 : 0}%`, background: 'var(--accent)' }}
+          />
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8">
@@ -161,7 +163,9 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                   </>
                 )
               ) : (
-                <div className="text-xs text-faint">Click or press Space to see the answer</div>
+                <div className="flex items-center gap-1.5 text-xs text-faint">
+                  Click or press <Kbd>Space</Kbd> to see the answer
+                </div>
               )}
             </div>
             {showBack && (
@@ -173,12 +177,13 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                     onClick={() => void grade(g.grade)}
                     className={`min-w-[88px] rounded-md border border-edge bg-raised px-4 py-2 text-sm font-medium transition-colors hover:bg-hover ${g.tone}`}
                   >
-                    {g.label}
-                    {/* What each answer would actually schedule; the choice is only
-                        meaningful if you can see what it costs. */}
+                    <span className="flex items-center justify-center gap-2">
+                      {g.label}
+                      <Kbd className="h-4 min-w-4 px-1 text-[11px]">{i + 1}</Kbd>
+                    </span>
+                    {/* What each answer would schedule, so the choice shows its cost. */}
                     <div className="text-xs font-normal text-faint">
                       {intervals ? (intervals[g.rating] === 0 ? `${RELEARN_MINUTES}m` : formatInterval(intervals[g.rating])) : ''}
-                      <span className="ml-1">{i + 1}</span>
                     </div>
                   </button>
                 ))}
@@ -186,7 +191,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
             )}
           </>
         ) : (
-          <div className="text-muted">Loading cards…</div>
+          <div className="text-muted">Loading cards...</div>
         )}
       </div>
     </div>

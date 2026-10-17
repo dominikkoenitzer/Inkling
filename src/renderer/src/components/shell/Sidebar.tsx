@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Layers, Plus, Settings, Sun, Trash2 } from 'lucide-react'
-import { useApp, useVersion, bumpData, settleNote, type View } from '@/stores/app'
+import { Keyboard, Layers, Plus, Settings, Sun } from 'lucide-react'
+import { useApp, useVersion, type View } from '@/stores/app'
 import type { Note } from '@shared/types'
 
 const api = window.inkling
 
-/** One quiet column: three places to go, then every note. */
+/** One quiet column: the main action, two places to go, every note, then help and settings. */
 export function Sidebar(): React.JSX.Element {
   const view = useApp((s) => s.view)
   const today = useApp((s) => s.today)
@@ -22,37 +22,51 @@ export function Sidebar(): React.JSX.Element {
 
   return (
     <aside className="flex shrink-0 flex-col border-r border-edge bg-panel" style={{ width: 'var(--sidebar-w)' }}>
-      <nav className="space-y-px px-2 pt-3">
-        <NavRow view="today" current={view} icon={<Sun size={16} />} label="Today" />
-        <NavRow view="study" current={view} icon={<Layers size={16} />} label="Study" count={due} />
+      <div className="px-2 pt-3">
         <button
           type="button"
-          title="Settings (Ctrl+,)"
-          onClick={() => useApp.getState().setSettingsOpen(true)}
-          className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
+          title="New note (Ctrl+N)"
+          onClick={() => void useApp.getState().newNote()}
+          className="flex h-8 w-full items-center gap-2.5 rounded-md border border-edge bg-raised px-2.5 text-sm font-medium text-ink transition-colors hover:bg-hover"
         >
-          <Settings size={16} />
-          Settings
+          <Plus size={16} className="text-accent-text" />
+          New note
+          <span className="ml-auto text-xs font-normal text-faint">Ctrl+N</span>
         </button>
+      </div>
+
+      <nav className="space-y-px px-2 pt-3">
+        <NavRow view="today" current={view} icon={<Sun size={16} />} label="Today" hint="Ctrl+1" />
+        <NavRow view="study" current={view} icon={<Layers size={16} />} label="Flashcards" hint="Ctrl+2" count={due} />
       </nav>
 
       <div className="mx-4 mb-2 mt-3 border-t border-edge" />
 
-      <div className="flex items-center justify-between pb-1 pl-4 pr-2">
+      <div className="pb-1 pl-4 pr-2">
         <span className="text-xs font-medium text-faint">Notes</span>
-        <button
-          type="button"
-          title="New note (Ctrl+N)"
-          aria-label="New note"
-          onClick={() => void useApp.getState().newNote()}
-          className="flex h-6 w-6 items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-ink"
-        >
-          <Plus size={15} />
-        </button>
       </div>
 
       <NotesList />
+
+      <div className="space-y-px border-t border-edge px-2 py-2">
+        <FooterRow icon={<Keyboard size={16} />} label="Shortcuts" title="Keyboard shortcuts (F1)" onClick={() => useApp.getState().setShortcutsOpen(true)} />
+        <FooterRow icon={<Settings size={16} />} label="Settings" title="Settings (Ctrl+,)" onClick={() => useApp.getState().setSettingsOpen(true)} />
+      </div>
     </aside>
+  )
+}
+
+function FooterRow({ icon, label, title, onClick }: { icon: React.JSX.Element; label: string; title: string; onClick: () => void }): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted transition-colors hover:bg-hover hover:text-ink"
+    >
+      {icon}
+      {label}
+    </button>
   )
 }
 
@@ -61,18 +75,21 @@ function NavRow({
   current,
   icon,
   label,
+  hint,
   count
 }: {
   view: View
   current: View
   icon: React.JSX.Element
   label: string
+  hint: string
   count?: number
 }): React.JSX.Element {
   const active = view === current
   return (
     <button
       type="button"
+      title={`${label} (${hint})`}
       onClick={() => useApp.getState().setView(view)}
       aria-current={active ? 'page' : undefined}
       className={`flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors ${
@@ -85,9 +102,6 @@ function NavRow({
     </button>
   )
 }
-
-// Notes deleted while one undo toast is up: its Undo brings all of them back.
-let undoable: number[] = []
 
 function NotesList(): React.JSX.Element {
   const view = useApp((s) => s.view)
@@ -103,71 +117,33 @@ function NotesList(): React.JSX.Element {
     }
   }, [version])
 
-  const remove = (n: Note, row: HTMLElement | null): void => {
-    // Keep the keyboard in the list: the next row, or the one before, takes focus.
-    const next = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('button') as HTMLElement | null
-    // The open editor's last edit lands first, then the note goes.
-    const settled = settleNote(n.id)
-    if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
-    void settled.then(() => api.notes.remove(n.id)).then(() => {
-      bumpData('notes')
-      bumpData('tasks')
-      // Opened again in the meantime: it is gone now, so close it.
-      if (useApp.getState().selectedNoteId === n.id) useApp.setState({ selectedNoteId: null })
-      // The list only grows while its own toast is still the one on screen.
-      if (!useApp.getState().toast?.message.startsWith('Deleted')) undoable = []
-      if (!undoable.includes(n.id)) undoable = [...undoable, n.id]
-      const ids = undoable
-      useApp.getState().showToast({
-        message: ids.length === 1 ? `Deleted “${n.title?.trim() || 'Untitled'}”` : `Deleted ${ids.length} notes`,
-        actionLabel: 'Undo',
-        onAction: () => {
-          undoable = []
-          Promise.all(ids.map((id) => api.notes.restore(id))).then(
-            () => {
-              bumpData('notes')
-              bumpData('tasks')
-              useApp.getState().openNote(ids[ids.length - 1])
-            },
-            () => useApp.getState().showToast({ message: 'Could not bring the note back.' })
-          )
-        }
-      })
-    })
-    next?.focus()
+  // Up and Down walk the list once a note in it has focus.
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    const rows = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement)
+    if (at < 0) return
+    e.preventDefault()
+    rows[Math.max(0, Math.min(rows.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))]?.focus()
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4" onKeyDown={onKey}>
       {notes.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
       {notes.map((n) => {
         const active = view === 'notes' && selectedNoteId === n.id
-        const title = n.title?.trim() || 'Untitled'
         return (
-          <div
+          <button
             key={n.id}
-            className={`group flex h-8 items-center rounded-md pr-1 text-sm transition-colors ${
+            type="button"
+            onClick={() => useApp.getState().openNote(n.id)}
+            aria-current={active ? 'page' : undefined}
+            className={`flex h-8 w-full items-center rounded-md px-2.5 text-left text-sm transition-colors ${
               active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
             }`}
           >
-            <button
-              type="button"
-              onClick={() => useApp.getState().openNote(n.id)}
-              aria-current={active ? 'page' : undefined}
-              className="flex h-full min-w-0 flex-1 items-center gap-2.5 rounded-md pl-2.5 text-left"
-            >
-              <span className="min-w-0 flex-1 truncate">{title}</span>
-            </button>
-            <button
-              type="button"
-              title="Delete note"
-              aria-label={`Delete ${title}`}
-              onClick={(e) => remove(n, (e.currentTarget.parentElement as HTMLElement | null) ?? null)}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
+            <span className="min-w-0 flex-1 truncate">{n.title?.trim() || 'Untitled'}</span>
+          </button>
         )
       })}
     </div>

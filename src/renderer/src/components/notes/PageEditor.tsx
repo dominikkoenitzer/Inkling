@@ -5,12 +5,12 @@ import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
-import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown } from 'lucide-react'
-import { useApp, bumpData, registerFlush, trackSave } from '@/stores/app'
-import { extractNoteTaskItems, extractNoteCardLines } from '@/lib/parse'
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown, Trash2 } from 'lucide-react'
+import { useApp, bumpData, registerFlush, trackSave, deleteNote } from '@/stores/app'
+import { extractNoteTaskItems, extractNoteCardLines, oneLine } from '@/lib/parse'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
-import { IconBtn } from '@/components/ui'
+import { IconBtn, titleFieldCls } from '@/components/ui'
 import { tickTodo } from '@/lib/keys'
 import type { Note, NoteTaskItem } from '@shared/types'
 
@@ -92,6 +92,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   // The content as last loaded or saved here, to spot a change made outside (an assistant via MCP).
   const contentRef = useRef<string | null>(null)
   const savingRef = useRef(0)
+  const titleInputRef = useRef<HTMLTextAreaElement>(null)
 
   const editor = useEditor({
     // Read-only until the note has loaded, so nothing typed early is overwritten.
@@ -183,6 +184,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
         return
       }
       showNote(note)
+      // A blank note starts at its title, so typing names it right away.
+      if (!note.title && editor.isEmpty) titleInputRef.current?.focus()
     })
     return () => {
       alive = false
@@ -190,7 +193,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, noteId])
 
-  // Reload on focus when the note changed outside, unless an edit here is pending or saving.
+  // Reload on focus or a write from outside when the note changed, unless an edit here is pending or saving.
   useEffect(() => {
     if (!editor) return
     let alive = true
@@ -207,9 +210,11 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       })
     }
     window.addEventListener('focus', onFocus)
+    window.addEventListener('inkling:outside-write', onFocus)
     return () => {
       alive = false
       window.removeEventListener('focus', onFocus)
+      window.removeEventListener('inkling:outside-write', onFocus)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, noteId])
@@ -271,15 +276,26 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      {editor && <Toolbar editor={editor} onFlashcards={() => void makeFlashcards()} onExportMd={() => void exportMarkdown()} savedAt={savedAt} />}
+      {editor && (
+        <Toolbar
+          editor={editor}
+          onFlashcards={() => void makeFlashcards()}
+          onExportMd={() => void exportMarkdown()}
+          onDelete={() => void deleteNote(noteId, titleRef.current)}
+          savedAt={savedAt}
+        />
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Study. */}
+        {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Flashcards. */}
         <div className="mx-auto max-w-[720px] px-10 pb-32 pt-3">
-          <input
+          <textarea
+            ref={titleInputRef}
+            rows={1}
             value={title}
             onChange={(e) => {
-              setTitle(e.target.value)
-              titleRef.current = e.target.value
+              const next = oneLine(e.target.value)
+              setTitle(next)
+              titleRef.current = next
               scheduleSave()
             }}
             onKeyDown={(e) => {
@@ -288,9 +304,9 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
                 editor?.commands.focus('start')
               }
             }}
-            placeholder="Untitled"
+            placeholder="Title"
             aria-label="Title"
-            className="font-display mb-4 w-full bg-transparent text-[32px] font-semibold leading-tight tracking-tight text-ink placeholder:text-faint"
+            className={`${titleFieldCls} mb-[calc(1rem-0.25em)] text-ink placeholder:text-faint`}
           />
           <EditorContent editor={editor} className="text-[15.5px] [&>div]:min-h-[50vh]" />
         </div>
@@ -365,11 +381,13 @@ function Toolbar({
   editor,
   onFlashcards,
   onExportMd,
+  onDelete,
   savedAt
 }: {
   editor: Editor
   onFlashcards: () => void
   onExportMd: () => void
+  onDelete: () => void
   savedAt: Date | null
 }): React.JSX.Element {
   // subscribe to selection/transaction changes so active states repaint
@@ -427,7 +445,10 @@ function Toolbar({
       <IconBtn title="Export as Markdown" onClick={onExportMd}>
         <FileDown size={16} />
       </IconBtn>
-      <span className="ml-auto pr-1 text-xs text-faint">{savedAt ? 'Saved' : ''}</span>
+      <span className="ml-auto pr-2 text-xs text-faint">{savedAt ? 'Saved' : ''}</span>
+      <IconBtn title="Delete note" onClick={onDelete} className="hover:!text-danger">
+        <Trash2 size={16} />
+      </IconBtn>
     </div>
   )
 }
