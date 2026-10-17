@@ -62,7 +62,7 @@
       }
     },
     {
-      "label": "Study",
+      "label": "Flashcards",
       "title": "Flashcards from your notes",
       "body": [
         "Write <kbd>Term :: Definition</kbd> in any note and that line becomes a flashcard. Each card comes back right before you would forget it.",
@@ -126,19 +126,30 @@
   },
   "assistant": {
     "label": "AI assistant",
-    "title": "Works with your AI assistant",
+    "title": "Use Inkling with your AI assistant",
     "body": [
-      "Start Inkling with <code>--mcp</code> and an assistant on your computer can search your notes, write new ones, tick off to-dos and add flashcards.",
-      "It cannot delete anything or rewrite what a note already says. The assistant starts Inkling itself and nothing goes over the network.",
+      "Open Settings in Inkling and click Connect next to your assistant, then restart it. It can now search your notes, tidy them up, plan your day with you and quiz you on the flashcards that are due.",
+      "Another assistant? Click Copy setup in the same place and paste it into its MCP settings. Inkling fills in where it is installed.",
+      "Nothing is deleted for good: a deleted note waits in the trash for 30 days, the assistant can undo its edits, and your data is backed up before its first change. The assistant starts Inkling itself and nothing goes over the network.",
       "Want your assistant to know Inkling inside out? <a href=\"/skill/inkling.zip\">Download the skill</a>."
     ],
-    "caption": "Add Inkling to your MCP client",
+    "caption": "Copy setup gives you this, with your own path",
     "code": "{\n  \"mcpServers\": {\n    \"inkling\": {\n      \"command\": \"C:\\\\Users\\\\<you>\\\\AppData\\\\Local\\\\Programs\\\\Inkling\\\\Inkling.exe\",\n      \"args\": [\"--mcp\"]\n    }\n  }\n}"
   },
   "new": {
-    "version": "0.8.2",
+    "version": "0.9.0",
     "items": [
-      "Cutting a to-do line and pasting it back can no longer swap two tasks."
+      "Connect an AI assistant from Settings in one click. It can edit sections and text, rename notes, use the trash, see Today, quiz you on due flashcards and undo its own edits.",
+      "Your data is backed up before an assistant's first change in a session, and open notes show its changes within seconds.",
+      "Study is now called Flashcards.",
+      "New note sits at the top of the sidebar; Shortcuts and Settings moved to its foot.",
+      "<kbd>F1</kbd> shows every keyboard shortcut. <kbd>Ctrl+1</kbd> opens Today, <kbd>Ctrl+2</kbd> opens Flashcards.",
+      "Search lists Today, Flashcards, Settings and the shortcuts too, so you can jump there by name.",
+      "A new note starts with the cursor in its title, and one you leave completely empty is removed when you move on.",
+      "Delete is now in the note's toolbar.",
+      "Clicking a to-do's text on Today ticks it.",
+      "Adding a card: <kbd>Enter</kbd> moves from the question to the answer, then adds the card. Review buttons show their keys.",
+      "Long titles wrap onto a second line, and big titles no longer cut off the bottom of letters like g and y."
     ]
   },
   "requirements": [
@@ -164,11 +175,19 @@
   "keys": [
     [
       "Ctrl+K",
-      "Search"
+      "Search, or jump to Today, Flashcards and Settings"
     ],
     [
       "Ctrl+N",
       "New note"
+    ],
+    [
+      "Ctrl+1 Ctrl+2",
+      "Today, Flashcards"
+    ],
+    [
+      "F1",
+      "All shortcuts"
     ],
     [
       "Ctrl+,",
@@ -228,6 +247,12 @@
       "q": "Does it work offline?",
       "a": [
         "Yes, all of it. Inkling only goes online at start, to look for a new version."
+      ]
+    },
+    {
+      "q": "Which AI assistants work with Inkling?",
+      "a": [
+        "Any app that takes MCP servers. Settings connects the assistant apps it finds on your computer in one click; for any other, Copy setup gives you what to paste."
       ]
     },
     {

@@ -6,6 +6,8 @@ const inkling = vi.hoisted(() => {
     notebooks: { home: vi.fn(async () => 3) },
     notes: {
       restore: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
+      dropIfEmpty: vi.fn(async () => false),
       create: vi.fn(async () => ({ id: 77 }))
     }
   }
@@ -13,12 +15,13 @@ const inkling = vi.hoisted(() => {
   return api
 })
 
-import { useApp, useData, watchFocus, trackSave, registerFlush, settleNote } from '../src/renderer/src/stores/app'
+import { useApp, useData, watchFocus, trackSave, registerFlush, settleNote, deleteNote } from '../src/renderer/src/stores/app'
 
 beforeEach(() => {
   useApp.setState({ view: 'notes', selectedNoteId: null, reviewingDeckId: null, homeNotebookId: 3 })
   inkling.notes.restore.mockClear()
   inkling.notes.create.mockClear()
+  inkling.notes.dropIfEmpty.mockClear()
 })
 
 describe('reviewDeck', () => {
@@ -61,6 +64,50 @@ describe('newNote', () => {
     expect(inkling.notes.create).toHaveBeenCalledWith({ notebook_id: 3 })
     expect(useApp.getState().view).toBe('notes')
     expect(useApp.getState().selectedNoteId).toBe(77)
+  })
+})
+
+describe('overlays', () => {
+  it('shows one at a time', () => {
+    const app = useApp.getState()
+    app.setPaletteOpen(true)
+    app.setShortcutsOpen(true)
+    expect(useApp.getState()).toMatchObject({ shortcutsOpen: true, paletteOpen: false, settingsOpen: false })
+    app.setSettingsOpen(true)
+    expect(useApp.getState()).toMatchObject({ shortcutsOpen: false, paletteOpen: false, settingsOpen: true })
+    app.setSettingsOpen(false)
+  })
+})
+
+describe('deleteNote', () => {
+  it('closes the open note, trashes it and offers undo', async () => {
+    useApp.setState({ selectedNoteId: 5, toast: null })
+    await deleteNote(5, 'Lab report')
+    expect(inkling.notes.remove).toHaveBeenCalledWith(5)
+    const s = useApp.getState()
+    expect(s.selectedNoteId).toBeNull()
+    expect(s.toast?.message).toBe('Deleted “Lab report”')
+    s.toast?.onAction?.()
+    await vi.waitFor(() => expect(useApp.getState().selectedNoteId).toBe(5))
+    expect(inkling.notes.restore).toHaveBeenCalledWith(5)
+  })
+})
+
+describe('leaving a note', () => {
+  it('asks to drop it if empty once its last edit has landed', async () => {
+    useApp.setState({ selectedNoteId: 6 })
+    useApp.getState().setView('today')
+    await vi.waitFor(() => expect(inkling.notes.dropIfEmpty).toHaveBeenCalledWith(6))
+  })
+  it('leaves a note being deleted to the delete, and a note opened again alone', async () => {
+    useApp.setState({ selectedNoteId: 7, toast: null })
+    await deleteNote(7, null)
+    useApp.setState({ selectedNoteId: 8 })
+    useApp.getState().openNote(9)
+    useApp.getState().openNote(8)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(inkling.notes.dropIfEmpty).not.toHaveBeenCalledWith(7)
+    expect(inkling.notes.dropIfEmpty).not.toHaveBeenCalledWith(8)
   })
 })
 

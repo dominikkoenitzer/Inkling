@@ -4,6 +4,33 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-10-17
+
+### Added
+- Settings > Connect an AI assistant adds Inkling in one click to the assistant apps it finds on your
+  computer, and Copy setup gives any other assistant what it needs.
+- An assistant can now edit one section or one piece of text, rename notes, move them to the
+  trash and back, see Today, quiz you on the flashcards that are due and make a note's flashcards.
+  It can undo its own edits, and three ready prompts help it plan your day or quiz you.
+- Your data is backed up before an assistant's first change in a session.
+- Open notes and Today show an assistant's changes within seconds, without switching windows.
+
+### Changed
+- Study is now called Flashcards, in the sidebar, on Today and everywhere else.
+- A new note you leave completely empty is removed when you move on, so no blank notes pile up.
+- New note sits at the top of the sidebar; Shortcuts and Settings moved to its foot.
+- F1 shows every keyboard shortcut. Ctrl+1 opens Today, Ctrl+2 opens Flashcards.
+- Search lists Today, Flashcards, Settings and the shortcuts too, so you can jump there by name.
+- A new note starts with the cursor in its title.
+- Delete is now in the note's toolbar, not on the note list.
+- Clicking a to-do's text on Today ticks it.
+- Adding a card: Enter moves from the question to the answer, then adds the card.
+- Review buttons show their keys, and the review lines up with the other pages.
+- A long note or deck title wraps onto a second line instead of scrolling out of sight.
+
+### Fixed
+- Big titles no longer cut off the bottom of letters like g and y, or accents, at any zoom.
+
 ## [0.8.2] - 2026-10-14
 
 ### Fixed
@@ -398,6 +425,7 @@ Final QA pass: 15 defects found by an adversarially-verified review and fixed:
 - Nested subtask text no longer folds into the parent task’s title.
 - A quick-add of only a date (e.g. `friday`) gets a neutral title instead of the raw date word.
 
+[0.9.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.0
 [0.8.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.2
 [0.8.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.1
 [0.8.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.0

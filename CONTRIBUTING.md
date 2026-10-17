@@ -26,7 +26,7 @@ bun run test
 bun run build
 ```
 
-Tests are Vitest over the pure logic and the repositories (on an in-memory SQLite): FSRS, cloze, parsing, to-dos in notes, note-to-deck sync, search, migrations and the markdown export. `bun run smoke` covers the IPC wiring end to end, `bun run mcp:smoke` the MCP server. Anything scheduling-related needs a test: the spaced-repetition engine is the part of this app a user cannot check by eye.
+Tests are Vitest over the pure logic and the repositories (on an in-memory SQLite): FSRS, cloze, parsing, to-dos in notes, note-to-deck sync, search, migrations and the markdown export. `bun run smoke` covers the IPC wiring end to end and checks every view at five zoom levels for letters a box cuts off, `bun run mcp:smoke` the MCP server. Anything scheduling-related needs a test: the spaced-repetition engine is the part of this app a user cannot check by eye.
 
 ## Code style
 

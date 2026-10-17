@@ -1,6 +1,7 @@
-import { ipcMain, BrowserWindow, dialog } from 'electron'
+import { app, clipboard, ipcMain, BrowserWindow, dialog } from 'electron'
 import fs from 'fs'
 import * as repos from './repos'
+import { assistantStatus, connectAssistant, disconnectAssistant, placesFor, setupJson, type AssistantId, type Launch } from './assistants'
 import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 import { RATINGS } from '@shared/fsrs'
 import type { ReviewGrade } from '@shared/types'
@@ -10,6 +11,27 @@ const WRITABLE_SETTINGS = new Map([['theme', new Set(['light', 'dark'])]])
 const GRADES = new Set(Object.keys(RATINGS))
 
 type Handler = (...args: never[]) => unknown
+
+const ASSISTANTS = new Set<AssistantId>(['desktop', 'terminal'])
+
+/** How an assistant starts this copy of Inkling's MCP server, with the profile it shows. */
+function mcpLaunch(): Launch {
+  const profile = process.env['INKLING_USERDATA']
+  const env = profile ? { INKLING_USERDATA: profile } : undefined
+  // An AppImage runs from a temporary mount; the file itself is what stays.
+  const appImage = process.env['APPIMAGE']
+  if (appImage) return { command: appImage, args: ['--mcp'], env }
+  if (app.isPackaged) return { command: process.execPath, args: ['--mcp'], env }
+  return { command: process.execPath, args: [app.getAppPath(), '--mcp'], env }
+}
+
+// INKLING_ASSISTANT_HOME stands in for the home folder, so tests never touch real settings.
+const places = (): ReturnType<typeof placesFor> => placesFor(process.env['INKLING_ASSISTANT_HOME'] || undefined)
+
+function assistantId(id: unknown): AssistantId {
+  if (!ASSISTANTS.has(id as AssistantId)) throw new Error(`unknown assistant: ${String(id)}`)
+  return id as AssistantId
+}
 
 function handle(channel: string, fn: Handler): void {
   ipcMain.handle(channel, (_event, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
@@ -24,6 +46,7 @@ export function registerIpc(): void {
   handle('notes.update', repos.updateNote)
   handle('notes.remove', repos.removeNote)
   handle('notes.restore', repos.restoreNote)
+  handle('notes.dropIfEmpty', repos.dropIfEmpty)
   handle('notes.syncTasks', repos.syncNoteTasks)
   handle('notes.syncCards', repos.syncNoteCards)
 
@@ -51,6 +74,11 @@ export function registerIpc(): void {
   })
 
   handle('search.query', repos.searchQuery)
+
+  handle('assistants.list', () => assistantStatus(places(), mcpLaunch()))
+  handle('assistants.connect', (id: string) => connectAssistant(places(), assistantId(id), mcpLaunch()))
+  handle('assistants.disconnect', (id: string) => disconnectAssistant(places(), assistantId(id), mcpLaunch()))
+  handle('assistants.copySetup', () => clipboard.writeText(setupJson(mcpLaunch())))
 
   ipcMain.handle('app.setTitlebar', (event, theme: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)

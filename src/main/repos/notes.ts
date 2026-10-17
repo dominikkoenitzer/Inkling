@@ -1,6 +1,7 @@
 import { getDb } from '../db'
 import { now } from './dates'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
+import { isEmptyNote } from '@shared/emptyNote'
 import type { Note } from '@shared/types'
 
 const EMPTY_DOC = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] })
@@ -44,6 +45,36 @@ export function updateNote(id: number, patch: Record<string, unknown>): Note | n
     ftsUpsert('note', note.id, note.title ?? 'Untitled', tiptapToText(note.content))
   }
   return note
+}
+
+/* ------------------------------- Empty notes ------------------------------ */
+
+/**
+ * Deletes a live note for good if it is still completely empty and nothing hangs off it.
+ * Returns whether it went. Such a note skips the trash: there is nothing in it to undo.
+ */
+export function dropIfEmpty(id: number): boolean {
+  const db = getDb()
+  const tx = db.transaction(() => {
+    const note = db.prepare(`SELECT title, content FROM notes WHERE id = ? AND deleted_at IS NULL`).get(id) as
+      | Pick<Note, 'title' | 'content'>
+      | undefined
+    if (!note || !isEmptyNote(note.title, note.content)) return false
+    const linked = db
+      .prepare(`SELECT (SELECT COUNT(*) FROM tasks WHERE note_id = @id) + (SELECT COUNT(*) FROM flashcard_decks WHERE note_id = @id) AS n`)
+      .get({ id }) as { n: number }
+    if (linked.n > 0) return false
+    db.prepare(`DELETE FROM notes WHERE id = ?`).run(id)
+    ftsDelete('note', id)
+    return true
+  })
+  return tx() as boolean
+}
+
+/** Called once at startup: empty notes left behind last time go. */
+export function dropEmptyNotes(): number {
+  const ids = getDb().prepare(`SELECT id FROM notes WHERE deleted_at IS NULL`).all() as Array<{ id: number }>
+  return ids.filter((n) => dropIfEmpty(n.id)).length
 }
 
 /* ---------------------------------- Trash --------------------------------- */

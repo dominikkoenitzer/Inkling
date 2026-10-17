@@ -116,6 +116,12 @@ body {
   font-family: var(--font-display);
 }
 
+/* Ellipsis rows clip sideways only, so no line height can cut a descender or an accent. */
+.truncate {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
 .titlebar-drag {
   -webkit-app-region: drag;
 }

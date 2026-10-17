@@ -8,6 +8,7 @@ import { registerIpc } from './ipc'
 import * as repos from './repos'
 import { seedDemo } from './seed'
 import { startMcpHost } from './mcp/host'
+import { watchOutsideWrites } from './watch'
 import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
@@ -173,6 +174,12 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('trash purge failed', err)
   }
+  // Notes left completely empty last time go without a trace.
+  try {
+    repos.dropEmptyNotes()
+  } catch (err) {
+    console.error('dropping empty notes failed', err)
+  }
   if (devHooks && process.env['INKLING_SEED']) seedDemo()
   // Tasks from before checkboxes lived only in notes get a note of their own, and rows for
   // empty lines go. No step may keep the window from opening.
@@ -196,6 +203,7 @@ app.whenReady().then(() => {
   if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
   createMainWindow()
+  watchOutsideWrites()
 
   // Packaged builds only, never in dev or during a headless capture.
   if (app.isPackaged) {

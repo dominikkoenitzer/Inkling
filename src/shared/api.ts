@@ -8,6 +8,8 @@ import type {
   NoteTaskItem,
   NoteCardLine,
   ReviewGrade,
+  AssistantStatus,
+  AssistantId,
 } from './types'
 
 export interface InklingApi {
@@ -23,6 +25,8 @@ export interface InklingApi {
     /** Soft delete, undoable from the toast and cleared for good after the retention window. */
     remove(id: number): Promise<void>
     restore(id: number): Promise<Note | null>
+    /** Deletes the note for good if it is still completely empty; true if it went. */
+    dropIfEmpty(id: number): Promise<boolean>
     syncTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): Promise<Array<number>>
     /** Syncs the note's card lines into its linked deck, made on the first run and named `name`. */
     syncCards(noteId: number, notebookId: number, name: string, lines: NoteCardLine[]): Promise<{ deck: Deck; lineIds: number[] }>
@@ -49,6 +53,18 @@ export interface InklingApi {
   }
   search: {
     query(q: string): Promise<SearchResult[]>
+  }
+  assistants: {
+    /** The assistant apps Inkling can connect to, and whether each has it. */
+    list(): Promise<AssistantStatus[]>
+    connect(id: AssistantId): Promise<AssistantStatus[]>
+    disconnect(id: AssistantId): Promise<AssistantStatus[]>
+    /** Puts the MCP setup for any other client on the clipboard. */
+    copySetup(): Promise<void>
+  }
+  events: {
+    /** Called when another process, such as the MCP server, has written to the data. Returns the unsubscribe. */
+    onDataChanged(fn: () => void): () => void
   }
   app: {
     /** Matches the window buttons and background to the theme. */
