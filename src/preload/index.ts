@@ -44,6 +44,19 @@ const api: InklingApi = {
   search: {
     query: invoke('search.query')
   },
+  assistants: {
+    list: invoke('assistants.list'),
+    connect: invoke('assistants.connect'),
+    disconnect: invoke('assistants.disconnect'),
+    copySetup: invoke('assistants.copySetup')
+  },
+  events: {
+    onDataChanged: (fn) => {
+      const listener = (): void => fn()
+      ipcRenderer.on('data.changed', listener)
+      return () => void ipcRenderer.removeListener('data.changed', listener)
+    }
+  },
   app: {
     setTitlebar: invoke('app.setTitlebar'),
     saveFile: invoke('app.saveFile')

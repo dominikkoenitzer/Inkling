@@ -8,6 +8,8 @@ import type {
   NoteTaskItem,
   NoteCardLine,
   ReviewGrade,
+  AssistantStatus,
+  AssistantId,
 } from './types'
 
 export interface InklingApi {
@@ -51,6 +53,18 @@ export interface InklingApi {
   }
   search: {
     query(q: string): Promise<SearchResult[]>
+  }
+  assistants: {
+    /** The assistant apps Inkling can connect to, and whether each has it. */
+    list(): Promise<AssistantStatus[]>
+    connect(id: AssistantId): Promise<AssistantStatus[]>
+    disconnect(id: AssistantId): Promise<AssistantStatus[]>
+    /** Puts the MCP setup for any other client on the clipboard. */
+    copySetup(): Promise<void>
+  }
+  events: {
+    /** Called when another process, such as the MCP server, has written to the data. Returns the unsubscribe. */
+    onDataChanged(fn: () => void): () => void
   }
   app: {
     /** Matches the window buttons and background to the theme. */

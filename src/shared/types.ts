@@ -92,3 +92,14 @@ export interface NoteCardLine {
 }
 
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy'
+
+export type AssistantId = 'claude-desktop' | 'claude-code'
+
+/** An assistant app on this computer and whether Inkling is in its MCP server list. */
+export interface AssistantStatus {
+  id: AssistantId
+  name: string
+  /** missing: not installed. off: installed, no Inkling. on: connected. stale: starts another copy. unreadable: its file is broken. */
+  state: 'missing' | 'off' | 'on' | 'stale' | 'unreadable'
+  file: string
+}

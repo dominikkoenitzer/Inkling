@@ -8,6 +8,7 @@ import { registerIpc } from './ipc'
 import * as repos from './repos'
 import { seedDemo } from './seed'
 import { startMcpHost } from './mcp/host'
+import { watchOutsideWrites } from './watch'
 import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
@@ -202,6 +203,7 @@ app.whenReady().then(() => {
   if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
   createMainWindow()
+  watchOutsideWrites()
 
   // Packaged builds only, never in dev or during a headless capture.
   if (app.isPackaged) {

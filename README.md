@@ -53,9 +53,11 @@ For macOS and Linux, see [Other ways to install](#other-ways-to-install).
 
 ## Use it with an AI assistant
 
-Inkling has an MCP server built in. Started as `Inkling.exe --mcp`, it lets an AI assistant on your computer look through your notes, write new ones and keep your to-dos and flashcards going.
+Inkling has an MCP server built in, so an AI assistant on your computer can look through your notes, write and tidy them, keep your to-dos going and quiz you on your flashcards.
 
-Add Inkling to your MCP client's list of servers, with the path where Inkling is installed. On Windows:
+Open Settings (Ctrl+,) and find Connect an AI assistant. Inkling finds Claude Desktop and Claude Code on your computer: click Connect, then restart the assistant. Disconnect takes Inkling out again. Every other server in the assistant's settings stays as it was.
+
+For any other assistant, click Copy setup in the same place and paste it into the assistant's MCP settings. It holds the path where Inkling is installed. By hand, on Windows, it looks like this:
 
 ```json
 {
@@ -72,20 +74,29 @@ On macOS the command is `/Applications/Inkling.app/Contents/MacOS/Inkling`, on L
 
 What the assistant can do:
 
-- search notes, to-dos and decks, list your notes and read any of them as Markdown
-- make a new note, or add to the end of one, in Markdown. Headings, lists, bold, italic, links, code and quotes all come through, and a `- [ ]` line becomes a real to-do on Today
-- list your open to-dos, tick them off or open them again
-- list your decks with the cards due, and add flashcards, cloze cards too
+- search notes, to-dos and decks, list your notes (the ones changed lately or the ones in the trash too) and read a note, or one section of it, as Markdown
+- make a note, add to the end of a note or of one section, replace a section, swap a piece of text for another and rename a note. Headings, lists, bold, italic, links, code and quotes all come through, and a `- [ ]` line becomes a real to-do on Today
+- take its own edits back, one at a time
+- move a note to the trash and bring it back
+- see what Today shows, tick to-dos off or open them again
+- quiz you on the flashcards that are due and rate each answer the way a review does, add flashcards, or turn a note's `Term :: Definition` lines into its deck
 
-What it cannot do: delete anything, rewrite or remove what a note already says, review cards or touch your settings. Those stay with you.
+Most assistants also show three ready prompts: plan my day, quiz me, and flashcards from a note.
 
-Open Inkling once before you connect it, so it can set up your data. After an update, open it once more before the assistant carries on. Inkling can stay open while the assistant works; switch back to it and the changes are there.
+How your notes stay safe:
+
+- Nothing is deleted for good. A deleted note waits in the trash for 30 days and the assistant can bring it back.
+- Before its first change in a session, your data is copied into `backups` as `assistant-` and the date. The last three are kept.
+- An edit changes only the lines it touches. A to-do that keeps its text keeps its date, and a reworded card line keeps its review history. Making flashcards from a note never removes a card; that stays your click in the app.
+- Its changes go through the same code as the app's own, so to-dos, flashcards and search stay in step.
+
+Open Inkling once before you connect it, so it can set up your data. After an update, open it once more before the assistant carries on. Inkling can stay open while the assistant works: open notes and Today show the changes within a couple of seconds. If you type in the same note at that very moment, what you type wins; the assistant's undo or the backup bring its version back.
 
 Inkling sends nothing over the network here. The assistant app starts Inkling itself and they talk over standard input and output. What the assistant reads becomes part of your conversation with it.
 
 ## Your data, updates and removal
 
-Your notes, to-dos and cards live in one SQLite file, `inkling.db`, in `%APPDATA%\Inkling` on Windows, `~/Library/Application Support/Inkling` on macOS and `~/.config/Inkling` on Linux. Each time Inkling starts, a copy goes into `backups` next to it, and the last five are kept. The export button above a note saves it as Markdown.
+Your notes, to-dos and cards live in one SQLite file, `inkling.db`, in `%APPDATA%\Inkling` on Windows, `~/Library/Application Support/Inkling` on macOS and `~/.config/Inkling` on Linux. Each time Inkling starts, a copy goes into `backups` next to it, and the last five are kept. An assistant adds its own, see above. The export button above a note saves it as Markdown.
 
 The installed app goes online for one thing: when it starts, it checks for a new version. On Windows and Linux it downloads the update in the background and installs it when you close Inkling. On macOS, get a new version from the [releases page](https://github.com/dominikkoenitzer/Inkling/releases).
 

@@ -6,6 +6,15 @@ All notable changes to Inkling are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Settings > Connect an AI assistant adds Inkling to Claude Desktop or Claude Code in one click,
+  and Copy setup gives any other assistant what it needs.
+- An assistant can now edit one section or one piece of text, rename notes, move them to the
+  trash and back, see Today, quiz you on the flashcards that are due and make a note's flashcards.
+  It can undo its own edits, and three ready prompts help it plan your day or quiz you.
+- Your data is backed up before an assistant's first change in a session.
+- Open notes and Today show an assistant's changes within seconds, without switching windows.
+
 ### Changed
 - Study is now called Flashcards, in the sidebar, on Today and everywhere else.
 - A new note you leave completely empty is removed when you move on, so no blank notes pile up.
