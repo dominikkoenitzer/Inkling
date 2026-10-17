@@ -4,11 +4,11 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.9.0] - 2026-10-17
 
 ### Added
-- Settings > Connect an AI assistant adds Inkling to Claude Desktop or Claude Code in one click,
-  and Copy setup gives any other assistant what it needs.
+- Settings > Connect an AI assistant adds Inkling in one click to the assistant apps it finds on your
+  computer, and Copy setup gives any other assistant what it needs.
 - An assistant can now edit one section or one piece of text, rename notes, move them to the
   trash and back, see Today, quiz you on the flashcards that are due and make a note's flashcards.
   It can undo its own edits, and three ready prompts help it plan your day or quiz you.
@@ -425,6 +425,7 @@ Final QA pass: 15 defects found by an adversarially-verified review and fixed:
 - Nested subtask text no longer folds into the parent task’s title.
 - A quick-add of only a date (e.g. `friday`) gets a neutral title instead of the raw date word.
 
+[0.9.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.0
 [0.8.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.2
 [0.8.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.1
 [0.8.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.0
