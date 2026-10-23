@@ -27,16 +27,25 @@ export function createNote(input: { notebook_id: number; title?: string | null; 
   return note
 }
 
-export function updateNote(id: number, patch: Record<string, unknown>): Note | null {
+/**
+ * With `base`, the content an edit started from, nothing is written once the stored content is
+ * neither that nor the new content (an assistant wrote to the note meanwhile), and the stored
+ * note comes back unchanged, so the caller can tell by its content that the save did not land.
+ */
+export function updateNote(id: number, patch: Record<string, unknown>, base?: string): Note | null {
   const allowed = ['title', 'content', 'notebook_id'] as const
   const keys = allowed.filter((k) => k in patch)
   if (keys.length > 0) {
     const sets = keys.map((k) => `${k} = @${k}`).join(', ')
+    const unchanged = base === undefined ? '' : 'content' in patch ? ' AND content IN (@base, @content)' : ' AND content = @base'
     const info = getDb()
-      .prepare(`UPDATE notes SET ${sets}, updated_at = @ts WHERE id = @id AND deleted_at IS NULL`)
-      .run({ ...patch, id, ts: now() })
-    // Trashed or gone: a debounced save landing after the delete must not revive the page in search.
-    if (info.changes === 0) return null
+      .prepare(`UPDATE notes SET ${sets}, updated_at = @ts WHERE id = @id AND deleted_at IS NULL${unchanged}`)
+      .run({ ...patch, id, ts: now(), ...(base === undefined ? {} : { base }) })
+    if (info.changes === 0) {
+      // Trashed or gone: a debounced save landing after the delete must not revive the page in search.
+      const stored = base === undefined ? null : getNote(id)
+      return stored && !stored.deleted_at ? stored : null
+    }
   }
   const note = getNote(id)
   if (!note) return null // row was deleted (e.g. a debounced save landing after the note was removed)

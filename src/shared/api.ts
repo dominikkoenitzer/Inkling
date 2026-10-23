@@ -19,11 +19,13 @@ export interface InklingApi {
     list(): Promise<Note[]>
     get(id: number): Promise<Note | null>
     create(input: { notebook_id: number; title?: string | null; content?: string }): Promise<Note>
-    update(id: number, patch: Partial<Pick<Note, 'title' | 'content' | 'notebook_id'>>): Promise<Note | null>
+    /** With `base`, writes only over that content; otherwise returns the stored note as it is. */
+    update(id: number, patch: Partial<Pick<Note, 'title' | 'content' | 'notebook_id'>>, base?: string): Promise<Note | null>
     /** Soft delete, undoable from the toast and cleared for good after the retention window. */
     remove(id: number): Promise<void>
     restore(id: number): Promise<Note | null>
-    syncTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): Promise<Array<number>>
+    /** With `base`, null and nothing synced once the stored content is another. */
+    syncTasks(noteId: number, notebookId: number, items: NoteTaskItem[], base?: string): Promise<Array<number> | null>
     /** Syncs the note's card lines into its linked deck, made on the first run and named `name`. */
     syncCards(noteId: number, notebookId: number, name: string, lines: NoteCardLine[]): Promise<{ deck: Deck; lineIds: number[] }>
   }
