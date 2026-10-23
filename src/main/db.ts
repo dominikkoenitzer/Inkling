@@ -447,6 +447,13 @@ function backup(d: Database.Database, dir: string): void {
   const partial = `${target}.partial`
   try {
     d.prepare('VACUUM INTO ?').run(partial)
+    // SQLite does not flush the copy; a power cut must not leave a torn one under a `.db` name.
+    const fd = fs.openSync(partial, 'r+')
+    try {
+      fs.fsyncSync(fd)
+    } finally {
+      fs.closeSync(fd)
+    }
     fs.renameSync(partial, target)
   } catch (err) {
     fs.rmSync(partial, { force: true })
