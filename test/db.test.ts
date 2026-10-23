@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DatabaseSync } from 'node:sqlite'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { DatabaseSync } from 'node:sqlite'
+import fs, { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openSqlite } from './sqlite'
@@ -495,6 +495,86 @@ describe('the theme of a database without one', () => {
       expect(theme(raw)).toBeUndefined()
     } finally {
       quiet.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('the startup backup', () => {
+  const kept = (dir: string): string[] => readdirSync(join(dir, 'backups')).sort()
+  const earlier = [1, 2, 3, 4, 5].map((day) => `inkling-2026-10-0${day}T08-00-00.db`)
+
+  /** A database file in a fresh folder, with five earlier backups when asked. */
+  function folder(withEarlier: boolean): { dir: string; raw: DatabaseSync; db: ReturnType<typeof open>['db'] } {
+    const dir = mkdtempSync(join(tmpdir(), 'inkling-backup-'))
+    const { raw, db } = open(join(dir, 'inkling.db'))
+    raw.exec('PRAGMA journal_mode = WAL')
+    migrate(db)
+    mkdirSync(join(dir, 'backups'))
+    if (withEarlier) for (const f of earlier) writeFileSync(join(dir, 'backups', f), 'earlier')
+    opening.db = db
+    return { dir, raw, db }
+  }
+
+  it('holds what is still in the write-ahead log while another connection reads', () => {
+    const { dir, raw } = folder(false)
+    const reader = new DatabaseSync(join(dir, 'inkling.db'))
+    let copy: DatabaseSync | undefined
+    try {
+      // The MCP server in the middle of a read.
+      reader.exec('BEGIN')
+      reader.prepare('SELECT COUNT(*) AS n FROM notes').get()
+      raw.exec(`INSERT INTO notebooks (name, color) VALUES ('Biology', 'teal')`)
+
+      openDb(dir)
+      reader.exec('COMMIT')
+
+      expect(kept(dir)).toHaveLength(1)
+      copy = new DatabaseSync(join(dir, 'backups', kept(dir)[0]))
+      expect(copy.prepare('SELECT name FROM notebooks').all()).toEqual([{ name: 'Biology' }])
+    } finally {
+      copy?.close()
+      reader.close()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps the newest five', () => {
+    const { dir, raw } = folder(true)
+    try {
+      openDb(dir)
+      const now = kept(dir)
+      expect(now.slice(0, 4)).toEqual(earlier.slice(1))
+      expect(now[4]).toMatch(/^inkling-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
+    } finally {
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('never keeps a copy that failed halfway, so it cannot push out a good one', () => {
+    const { dir, raw, db } = folder(true)
+    writeFileSync(join(dir, 'backups', 'inkling-2026-10-06T08-00-00.db.partial'), 'left by a crash')
+    // The disk fills up in the middle of the copy, whichever way the copy is made.
+    const halfway = (target: string): never => {
+      writeFileSync(target, 'half')
+      throw new Error('ENOSPC: no space left on device')
+    }
+    const copyFile = vi.spyOn(fs, 'copyFileSync').mockImplementation((_from, to) => halfway(String(to)))
+    const prepare = raw.prepare.bind(raw)
+    opening.db = Object.assign(db, {
+      prepare: (sql: string) => (sql.startsWith('VACUUM INTO') ? { run: (to: string) => halfway(to) } : prepare(sql))
+    })
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      openDb(dir)
+      expect(quiet).toHaveBeenCalledWith('backup failed', expect.any(Error))
+      expect(kept(dir)).toEqual(earlier)
+    } finally {
+      copyFile.mockRestore()
+      quiet.mockRestore()
+      raw.close()
       rmSync(dir, { recursive: true, force: true })
     }
   })
