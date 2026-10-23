@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { ignoresShortcut, onActivateKey, tickTodo } from '../src/renderer/src/lib/keys'
+import { editKey, ignoresShortcut, onActivateKey, tickTodo } from '../src/renderer/src/lib/keys'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */
 const key = (target: object | null, defaultPrevented = false): { target: EventTarget | null; defaultPrevented: boolean } => ({
@@ -60,6 +60,37 @@ describe('onActivateKey', () => {
 
   it('leaves keys on a nested control to that control', () => {
     expect(press('Enter', false)).toEqual({ ran: 0, prevented: false })
+  })
+})
+
+describe('editKey', () => {
+  const press = (key: string, cancels = true): { committed: unknown; cancelled: unknown; prevented: boolean } => {
+    let committed: unknown = null
+    let cancelled: unknown = null
+    let prevented = false
+    const field = {}
+    editKey(
+      { key, currentTarget: field, preventDefault: () => (prevented = true) } as never,
+      (el) => (committed = el),
+      cancels ? (el) => (cancelled = el) : undefined
+    )
+    return { committed: committed === field, cancelled: cancelled === field, prevented }
+  }
+
+  it('commits the field on Enter', () => {
+    expect(press('Enter')).toEqual({ committed: true, cancelled: false, prevented: true })
+  })
+
+  it('cancels the edit on Escape', () => {
+    expect(press('Escape')).toEqual({ committed: false, cancelled: true, prevented: true })
+  })
+
+  it('leaves Escape alone in a field with nothing to cancel', () => {
+    expect(press('Escape', false)).toEqual({ committed: false, cancelled: false, prevented: false })
+  })
+
+  it('ignores other keys', () => {
+    expect(press('a')).toEqual({ committed: false, cancelled: false, prevented: false })
   })
 })
 
