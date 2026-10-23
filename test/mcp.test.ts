@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DatabaseSync } from 'node:sqlite'
 import type Database from 'better-sqlite3'
 import { openSqlite } from './sqlite'
-import { extractNoteTaskItems } from '../src/shared/noteTasks'
+import { extractNoteTaskItems, stampTaskIds } from '../src/shared/noteTasks'
+import { mergeDocs, type DocJson } from '../src/renderer/src/lib/mergeDoc'
 import type { Card, Task } from '../src/shared/types'
 
 let raw: DatabaseSync
@@ -246,6 +247,111 @@ describe('setTodoDone', () => {
     repos.removeNote(note.id)
     expect(() => tools.setTodoDone({ id: task.id }, true)).toThrow(/no to-do with id/)
     expect(tasksOf(note.id)[0].status).toBe('todo')
+  })
+})
+
+describe('an editor save started from an older version of the note', () => {
+  const typed = (base: string): Node => {
+    const doc = JSON.parse(base) as Node
+    doc.content!.push({ type: 'paragraph', content: [{ type: 'text', text: 'Typed here' }] })
+    return doc
+  }
+
+  // The editor's save: its to-dos first, then the note, both from the content it loaded.
+  const editorSave = (noteId: number, base: string, doc: Node): void => {
+    const ids = repos.syncNoteTasks(noteId, repos.homeNotebookId(), extractNoteTaskItems(doc as never), base)
+    if (ids) repos.updateNote(noteId, { content: JSON.stringify(doc) }, base)
+  }
+
+  it('leaves the text and to-dos the assistant appended', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line\n- [ ] Old task' })
+    const base = repos.getNote(note.id)!.content
+    tools.appendToNote({ id: note.id, markdown: '- [ ] Call back' })
+
+    editorSave(note.id, base, typed(base))
+
+    expect(tools.readNote({ id: note.id }).markdown).toContain('- [ ] Call back')
+    expect(tasksOf(note.id).map((t) => t.title)).toEqual(['Old task', 'Call back'])
+  })
+
+  it('leaves a to-do the assistant ticked done in the note and on Today', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: '- [ ] Book the room' })
+    const base = repos.getNote(note.id)!.content
+    const [task] = tasksOf(note.id)
+    tools.setTodoDone({ id: task.id }, true)
+
+    editorSave(note.id, base, typed(base))
+
+    expect(taskItems(stored(note.id))[0].attrs?.checked).toBe(true)
+    expect(tasksOf(note.id)[0].status).toBe('done')
+  })
+
+  it('writes nothing and gives the stored note back', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line' })
+    const base = repos.getNote(note.id)!.content
+    tools.appendToNote({ id: note.id, markdown: 'More' })
+    const now = repos.getNote(note.id)!
+
+    expect(repos.updateNote(note.id, { title: 'Renamed', content: JSON.stringify(typed(base)) }, base)).toEqual(now)
+    expect(repos.getNote(note.id)).toEqual(now)
+  })
+
+  it('saves over the content it started from, and over its own content with the title', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line' })
+    const base = repos.getNote(note.id)!.content
+    const content = JSON.stringify(typed(base))
+    expect(repos.updateNote(note.id, { content }, base)?.content).toBe(content)
+    expect(repos.updateNote(note.id, { title: 'Renamed', content }, base)?.title).toBe('Renamed')
+  })
+
+  it('still finds a trashed note gone', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line' })
+    const base = repos.getNote(note.id)!.content
+    repos.removeNote(note.id)
+    expect(repos.updateNote(note.id, { content: JSON.stringify(typed(base)) }, base)).toBeNull()
+    expect(repos.updateNote(note.id, { content: JSON.stringify(typed(base)) }, 'older')).toBeNull()
+  })
+
+  it('lands once merged with the stored note, with the to-dos matching it', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line\n- [ ] Old task\n- [ ] Book the room' })
+    let base = repos.getNote(note.id)!.content
+    const [old, room] = tasksOf(note.id)
+    const mine = typed(base)
+    mine.content!.push({ type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Call Anna' }] }] }] })
+    tools.appendToNote({ id: note.id, markdown: '- [ ] Call back' })
+    tools.setTodoDone({ id: room.id }, true)
+
+    // The editor's save path: a refused save is merged with the stored note and sent again.
+    let json = mine as DocJson
+    let tries = 0
+    for (;;) {
+      tries++
+      const ids = repos.syncNoteTasks(note.id, repos.homeNotebookId(), extractNoteTaskItems(json as never), base)
+      if (ids) {
+        json = stampTaskIds(json as Record<string, unknown>, ids) as DocJson
+        const content = JSON.stringify(json)
+        if (repos.updateNote(note.id, { content }, base)!.content === content) break
+      }
+      const now = repos.getNote(note.id)!.content
+      json = mergeDocs(JSON.parse(base), json, JSON.parse(now))
+      base = now
+    }
+
+    expect(tries).toBe(2)
+    const md = tools.readNote({ id: note.id }).markdown
+    for (const line of ['Intro line', '- [ ] Old task', '- [x] Book the room', '- [ ] Call back', 'Typed here', '- [ ] Call Anna']) {
+      expect(md).toContain(line)
+    }
+    const rows = tasksOf(note.id)
+    expect(rows.map((t) => [t.title, t.status])).toEqual([
+      ['Old task', 'todo'],
+      ['Book the room', 'done'],
+      ['Call back', 'todo'],
+      ['Call Anna', 'todo']
+    ])
+    expect(rows.slice(0, 2).map((t) => t.id)).toEqual([old.id, room.id])
+    const lines = extractNoteTaskItems(stored(note.id) as never)
+    expect(lines.map((l) => [l.taskId, l.title, l.checked])).toEqual(rows.map((t) => [t.id, t.title, t.status === 'done']))
   })
 })
 
