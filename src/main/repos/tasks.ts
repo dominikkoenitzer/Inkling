@@ -1,10 +1,10 @@
 import { getDb } from '../db'
 import { now } from './dates'
 import { homeNotebookId } from './notebooks'
-import { createNote, getNote } from './notes'
+import { createNote, getNote, updateNote } from './notes'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
-import { extractNoteTaskItems } from '@shared/noteTasks'
-import type { NoteTaskItem, OpenTask, Task } from '@shared/types'
+import { extractNoteTaskItems, stampTaskIds } from '@shared/noteTasks'
+import type { Note, NoteTaskItem, OpenTask, Task } from '@shared/types'
 
 // A task is a checkbox line in a note. The rows here mirror those lines for Today and search.
 
@@ -54,21 +54,12 @@ function noteHasTask(noteId: number | null, taskId: number): boolean {
 
 /**
  * Create or update a task row per checklist item in a note, and prune tasks whose checkbox
- * was deleted. Returns ids in the same order as `items`, for stamping back into the doc. With
- * `base`, the note content the items were read from, changes nothing and returns null once the
- * stored content is another, since its rows then belong to lines the items do not have.
+ * was deleted. Returns ids in the same order as `items`, for stamping back into the doc.
  */
-export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): number[]
-export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[], base: string): number[] | null
-export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[], base?: string): number[] | null {
+export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): number[] {
   const db = getDb()
   const ids: number[] = []
-  let stale = false
   const tx = db.transaction(() => {
-    if (base !== undefined && getNote(noteId)?.content !== base) {
-      stale = true
-      return
-    }
     const existing = db.prepare(`SELECT * FROM tasks WHERE note_id = ?`).all(noteId) as Task[]
     const byId = new Map(existing.map((t) => [t.id, t]))
     for (const item of items) {
@@ -136,7 +127,33 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
   // Reads before it writes: take the write lock first, so a commit from the MCP server
   // in between cannot fail it.
   tx.immediate()
-  return stale ? null : ids
+  return ids
+}
+
+/**
+ * The editor's save of a note whose checkbox lines changed: the task rows, their ids stamped into
+ * the content, and the note, in one transaction, so no write from the MCP server lands between
+ * rows and note. With `base`, the content the edit started from, nothing is written once the
+ * stored content is another, and the stored note comes back with no ids. Null for a note gone.
+ */
+export function saveNoteWithTasks(
+  noteId: number,
+  notebookId: number,
+  patch: { title: string | null; content: string },
+  items: NoteTaskItem[],
+  base?: string
+): { note: Note; ids: number[] | null } | null {
+  return getDb()
+    .transaction(() => {
+      const stored = getNote(noteId)
+      if (!stored || stored.deleted_at) return null
+      if (base !== undefined && stored.content !== base) return { note: stored, ids: null }
+      const ids = syncNoteTasks(noteId, notebookId, items)
+      const content = JSON.stringify(stampTaskIds(JSON.parse(patch.content) as Record<string, unknown>, ids))
+      const note = updateNote(noteId, { ...patch, content })
+      return note && { note, ids }
+    })
+    .immediate()
 }
 
 /**

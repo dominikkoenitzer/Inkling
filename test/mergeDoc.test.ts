@@ -77,6 +77,35 @@ describe('mergeDocs', () => {
     expect(mergeDocs(base, mine, theirs)).toEqual(doc(list(item('Buy agar', 1), item('Book the room', 2, true), item('Call Anna', null))))
   })
 
+  it('keeps a tick on a to-do the editor moved, with no copies', () => {
+    const base = doc(list(item('Buy agar', 1), item('Book the room', 2), item('Call Anna', 3)))
+    const mine = doc(list(item('Call Anna', 3), item('Buy agar', 1), item('Book the room', 2)))
+    const theirs = doc(list(item('Buy agar', 1), item('Book the room', 2), item('Call Anna', 3, true)))
+    expect(mergeDocs(base, mine, theirs)).toEqual(doc(list(item('Call Anna', 3, true), item('Buy agar', 1), item('Book the room', 2))))
+  })
+
+  it('keeps a tick in a list the editor moved below other lines, with no copies', () => {
+    const base = doc(list(item('Buy agar', 1), item('Book the room', 2)), p('Intro'), p('End'))
+    const mine = doc(p('Intro'), p('End'), list(item('Buy agar', 1), item('Book the room', 2)))
+    const theirs = doc(list(item('Buy agar', 1), item('Book the room', 2, true)), p('Intro'), p('End'))
+    expect(mergeDocs(base, mine, theirs)).toEqual(doc(p('Intro'), p('End'), list(item('Buy agar', 1), item('Book the room', 2, true))))
+  })
+
+  it('keeps a tick on the first of two copies of a list the editor pasted and moved, with no third copy', () => {
+    const base = doc(p('Head'), list(item('Buy agar', 1)))
+    const mine = doc(list(item('Buy agar', 1)), list(item('Buy agar', 1)), p('Head'))
+    const theirs = doc(p('Head'), list(item('Buy agar', 1, true)))
+    expect(mergeDocs(base, mine, theirs)).toEqual(doc(list(item('Buy agar', 1, true)), list(item('Buy agar', 1)), p('Head')))
+  })
+
+  it('keeps a tick on a to-do the editor moved out of the list it was nested in', () => {
+    const nested = (text: string, taskId: number, ...sub: DocJson[]): DocJson => ({ type: 'taskItem', attrs: { checked: false, taskId }, content: [p(text), list(...sub)] })
+    const base = doc(list(nested('Lab', 1, item('Buy agar', 2), item('Book the room', 3))))
+    const mine = doc(list(nested('Lab', 1, item('Buy agar', 2)), item('Book the room', 3)))
+    const theirs = doc(list(nested('Lab', 1, item('Buy agar', 2), item('Book the room', 3, true))))
+    expect(mergeDocs(base, mine, theirs)).toEqual(doc(list(nested('Lab', 1, item('Buy agar', 2)), item('Book the room', 3, true))))
+  })
+
   it('keeps both versions of a line both sides changed, the editor one first', () => {
     const base = doc(p('Intro'), p('Plan'), p('End'))
     const mine = doc(p('Intro'), p('Plan for Monday'), p('End'))
