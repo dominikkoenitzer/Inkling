@@ -161,10 +161,9 @@ app.whenReady().then(() => {
   try {
     openDb(dataDir)
   } catch (err) {
-    // Without its data the app cannot run: say what failed and quit, which frees the lock too.
-    console.error('opening the database failed', err)
-    const reason = err instanceof Error ? err.message : String(err)
-    dialog.showErrorBox('Inkling could not start', `Inkling could not open its data at\n${join(dataDir, 'inkling.db')}\n\n${reason}`)
+    // Without its data the app cannot run: say so and quit, which frees the lock too. The details go to the log.
+    console.error('opening the database failed', join(dataDir, 'inkling.db'), err)
+    dialog.showErrorBox('Inkling could not start', 'Inkling could not open its data.')
     return app.quit()
   }
   // Clear anything that has sat in the trash past the retention window.
