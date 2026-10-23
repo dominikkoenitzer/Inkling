@@ -66,6 +66,49 @@ CREATE TABLE review_log (
 PRAGMA user_version = 10;
 `
 
+describe('migrate to v4', () => {
+  /** The tables a v3 database has, as far as the later steps read them. */
+  const V3 = `
+CREATE TABLE notebooks (id INTEGER PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE notes (id INTEGER PRIMARY KEY, notebook_id INTEGER, title TEXT, content TEXT NOT NULL, type TEXT DEFAULT 'page');
+CREATE VIRTUAL TABLE search_index USING fts5(title, content_text, source_type UNINDEXED, source_id UNINDEXED);
+CREATE TABLE tasks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT);
+CREATE TABLE grades (id INTEGER PRIMARY KEY, title TEXT NOT NULL, system TEXT NOT NULL DEFAULT 'percent');
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE flashcards (
+  id INTEGER PRIMARY KEY,
+  deck_id INTEGER REFERENCES flashcard_decks(id) ON DELETE CASCADE,
+  front TEXT NOT NULL,
+  back TEXT NOT NULL,
+  ease_factor REAL DEFAULT 2.5,
+  interval_days INTEGER DEFAULT 0,
+  repetitions INTEGER DEFAULT 0,
+  next_review_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+PRAGMA user_version = 3;
+`
+
+  it('stores the last review of a carried over card in the form the app writes', () => {
+    const { raw, db } = open()
+    raw.exec(V3)
+    raw.exec(`INSERT INTO flashcard_decks (id, name) VALUES (1, 'Cells')`)
+    raw.exec(`INSERT INTO flashcards (id, deck_id, front, back, interval_days, repetitions, next_review_date) VALUES
+              (1, 1, 'Osmosis', 'water', 3, 2, '2026-10-25T12:00:00.000Z'),
+              (2, 1, 'Cell', 'unit', 5, 1, '2026-10-25 12:00:00'),
+              (3, 1, 'Wall', 'plants', 0, 0, '2026-10-25 12:00:00')`)
+
+    migrate(db)
+
+    expect(version(raw)).toBe(14)
+    expect(raw.prepare(`SELECT id, state, last_review, next_review_date FROM flashcards ORDER BY id`).all()).toEqual([
+      { id: 1, state: 'review', last_review: '2026-10-22T12:00:00.000Z', next_review_date: '2026-10-25T12:00:00.000Z' },
+      { id: 2, state: 'review', last_review: '2026-10-20T12:00:00.000Z', next_review_date: '2026-10-25 12:00:00' },
+      { id: 3, state: 'new', last_review: null, next_review_date: '2026-10-25 12:00:00' }
+    ])
+  })
+})
+
 describe('migrate to v11', () => {
   it('links decks to notes and cards to note lines without touching existing cards', () => {
     const { raw, db } = open()
