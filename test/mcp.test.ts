@@ -723,6 +723,20 @@ describe('listDueFlashcards and gradeFlashcard', () => {
     expect(() => tools.listDueFlashcards({ deckId: 99 })).toThrow(/no deck with id 99/)
     expect(() => tools.gradeFlashcard({ id: 999, grade: 'good' })).toThrow(/no flashcard with id 999/)
   })
+
+  it('orders cards from several decks by their due time in either stored form', () => {
+    const six = tools.addFlashcards({ deckName: 'Cells', cards: [{ front: 'six', back: '1' }] })
+    const five = tools.addFlashcards({ deckName: 'Plants', cards: [{ front: 'five', back: '2' }] })
+    raw.prepare(`UPDATE flashcards SET next_review_date = ? WHERE deck_id = ?`).run('2026-10-23 06:00:00', six.deckId)
+    raw.prepare(`UPDATE flashcards SET next_review_date = ? WHERE deck_id = ?`).run('2026-10-23T05:00:00.000Z', five.deckId)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-23T08:00:00.000Z'))
+    try {
+      expect(tools.listDueFlashcards({}).cards.map((c) => c.question)).toEqual(['five', 'six'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('makeFlashcardsFromNote', () => {

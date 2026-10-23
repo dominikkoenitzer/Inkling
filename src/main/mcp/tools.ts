@@ -5,7 +5,7 @@
  */
 import { getDb } from '../db'
 import * as repos from '../repos'
-import { localDay } from '@shared/day'
+import { localDay, storedTime } from '@shared/day'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { markdownToDoc } from '@shared/markdownToDoc'
 import { extractNoteTaskItems, stampTaskIds } from '@shared/noteTasks'
@@ -324,7 +324,7 @@ export function listDueFlashcards(input: { deckId?: number; limit?: number }): {
   const names = new Map(picked.map((d) => [d.id, d.name]))
   const due = picked
     .flatMap((d) => repos.dueCards(d.id))
-    .sort((a, b) => a.next_review_date.localeCompare(b.next_review_date) || a.id - b.id)
+    .sort((a, b) => storedTime(a.next_review_date) - storedTime(b.next_review_date) || a.id - b.id)
   return {
     cards: due.slice(0, input.limit ?? 20).map((c) => ({
       id: c.id,
