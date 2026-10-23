@@ -17,6 +17,8 @@
  * See the algorithm description in the Open Spaced Repetition project wiki.
  */
 
+import { storedTime } from './day'
+
 /** 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches the review UI's keys 1–4. */
 export type Rating = 1 | 2 | 3 | 4
 export type CardState = 'new' | 'learning' | 'review' | 'relearning'
@@ -234,7 +236,7 @@ export function nextMemoryState(
 }
 
 export function daysBetween(fromIso: string, to: Date): number {
-  const from = Date.parse(fromIso)
+  const from = storedTime(fromIso)
   if (Number.isNaN(from)) return 0
   return Math.max(0, (to.getTime() - from) / 86_400_000)
 }

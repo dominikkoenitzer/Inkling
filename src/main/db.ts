@@ -100,7 +100,7 @@ export function openDb(dir: string): Database.Database {
   db.pragma('foreign_keys = ON')
   // Back up first, so a migration that goes wrong still leaves the file as it was.
   try {
-    backup(db, file, dir)
+    backup(db, dir)
   } catch (err) {
     console.error('backup failed', err)
   }
@@ -272,7 +272,7 @@ export function migrate(d: Database.Database): void {
          SET state      = 'review',
              stability  = MAX(interval_days, 0.1),
              difficulty = MAX(1.0, MIN(10.0, 10.0 - ((MIN(MAX(ease_factor, 1.3), 2.5) - 1.3) * 9.0 / 1.2))),
-             last_review = datetime(next_review_date, '-' || CAST(MAX(interval_days, 0) AS TEXT) || ' days')
+             last_review = strftime('%Y-%m-%dT%H:%M:%fZ', next_review_date, '-' || CAST(MAX(interval_days, 0) AS TEXT) || ' days')
        WHERE repetitions > 0
     `)
     d.pragma('user_version = 4')
@@ -431,13 +431,34 @@ function taskIdsAutoincrement(d: Database.Database): void {
   }
 }
 
-/** Rolling local backups: keep the last 5, crash-safe via WAL checkpoint first. */
-function backup(d: Database.Database, file: string, dir: string): void {
+/**
+ * Rolling local backups: keep the last 5. SQLite writes the copy from one read snapshot, WAL
+ * included, so it stays whole while the MCP server reads or writes. A copy only gets its
+ * `.db` name once complete, so a failed one never counts among the five.
+ */
+function backup(d: Database.Database, dir: string): void {
   const backupsDir = join(dir, 'backups')
   fs.mkdirSync(backupsDir, { recursive: true })
-  d.pragma('wal_checkpoint(TRUNCATE)')
+  for (const f of fs.readdirSync(backupsDir)) {
+    if (f.endsWith('.partial')) fs.rmSync(join(backupsDir, f), { force: true })
+  }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  fs.copyFileSync(file, join(backupsDir, `inkling-${stamp}.db`))
+  const target = join(backupsDir, `inkling-${stamp}.db`)
+  const partial = `${target}.partial`
+  try {
+    d.prepare('VACUUM INTO ?').run(partial)
+    // SQLite does not flush the copy; a power cut must not leave a torn one under a `.db` name.
+    const fd = fs.openSync(partial, 'r+')
+    try {
+      fs.fsyncSync(fd)
+    } finally {
+      fs.closeSync(fd)
+    }
+    fs.renameSync(partial, target)
+  } catch (err) {
+    fs.rmSync(partial, { force: true })
+    throw err
+  }
   const files = fs
     .readdirSync(backupsDir)
     .filter((f) => f.startsWith('inkling-') && f.endsWith('.db'))
