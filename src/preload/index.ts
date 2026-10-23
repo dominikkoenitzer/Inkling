@@ -17,7 +17,7 @@ const api: InklingApi = {
     update: invoke('notes.update'),
     remove: invoke('notes.remove'),
     restore: invoke('notes.restore'),
-    syncTasks: invoke('notes.syncTasks'),
+    saveWithTasks: invoke('notes.saveWithTasks'),
     syncCards: invoke('notes.syncCards')
   },
   tasks: {
