@@ -353,6 +353,37 @@ describe('an editor save started from an older version of the note', () => {
     const lines = extractNoteTaskItems(stored(note.id) as never)
     expect(lines.map((l) => [l.taskId, l.title, l.checked])).toEqual(rows.map((t) => [t.id, t.title, t.status === 'done']))
   })
+
+  it('keeps one row per to-do when a line was typed below a list the assistant ticked in', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: '- [ ] Old task\n- [ ] Book the room' })
+    let base = repos.getNote(note.id)!.content
+    const [old, room] = tasksOf(note.id)
+    const mine = JSON.parse(base) as Node
+    mine.content![0].content!.push({ type: 'taskItem', attrs: { checked: false, taskId: null }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Call Anna' }] }] })
+    mine.content!.push({ type: 'paragraph', content: [{ type: 'text', text: 'Notes' }] })
+    tools.setTodoDone({ id: old.id }, true)
+
+    let json = mine as DocJson
+    for (let tries = 0; tries < 3; tries++) {
+      const ids = repos.syncNoteTasks(note.id, repos.homeNotebookId(), extractNoteTaskItems(json as never), base)
+      if (ids) {
+        json = stampTaskIds(json as Record<string, unknown>, ids) as DocJson
+        const content = JSON.stringify(json)
+        if (repos.updateNote(note.id, { content }, base)!.content === content) break
+      }
+      const now = repos.getNote(note.id)!.content
+      json = mergeDocs(JSON.parse(base), json, JSON.parse(now))
+      base = now
+    }
+
+    expect(tools.readNote({ id: note.id }).markdown.trim()).toBe('- [x] Old task\n- [ ] Book the room\n- [ ] Call Anna\n\nNotes')
+    const rows = tasksOf(note.id)
+    expect(rows.map((t) => [t.id, t.title, t.status])).toEqual([
+      [old.id, 'Old task', 'done'],
+      [room.id, 'Book the room', 'todo'],
+      [rows[2].id, 'Call Anna', 'todo']
+    ])
+  })
 })
 
 describe('listDecks', () => {
