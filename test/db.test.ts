@@ -553,6 +553,22 @@ describe('the startup backup', () => {
     }
   })
 
+  it('has the copy on disk before it takes its place among the five', () => {
+    const { dir, raw } = folder(false)
+    const steps: string[] = []
+    const flush = vi.spyOn(fs, 'fsyncSync').mockImplementation(() => void steps.push('flush'))
+    const rename = vi.spyOn(fs, 'renameSync').mockImplementation(() => void steps.push('rename'))
+    try {
+      openDb(dir)
+      expect(steps).toEqual(['flush', 'rename'])
+    } finally {
+      flush.mockRestore()
+      rename.mockRestore()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('never keeps a copy that failed halfway, so it cannot push out a good one', () => {
     const { dir, raw, db } = folder(true)
     writeFileSync(join(dir, 'backups', 'inkling-2026-10-06T08-00-00.db.partial'), 'left by a crash')
