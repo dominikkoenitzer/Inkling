@@ -14,6 +14,7 @@ const key = (v: unknown): string => JSON.stringify(v) ?? ''
  * side is lost.
  */
 export function mergeDocs(base: DocJson, mine: DocJson, theirs: DocJson): DocJson {
+  ;[mine, theirs] = carryTodos(base, mine, theirs)
   const merged = mergeNode(base, mine, theirs) ?? { ...mine, content: [...(mine.content ?? []), ...unseen(base.content ?? [], mine.content ?? [], theirs.content ?? [])] }
   // A note needs one line, even when the two sides deleted every line between them.
   return merged.content?.length ? merged : { ...merged, content: [{ type: 'paragraph' }] }
@@ -179,6 +180,65 @@ function mergeSeq(base: DocJson[], mine: DocJson[], theirs: DocJson[]): DocJson[
 }
 
 const taskId = (n: DocJson): unknown => n.attrs?.taskId ?? null
+
+/** The to-dos with a task id in `n`, inner ones before the to-do holding them. */
+function todos(n: DocJson, out: DocJson[] = []): DocJson[] {
+  n.content?.forEach((c) => todos(c, out))
+  if (n.type === 'taskItem' && taskId(n) !== null) out.push(n)
+  return out
+}
+
+/** Each task id's to-do in `n`, or null for an id on more than one. */
+function todosById(n: DocJson): Map<unknown, DocJson | null> {
+  const at = new Map<unknown, DocJson | null>()
+  for (const t of todos(n)) at.set(taskId(t), at.has(taskId(t)) ? null : t)
+  return at
+}
+
+/** The first to-do of task `id` in `n`, in document order: the copy that keeps the task row. */
+function firstTodo(n: DocJson, id: unknown): DocJson | undefined {
+  if (n.type === 'taskItem' && taskId(n) === id) return n
+  for (const c of n.content ?? []) {
+    const t = firstTodo(c, id)
+    if (t) return t
+  }
+  return undefined
+}
+
+/** `n` with its first to-do of task `id` replaced by `to`. */
+function swap(n: DocJson, id: unknown, to: DocJson): DocJson {
+  let done = false
+  const walk = (x: DocJson): DocJson => {
+    if (done) return x
+    if (x.type === 'taskItem' && taskId(x) === id) {
+      done = true
+      return to
+    }
+    return x.content ? { ...x, content: x.content.map(walk) } : x
+  }
+  return walk(n)
+}
+
+/**
+ * A to-do changed on the stored side (an assistant ticked it) gets that change on the editor's
+ * side, wherever the editor moved it, and its base version back on the stored side. Merged by
+ * position, a moved to-do would come out twice: moved without the tick, and ticked in its old place.
+ */
+function carryTodos(base: DocJson, mine: DocJson, theirs: DocJson): [DocJson, DocJson] {
+  const inBase = todosById(base)
+  for (const changed of todos(theirs)) {
+    const id = taskId(changed)
+    const b = inBase.get(id)
+    if (!b || key(b) === key(changed)) continue
+    const m = firstTodo(mine, id)
+    const t = todosById(theirs).get(id)
+    const merged = m && t ? mergeNode(b, m, t) : null
+    if (!merged) continue
+    mine = swap(mine, id, merged)
+    theirs = swap(theirs, id, b)
+  }
+  return [mine, theirs]
+}
 
 /** A block with the texts and task ids inside it counted, by which two versions of it can be told alike. */
 interface Traced {

@@ -350,7 +350,8 @@ describe('an editor save started from an older version of the note', () => {
       ['Call Anna', 'todo']
     ])
     expect(rows.slice(0, 2).map((t) => t.id)).toEqual([old.id, room.id])
-    const lines = extractNoteTaskItems(stored(note.id) as never)
+    // Both sides added a list at the end: the editor's comes first, so the lines are in another order than the rows.
+    const lines = extractNoteTaskItems(stored(note.id) as never).sort((a, b) => Number(a.taskId) - Number(b.taskId))
     expect(lines.map((l) => [l.taskId, l.title, l.checked])).toEqual(rows.map((t) => [t.id, t.title, t.status === 'done']))
   })
 
@@ -382,6 +383,35 @@ describe('an editor save started from an older version of the note', () => {
       [old.id, 'Old task', 'done'],
       [room.id, 'Book the room', 'todo'],
       [rows[2].id, 'Call Anna', 'todo']
+    ])
+  })
+
+  it('keeps one row and the tick for a to-do the editor moved while the assistant ticked it', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: '- [ ] Buy agar\n- [ ] Book the room\n- [ ] Call Anna' })
+    let base = repos.getNote(note.id)!.content
+    const [agar, room, anna] = tasksOf(note.id)
+    const mine = JSON.parse(base) as Node
+    mine.content![0].content!.unshift(mine.content![0].content!.pop()!)
+    tools.setTodoDone({ id: anna.id }, true)
+
+    let json = mine as DocJson
+    for (let tries = 0; tries < 3; tries++) {
+      const ids = repos.syncNoteTasks(note.id, repos.homeNotebookId(), extractNoteTaskItems(json as never), base)
+      if (ids) {
+        json = stampTaskIds(json as Record<string, unknown>, ids) as DocJson
+        const content = JSON.stringify(json)
+        if (repos.updateNote(note.id, { content }, base)!.content === content) break
+      }
+      const now = repos.getNote(note.id)!.content
+      json = mergeDocs(JSON.parse(base), json, JSON.parse(now))
+      base = now
+    }
+
+    expect(tools.readNote({ id: note.id }).markdown.trim()).toBe('- [x] Call Anna\n- [ ] Buy agar\n- [ ] Book the room')
+    expect(tasksOf(note.id).map((t) => [t.id, t.title, t.status])).toEqual([
+      [agar.id, 'Buy agar', 'todo'],
+      [room.id, 'Book the room', 'todo'],
+      [anna.id, 'Call Anna', 'done']
     ])
   })
 })
