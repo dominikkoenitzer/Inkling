@@ -24,8 +24,17 @@ export interface InklingApi {
     /** Soft delete, undoable from the toast and cleared for good after the retention window. */
     remove(id: number): Promise<void>
     restore(id: number): Promise<Note | null>
-    /** With `base`, null and nothing synced once the stored content is another. */
-    syncTasks(noteId: number, notebookId: number, items: NoteTaskItem[], base?: string): Promise<Array<number> | null>
+    /**
+     * Syncs the to-dos and saves the note in one step, with their ids stamped in. With `base`,
+     * nothing is written once the stored content is another: the stored note comes back with no ids.
+     */
+    saveWithTasks(
+      noteId: number,
+      notebookId: number,
+      patch: { title: string | null; content: string },
+      items: NoteTaskItem[],
+      base?: string
+    ): Promise<{ note: Note; ids: number[] | null } | null>
     /** Syncs the note's card lines into its linked deck, made on the first run and named `name`. */
     syncCards(noteId: number, notebookId: number, name: string, lines: NoteCardLine[]): Promise<{ deck: Deck; lineIds: number[] }>
   }

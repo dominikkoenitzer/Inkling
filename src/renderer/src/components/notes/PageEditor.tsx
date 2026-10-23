@@ -154,36 +154,36 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       // Written only over the content this edit started from; a save that lands on a note an
       // assistant changed meanwhile comes back, is merged with it, and goes again.
       const base = contentRef.current ?? undefined
-      let json = readDoc()
+      const json = readDoc()
       const items = extractNoteTaskItems(json)
+      const patch = { title: titleRef.current || null, content: JSON.stringify(json) }
+      let saved: Note | null
       if (!itemsEqual(items, lastItemsRef.current)) {
-        const ids = await api.notes.syncTasks(noteId, notebookId, items, base)
-        if (!ids) {
-          const stored = await api.notes.get(noteId)
-          if (!stored || stored.deleted_at) return
-          takeIn(stored, schema)
+        // Rows and note in one step: an assistant's write between the two would be lost.
+        const result = await api.notes.saveWithTasks(noteId, notebookId, patch, items, base)
+        if (!result) return // note was deleted out from under us
+        if (!result.ids) {
+          takeIn(result.note, schema)
           continue
         }
         if (!editor.isDestroyed) {
-          assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
-          json = readDoc()
+          assignNodeIds(editor, 'taskItem', 'taskId', result.ids, syncingRef)
         } else {
-          // Closed while syncing: stamp the ids into the last doc itself, so the saved note
-          // still knows which task each checkbox is.
-          json = docRef.current = stampTaskIds(json, ids)
+          // Closed while saving: stamp the ids into the last doc itself, as they were saved.
+          docRef.current = stampTaskIds(json, result.ids)
         }
-        lastItemsRef.current = extractNoteTaskItems(json)
+        lastItemsRef.current = extractNoteTaskItems(safeParse(result.note.content) as Record<string, unknown>)
         bumpData('tasks')
+        saved = result.note
+      } else {
+        saved = await api.notes.update(noteId, patch, base)
+        if (!saved) return // note was deleted out from under us
+        if (saved.content !== patch.content) {
+          takeIn(saved, schema)
+          continue
+        }
       }
-
-      const content = JSON.stringify(json)
-      const saved = await api.notes.update(noteId, { title: titleRef.current || null, content }, base)
-      if (!saved) return // note was deleted out from under us
-      if (saved.content !== content) {
-        takeIn(saved, schema)
-        continue
-      }
-      contentRef.current = content
+      contentRef.current = saved.content
       setSavedAt(new Date())
       bumpData('notes')
       return
