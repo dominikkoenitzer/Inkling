@@ -9,11 +9,14 @@ const key = (v: unknown): string => JSON.stringify(v) ?? ''
 /**
  * Three-way merge of a note: `base` is the version the editor loaded, `mine` the editor's and
  * `theirs` the one stored since (an assistant wrote it). A change made on one side is taken as
- * it is. Where both sides changed the same blocks, the editor's come first, then every block of
- * the stored version the editor does not have, so no text of either side is lost.
+ * it is. Where both sides changed the same blocks, they are merged block by block, and a line both
+ * sides changed differently is kept in both versions, the editor's first, so no text of either
+ * side is lost.
  */
 export function mergeDocs(base: DocJson, mine: DocJson, theirs: DocJson): DocJson {
-  return mergeNode(base, mine, theirs) ?? { ...mine, content: [...(mine.content ?? []), ...unseen(base.content ?? [], mine.content ?? [], theirs.content ?? [])] }
+  const merged = mergeNode(base, mine, theirs) ?? { ...mine, content: [...(mine.content ?? []), ...unseen(base.content ?? [], mine.content ?? [], theirs.content ?? [])] }
+  // A note needs one line, even when the two sides deleted every line between them.
+  return merged.content?.length ? merged : { ...merged, content: [{ type: 'paragraph' }] }
 }
 
 /** The nodes of `theirs` found in neither `base` nor `mine`. */
@@ -162,14 +165,129 @@ function mergeSeq(base: DocJson[], mine: DocJson[], theirs: DocJson[]): DocJson[
       out.push(...t)
       continue
     }
-    // Both sides changed these nodes: one by one when each side kept their number.
+    if (!inline) {
+      out.push(...mergeBlocks(b, m, t))
+      continue
+    }
+    // Both sides changed this text: piece by piece when each side kept their number.
     const each = m.length === b.length && t.length === b.length ? b.map((n, i) => mergeNode(n, m[i], t[i])) : null
     if (each && each.every((n) => n !== null)) out.push(...(each as DocJson[]))
-    else if (inline) return null
-    else out.push(...m, ...unseen(b, m, t))
+    else return null
   }
   out.push(...base.slice(done))
   return out
+}
+
+const taskId = (n: DocJson): unknown => n.attrs?.taskId ?? null
+
+/** A block with the texts and task ids inside it counted, by which two versions of it can be told alike. */
+interface Traced {
+  node: DocJson
+  key: string
+  size: number
+  traits: Map<string, number>
+}
+
+function trace(node: DocJson): Traced {
+  const traits = new Map<string, number>()
+  let size = 0
+  const walk = (n: DocJson): void => {
+    const id = taskId(n)
+    for (const t of [n.text === undefined ? null : `t${n.text}`, id === null ? null : `i${String(id)}`]) {
+      if (t === null) continue
+      traits.set(t, (traits.get(t) ?? 0) + 1)
+      size++
+    }
+    n.content?.forEach(walk)
+  }
+  walk(node)
+  return { node, key: key(node), size, traits }
+}
+
+/** How well two blocks line up as one changed block: 0 across types or task ids (a new to-do has none), most when equal, else 1 plus what they share. */
+function likeness(a: Traced, b: Traced): number {
+  if (a.node.type !== b.node.type || taskId(a.node) !== taskId(b.node)) return 0
+  if (a.key === b.key) return 2 + a.size
+  let shared = 0
+  for (const [t, n] of a.traits) shared += Math.min(n, b.traits.get(t) ?? 0)
+  return 1 + shared
+}
+
+/** For each base block, the index of the side's block it became, or -1, keeping the order. */
+function align(blocks: DocJson[], into: DocJson[]): number[] {
+  const n = blocks.length
+  const m = into.length
+  const at = new Array<number>(n).fill(-1)
+  if (n * m > MAX_PAIRS) return at
+  const base = blocks.map(trace)
+  const side = into.map(trace)
+  // best[i * w + j]: the highest likeness total of base[i..] and side[j..].
+  const w = m + 1
+  const best = new Uint32Array((n + 1) * w)
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      const s = likeness(base[i], side[j])
+      best[i * w + j] = Math.max(s ? best[(i + 1) * w + j + 1] + s : 0, best[(i + 1) * w + j], best[i * w + j + 1])
+    }
+  }
+  for (let i = 0, j = 0; i < n && j < m; ) {
+    const s = likeness(base[i], side[j])
+    if (s && best[i * w + j] === best[(i + 1) * w + j + 1] + s) at[i++] = j++
+    else if (best[i * w + j] === best[(i + 1) * w + j]) i++
+    else j++
+  }
+  return at
+}
+
+/** Blocks both sides changed: each base block merged with what it became on either side, added blocks in place, the editor's first. */
+function mergeBlocks(b: DocJson[], m: DocJson[], t: DocJson[]): DocJson[] {
+  const inMine = align(b, m)
+  const inTheirs = align(b, t)
+  const known = new Set([...b, ...m].map(key))
+  const out: DocJson[] = []
+  let j = 0
+  let k = 0
+  const added = (mineTo: number, theirsTo: number): void => {
+    out.push(...m.slice(j, mineTo), ...t.slice(k, theirsTo).filter((n) => !known.has(key(n))))
+    j = mineTo
+    k = theirsTo
+  }
+  for (let i = 0; i < b.length; i++) {
+    const mi = inMine[i]
+    const ti = inTheirs[i]
+    added(mi < 0 ? j : mi, ti < 0 ? k : ti)
+    const mn = mi < 0 ? null : m[mi]
+    const tn = ti < 0 ? null : t[ti]
+    if (mi >= 0) j = mi + 1
+    if (ti >= 0) k = ti + 1
+    if (mn && tn) {
+      const merged = mergeNode(b[i], mn, tn)
+      // A list or other container whose blocks the two sides deleted between them goes too.
+      if (merged?.content?.length === 0 && b[i].content?.some((n) => !isInline(n))) continue
+      // Two versions of one line that cannot be combined: both stay.
+      out.push(...(merged ? [merged] : [mn, ...(known.has(key(tn)) ? [] : [tn])]))
+      continue
+    }
+    // A block one side deleted stays when the other side changed it.
+    if (mn && key(mn) !== key(b[i])) out.push(mn)
+    else if (tn && key(tn) !== key(b[i]) && !known.has(key(tn))) out.push(tn)
+  }
+  added(m.length, t.length)
+  // A block both sides ended up with, each its own way, comes out no more often than one side has it.
+  const tally = (ns: DocJson[]): Map<string, number> => {
+    const counts = new Map<string, number>()
+    for (const n of ns) counts.set(key(n), (counts.get(key(n)) ?? 0) + 1)
+    return counts
+  }
+  const left = tally(m)
+  for (const [s, c] of tally(t)) left.set(s, Math.max(c, left.get(s) ?? 0))
+  return out.filter((n) => {
+    const s = key(n)
+    const c = left.get(s)
+    if (c === undefined) return true
+    left.set(s, c - 1)
+    return c > 0
+  })
 }
 
 /**
