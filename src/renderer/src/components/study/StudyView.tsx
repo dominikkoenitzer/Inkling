@@ -5,6 +5,7 @@ import { hasCloze } from '@shared/cloze'
 import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, inputCls } from '@/components/ui'
+import { editKey } from '@/lib/keys'
 import { ReviewSession } from './ReviewSession'
 import type { Deck, Card } from '@shared/types'
 
@@ -246,7 +247,13 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
         )}
 
         <div className="mt-8 grid grid-cols-[1fr_1fr_auto] gap-2">
-          <input className={inputCls} placeholder="Front, or a {{c1::cloze}}" value={front} onChange={(e) => setFront(e.target.value)} />
+          <input
+            className={inputCls}
+            placeholder="Front, or a {{c1::cloze}}"
+            value={front}
+            onChange={(e) => setFront(e.target.value)}
+            onKeyDown={(e) => editKey(e, () => void add())}
+          />
           <input
             className={inputCls}
             placeholder="Back"
@@ -323,6 +330,16 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
   }
 
   const field = 'min-w-0 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-raised focus:ring-1 focus:ring-accent'
+  // Leaving the field saves; Escape drops the edit first, so the save puts the card's text back.
+  const keys = (e: React.KeyboardEvent<HTMLInputElement>): void =>
+    editKey(
+      e,
+      (el) => el.blur(),
+      (el) => {
+        dirty.current = false
+        el.blur()
+      }
+    )
 
   return (
     <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
@@ -334,6 +351,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
           setFront(e.target.value)
         }}
         onBlur={save}
+        onKeyDown={keys}
         aria-label="Front"
       />
       <input
@@ -344,6 +362,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
           setBack(e.target.value)
         }}
         onBlur={save}
+        onKeyDown={keys}
         aria-label="Back"
       />
       <div className="flex items-center gap-1">
