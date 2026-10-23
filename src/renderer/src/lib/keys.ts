@@ -27,6 +27,21 @@ export function onActivateKey(run: () => void): (e: KeyboardEvent<HTMLElement>) 
   }
 }
 
+/** A keydown in a text field: Enter commits it, and Escape cancels its edit when `cancel` is given. */
+export function editKey(
+  e: KeyboardEvent<HTMLInputElement>,
+  commit: (field: HTMLInputElement) => void,
+  cancel?: (field: HTMLInputElement) => void
+): void {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    commit(e.currentTarget)
+  } else if (e.key === 'Escape' && cancel) {
+    e.preventDefault()
+    cancel(e.currentTarget)
+  }
+}
+
 /**
  * Ctrl+Enter in a note: ticks or unticks the to-do the cursor is in, on `tr` when `dispatch`
  * is set. False leaves the key to the editor.

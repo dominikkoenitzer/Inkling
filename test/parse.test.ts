@@ -63,6 +63,11 @@ describe('parseCardLine', () => {
     expect(parseCardLine('just text')).toBeNull()
     expect(parseCardLine('Term ::')).toBeNull()
   })
+
+  it('keeps a line with an empty cloze whole', () => {
+    const line = 'Capital {{c1::}} is {{c2::Bern}}'
+    expect(parseCardLine(line)).toEqual({ front: line, back: '' })
+  })
 })
 
 describe('extractNoteTaskItems', () => {

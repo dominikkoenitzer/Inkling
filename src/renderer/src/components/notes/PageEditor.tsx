@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import { Extension } from '@tiptap/core'
+import type { Schema } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
@@ -12,6 +13,7 @@ import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
 import { tickTodo } from '@/lib/keys'
+import { mergeDocs, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
 
 const api = window.inkling
@@ -93,6 +95,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const contentRef = useRef<string | null>(null)
   const savingRef = useRef(0)
   const titleInputRef = useRef<HTMLTextAreaElement>(null)
+  const queueRef = useRef<Promise<void>>(Promise.resolve())
+  const docRef = useRef<Record<string, unknown> | null>(null)
 
   const editor = useEditor({
     // Read-only until the note has loaded, so nothing typed early is overwritten.
@@ -126,35 +130,98 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       timerRef.current = null
     }
     savingRef.current++
+    // Read everything now: on unmount the editor is gone by the time the IPC answers.
+    readDoc()
+    const schema = editor.schema
+    // One save at a time, so a save never takes the one before it for a change made outside.
+    const run = queueRef.current.then(() => store(notebookId, schema))
+    queueRef.current = run.catch(() => undefined)
     try {
-      // Read everything now: on unmount the editor is gone by the time the IPC answers.
-      let json = editor.getJSON() as Record<string, unknown>
-      const title = titleRef.current || null
-      const items = extractNoteTaskItems(json)
-      if (!itemsEqual(items, lastItemsRef.current)) {
-        const ids = await api.notes.syncTasks(noteId, notebookId, items)
-        if (!editor.isDestroyed) {
-          assignNodeIds(editor, 'taskItem', 'taskId', ids, syncingRef)
-          json = editor.getJSON() as Record<string, unknown>
-        } else {
-          // Closed while syncing: stamp the ids into the snapshot itself, so the saved note
-          // still knows which task each checkbox is.
-          json = stampTaskIds(json, ids)
-        }
-        lastItemsRef.current = extractNoteTaskItems(json)
-        bumpData('tasks')
-      }
-
-      const content = JSON.stringify(json)
-      const saved = await api.notes.update(noteId, { title, content })
-      if (!saved) return // note was deleted out from under us
-      contentRef.current = content
-      setSavedAt(new Date())
-      bumpData('notes')
+      await run
     } finally {
       savingRef.current--
     }
   }
+
+  /** The editor's doc, or once the editor is gone, the last one read from it. */
+  const readDoc = (): Record<string, unknown> => {
+    if (editor && !editor.isDestroyed) docRef.current = editor.getJSON() as Record<string, unknown>
+    return docRef.current!
+  }
+
+  const store = async (notebookId: number, schema: Schema): Promise<void> => {
+    if (!editor) return
+    for (;;) {
+      // Written only over the content this edit started from; a save that lands on a note an
+      // assistant changed meanwhile comes back, is merged with it, and goes again.
+      const base = contentRef.current ?? undefined
+      const json = readDoc()
+      const items = extractNoteTaskItems(json)
+      const patch = { title: titleRef.current || null, content: JSON.stringify(json) }
+      let saved: Note | null
+      if (!itemsEqual(items, lastItemsRef.current)) {
+        // Rows and note in one step: an assistant's write between the two would be lost.
+        const result = await api.notes.saveWithTasks(noteId, notebookId, patch, items, base)
+        if (!result) return // note was deleted out from under us
+        if (!result.ids) {
+          takeIn(result.note, schema)
+          continue
+        }
+        if (!editor.isDestroyed) {
+          assignNodeIds(editor, 'taskItem', 'taskId', result.ids, syncingRef)
+        } else {
+          // Closed while saving: stamp the ids into the last doc itself, as they were saved.
+          docRef.current = stampTaskIds(json, result.ids)
+        }
+        lastItemsRef.current = extractNoteTaskItems(safeParse(result.note.content) as Record<string, unknown>)
+        bumpData('tasks')
+        saved = result.note
+      } else {
+        saved = await api.notes.update(noteId, patch, base)
+        if (!saved) return // note was deleted out from under us
+        if (saved.content !== patch.content) {
+          takeIn(saved, schema)
+          continue
+        }
+      }
+      contentRef.current = saved.content
+      setSavedAt(new Date())
+      bumpData('notes')
+      return
+    }
+  }
+
+  /**
+   * Merges what is stored now into this editor's changes, puts the result on screen without
+   * moving the cursor, and makes the stored note the base of the next try.
+   */
+  const takeIn = (stored: Note, schema: Schema): void => {
+    // Both read through the editor's schema, so a node written elsewhere compares like its own.
+    const asEditorJson = (content: string): DocJson => {
+      const doc = safeParse(content)
+      try {
+        return schema.nodeFromJSON(doc).toJSON() as DocJson
+      } catch {
+        return doc as DocJson
+      }
+    }
+    const merged = mergeDocs(asEditorJson(contentRef.current ?? ''), readDoc() as DocJson, asEditorJson(stored.content))
+    if (editor && !editor.isDestroyed) {
+      const tr = replaceChanged(editor.state, schema.nodeFromJSON(merged))
+      if (tr) {
+        tr.setMeta('addToHistory', false)
+        syncingRef.current = true
+        editor.view.dispatch(tr)
+        syncingRef.current = false
+      }
+    } else {
+      docRef.current = merged as Record<string, unknown>
+    }
+    contentRef.current = stored.content
+    // The task rows are the stored note's now, so the next sync starts from its lines.
+    lastItemsRef.current = extractNoteTaskItems(safeParse(stored.content) as Record<string, unknown>)
+  }
+
   // Tracked, so deleting this note waits for the save to land.
   const doSave = (): Promise<void> => trackSave(noteId, save())
 

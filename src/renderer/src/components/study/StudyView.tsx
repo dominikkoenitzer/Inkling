@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { hasCloze } from '@shared/cloze'
+import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, Code, IconBtn, inputCls, titleFieldCls } from '@/components/ui'
-import { ignoresShortcut } from '@/lib/keys'
+import { editKey, ignoresShortcut } from '@/lib/keys'
 import { oneLine } from '@/lib/parse'
 import { ReviewSession } from './ReviewSession'
 import type { Deck, Card } from '@shared/types'
@@ -315,7 +316,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 }
 
 function CardRow({ card }: { card: Card }): React.JSX.Element {
-  const due = new Date(card.next_review_date) <= new Date()
+  const due = storedTime(card.next_review_date) <= new Date().getTime()
   // A card made from a note line belongs to that line: an edit here would be undone by the
   // next Flashcards press, so it is shown as text and edited in the note.
   if (card.source_line !== null) {
@@ -364,6 +365,16 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
   }
 
   const field = 'min-w-0 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-hover focus:bg-raised focus:ring-1 focus:ring-accent'
+  // Leaving the field saves; Escape drops the edit first, so the save puts the card's text back.
+  const keys = (e: React.KeyboardEvent<HTMLInputElement>): void =>
+    editKey(
+      e,
+      (el) => el.blur(),
+      (el) => {
+        dirty.current = false
+        el.blur()
+      }
+    )
 
   return (
     <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
@@ -375,6 +386,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
           setFront(e.target.value)
         }}
         onBlur={save}
+        onKeyDown={keys}
         aria-label="Front"
       />
       <input
@@ -385,6 +397,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
           setBack(e.target.value)
         }}
         onBlur={save}
+        onKeyDown={keys}
         aria-label="Back"
       />
       <div className="flex items-center gap-1">
