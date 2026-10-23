@@ -272,7 +272,7 @@ export function migrate(d: Database.Database): void {
          SET state      = 'review',
              stability  = MAX(interval_days, 0.1),
              difficulty = MAX(1.0, MIN(10.0, 10.0 - ((MIN(MAX(ease_factor, 1.3), 2.5) - 1.3) * 9.0 / 1.2))),
-             last_review = datetime(next_review_date, '-' || CAST(MAX(interval_days, 0) AS TEXT) || ' days')
+             last_review = strftime('%Y-%m-%dT%H:%M:%fZ', next_review_date, '-' || CAST(MAX(interval_days, 0) AS TEXT) || ' days')
        WHERE repetitions > 0
     `)
     d.pragma('user_version = 4')
