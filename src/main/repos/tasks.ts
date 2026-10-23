@@ -54,12 +54,21 @@ function noteHasTask(noteId: number | null, taskId: number): boolean {
 
 /**
  * Create or update a task row per checklist item in a note, and prune tasks whose checkbox
- * was deleted. Returns ids in the same order as `items`, for stamping back into the doc.
+ * was deleted. Returns ids in the same order as `items`, for stamping back into the doc. With
+ * `base`, the note content the items were read from, changes nothing and returns null once the
+ * stored content is another, since its rows then belong to lines the items do not have.
  */
-export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): number[] {
+export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[]): number[]
+export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[], base: string): number[] | null
+export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTaskItem[], base?: string): number[] | null {
   const db = getDb()
   const ids: number[] = []
+  let stale = false
   const tx = db.transaction(() => {
+    if (base !== undefined && getNote(noteId)?.content !== base) {
+      stale = true
+      return
+    }
     const existing = db.prepare(`SELECT * FROM tasks WHERE note_id = ?`).all(noteId) as Task[]
     const byId = new Map(existing.map((t) => [t.id, t]))
     for (const item of items) {
@@ -127,7 +136,7 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
   // Reads before it writes: take the write lock first, so a commit from the MCP server
   // in between cannot fail it.
   tx.immediate()
-  return ids
+  return stale ? null : ids
 }
 
 /**
