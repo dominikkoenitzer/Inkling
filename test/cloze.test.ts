@@ -44,6 +44,11 @@ describe('separatorIndex', () => {
     expect(separatorIndex(line)).toBe(line.indexOf(' :: ') + 1)
     expect(separatorIndex('{{c1::a::hint}} only')).toBe(-1)
   })
+  it('skips the :: inside a cloze with an empty answer', () => {
+    expect(separatorIndex('Capital {{c1::}} is {{c2::Bern}}')).toBe(-1)
+    const line = 'Capital {{c1:: }} is {{c2::Bern}} :: Switzerland'
+    expect(separatorIndex(line)).toBe(line.indexOf(' :: ') + 1)
+  })
   it('finds a plain separator', () => {
     expect(separatorIndex('Term :: Definition')).toBe(5)
   })

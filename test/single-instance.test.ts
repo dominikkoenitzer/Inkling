@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { join } from 'path'
 
 /** Just enough of Electron for the main process to start up without a window on screen. */
 const electron = vi.hoisted(() => {
@@ -95,7 +94,7 @@ describe('one running copy per profile', () => {
 })
 
 describe('a database that cannot be opened', () => {
-  it('says so with the path and quits instead of hanging without a window', async () => {
+  it('says so in one plain sentence and quits instead of hanging without a window', async () => {
     electron.openDb.mockImplementationOnce(() => {
       throw new Error('file is not a database')
     })
@@ -103,8 +102,7 @@ describe('a database that cannot be opened', () => {
 
     expect(electron.dialog.showErrorBox).toHaveBeenCalledTimes(1)
     const [, message] = electron.dialog.showErrorBox.mock.calls[0] as unknown as [string, string]
-    expect(message).toContain(join('/home/profile', 'inkling.db'))
-    expect(message).toContain('file is not a database')
+    expect(message).toBe('Inkling could not open its data.')
     expect(electron.app.quit).toHaveBeenCalled()
     expect(electron.windows).toHaveLength(0)
   })

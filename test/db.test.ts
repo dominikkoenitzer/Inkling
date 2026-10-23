@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DatabaseSync } from 'node:sqlite'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { DatabaseSync } from 'node:sqlite'
+import fs, { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openSqlite } from './sqlite'
@@ -65,6 +65,49 @@ CREATE TABLE review_log (
 );
 PRAGMA user_version = 10;
 `
+
+describe('migrate to v4', () => {
+  /** The tables a v3 database has, as far as the later steps read them. */
+  const V3 = `
+CREATE TABLE notebooks (id INTEGER PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE notes (id INTEGER PRIMARY KEY, notebook_id INTEGER, title TEXT, content TEXT NOT NULL, type TEXT DEFAULT 'page');
+CREATE VIRTUAL TABLE search_index USING fts5(title, content_text, source_type UNINDEXED, source_id UNINDEXED);
+CREATE TABLE tasks (id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT);
+CREATE TABLE grades (id INTEGER PRIMARY KEY, title TEXT NOT NULL, system TEXT NOT NULL DEFAULT 'percent');
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE flashcards (
+  id INTEGER PRIMARY KEY,
+  deck_id INTEGER REFERENCES flashcard_decks(id) ON DELETE CASCADE,
+  front TEXT NOT NULL,
+  back TEXT NOT NULL,
+  ease_factor REAL DEFAULT 2.5,
+  interval_days INTEGER DEFAULT 0,
+  repetitions INTEGER DEFAULT 0,
+  next_review_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+PRAGMA user_version = 3;
+`
+
+  it('stores the last review of a carried over card in the form the app writes', () => {
+    const { raw, db } = open()
+    raw.exec(V3)
+    raw.exec(`INSERT INTO flashcard_decks (id, name) VALUES (1, 'Cells')`)
+    raw.exec(`INSERT INTO flashcards (id, deck_id, front, back, interval_days, repetitions, next_review_date) VALUES
+              (1, 1, 'Osmosis', 'water', 3, 2, '2026-10-25T12:00:00.000Z'),
+              (2, 1, 'Cell', 'unit', 5, 1, '2026-10-25 12:00:00'),
+              (3, 1, 'Wall', 'plants', 0, 0, '2026-10-25 12:00:00')`)
+
+    migrate(db)
+
+    expect(version(raw)).toBe(14)
+    expect(raw.prepare(`SELECT id, state, last_review, next_review_date FROM flashcards ORDER BY id`).all()).toEqual([
+      { id: 1, state: 'review', last_review: '2026-10-22T12:00:00.000Z', next_review_date: '2026-10-25T12:00:00.000Z' },
+      { id: 2, state: 'review', last_review: '2026-10-20T12:00:00.000Z', next_review_date: '2026-10-25 12:00:00' },
+      { id: 3, state: 'new', last_review: null, next_review_date: '2026-10-25 12:00:00' }
+    ])
+  })
+})
 
 describe('migrate to v11', () => {
   it('links decks to notes and cards to note lines without touching existing cards', () => {
@@ -452,6 +495,102 @@ describe('the theme of a database without one', () => {
       expect(theme(raw)).toBeUndefined()
     } finally {
       quiet.mockRestore()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('the startup backup', () => {
+  const kept = (dir: string): string[] => readdirSync(join(dir, 'backups')).sort()
+  const earlier = [1, 2, 3, 4, 5].map((day) => `inkling-2026-10-0${day}T08-00-00.db`)
+
+  /** A database file in a fresh folder, with five earlier backups when asked. */
+  function folder(withEarlier: boolean): { dir: string; raw: DatabaseSync; db: ReturnType<typeof open>['db'] } {
+    const dir = mkdtempSync(join(tmpdir(), 'inkling-backup-'))
+    const { raw, db } = open(join(dir, 'inkling.db'))
+    raw.exec('PRAGMA journal_mode = WAL')
+    migrate(db)
+    mkdirSync(join(dir, 'backups'))
+    if (withEarlier) for (const f of earlier) writeFileSync(join(dir, 'backups', f), 'earlier')
+    opening.db = db
+    return { dir, raw, db }
+  }
+
+  it('holds what is still in the write-ahead log while another connection reads', () => {
+    const { dir, raw } = folder(false)
+    const reader = new DatabaseSync(join(dir, 'inkling.db'))
+    let copy: DatabaseSync | undefined
+    try {
+      // The MCP server in the middle of a read.
+      reader.exec('BEGIN')
+      reader.prepare('SELECT COUNT(*) AS n FROM notes').get()
+      raw.exec(`INSERT INTO notebooks (name, color) VALUES ('Biology', 'teal')`)
+
+      openDb(dir)
+      reader.exec('COMMIT')
+
+      expect(kept(dir)).toHaveLength(1)
+      copy = new DatabaseSync(join(dir, 'backups', kept(dir)[0]))
+      expect(copy.prepare('SELECT name FROM notebooks').all()).toEqual([{ name: 'Biology' }])
+    } finally {
+      copy?.close()
+      reader.close()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps the newest five', () => {
+    const { dir, raw } = folder(true)
+    try {
+      openDb(dir)
+      const now = kept(dir)
+      expect(now.slice(0, 4)).toEqual(earlier.slice(1))
+      expect(now[4]).toMatch(/^inkling-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
+    } finally {
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('has the copy on disk before it takes its place among the five', () => {
+    const { dir, raw } = folder(false)
+    const steps: string[] = []
+    const flush = vi.spyOn(fs, 'fsyncSync').mockImplementation(() => void steps.push('flush'))
+    const rename = vi.spyOn(fs, 'renameSync').mockImplementation(() => void steps.push('rename'))
+    try {
+      openDb(dir)
+      expect(steps).toEqual(['flush', 'rename'])
+    } finally {
+      flush.mockRestore()
+      rename.mockRestore()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('never keeps a copy that failed halfway, so it cannot push out a good one', () => {
+    const { dir, raw, db } = folder(true)
+    writeFileSync(join(dir, 'backups', 'inkling-2026-10-06T08-00-00.db.partial'), 'left by a crash')
+    // The disk fills up in the middle of the copy, whichever way the copy is made.
+    const halfway = (target: string): never => {
+      writeFileSync(target, 'half')
+      throw new Error('ENOSPC: no space left on device')
+    }
+    const copyFile = vi.spyOn(fs, 'copyFileSync').mockImplementation((_from, to) => halfway(String(to)))
+    const prepare = raw.prepare.bind(raw)
+    opening.db = Object.assign(db, {
+      prepare: (sql: string) => (sql.startsWith('VACUUM INTO') ? { run: (to: string) => halfway(to) } : prepare(sql))
+    })
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      openDb(dir)
+      expect(quiet).toHaveBeenCalledWith('backup failed', expect.any(Error))
+      expect(kept(dir)).toEqual(earlier)
+    } finally {
+      copyFile.mockRestore()
+      quiet.mockRestore()
+      raw.close()
       rmSync(dir, { recursive: true, force: true })
     }
   })

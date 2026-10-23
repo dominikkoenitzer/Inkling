@@ -1,10 +1,10 @@
 import { getDb } from '../db'
 import { now } from './dates'
 import { homeNotebookId } from './notebooks'
-import { createNote, getNote } from './notes'
+import { createNote, getNote, updateNote } from './notes'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
-import { extractNoteTaskItems } from '@shared/noteTasks'
-import type { NoteTaskItem, OpenTask, Task } from '@shared/types'
+import { extractNoteTaskItems, stampTaskIds } from '@shared/noteTasks'
+import type { Note, NoteTaskItem, OpenTask, Task } from '@shared/types'
 
 // A task is a checkbox line in a note. The rows here mirror those lines for Today and search.
 
@@ -128,6 +128,32 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
   // in between cannot fail it.
   tx.immediate()
   return ids
+}
+
+/**
+ * The editor's save of a note whose checkbox lines changed: the task rows, their ids stamped into
+ * the content, and the note, in one transaction, so no write from the MCP server lands between
+ * rows and note. With `base`, the content the edit started from, nothing is written once the
+ * stored content is another, and the stored note comes back with no ids. Null for a note gone.
+ */
+export function saveNoteWithTasks(
+  noteId: number,
+  notebookId: number,
+  patch: { title: string | null; content: string },
+  items: NoteTaskItem[],
+  base?: string
+): { note: Note; ids: number[] | null } | null {
+  return getDb()
+    .transaction(() => {
+      const stored = getNote(noteId)
+      if (!stored || stored.deleted_at) return null
+      if (base !== undefined && stored.content !== base) return { note: stored, ids: null }
+      const ids = syncNoteTasks(noteId, notebookId, items)
+      const content = JSON.stringify(stampTaskIds(JSON.parse(patch.content) as Record<string, unknown>, ids))
+      const note = updateNote(noteId, { ...patch, content })
+      return note && { note, ids }
+    })
+    .immediate()
 }
 
 /**
