@@ -4,6 +4,7 @@ import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
 import { ignoresShortcut } from '@/lib/keys'
+import { reviewCard } from '@/lib/calls'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
@@ -49,7 +50,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
     if (!card || gradedAt.current === index) return // nothing to grade, or already graded
     gradingRef.current = true
     try {
-      const updated = await api.decks.review(card.id, g)
+      const updated = await reviewCard(card.id, g)
+      if (!updated) return // not saved: the card stays up to be graded again
       gradedAt.current = index
       setReviewed((r) => r + 1)
       setShowBack(false)

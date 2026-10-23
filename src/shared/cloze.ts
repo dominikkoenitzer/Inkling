@@ -14,18 +14,19 @@ interface ClozeSpan {
   hint: string | null
 }
 
-function spans(text: string): ClozeSpan[] {
-  const out: ClozeSpan[] = []
-  for (const m of text.matchAll(CLOZE)) {
-    const n = Number(m[1])
+/** Every piece of cloze markup, including the ones that ask nothing. */
+function markup(text: string): ClozeSpan[] {
+  return [...text.matchAll(CLOZE)].map((m) => {
     const inner = m[2]
     const cut = inner.indexOf('::')
     const answer = (cut === -1 ? inner : inner.slice(0, cut)).trim()
     const hint = cut === -1 ? null : inner.slice(cut + 2).trim() || null
-    if (n < 1 || !answer) continue
-    out.push({ start: m.index, end: m.index + m[0].length, n, answer, hint })
-  }
-  return out
+    return { start: m.index, end: m.index + m[0].length, n: Number(m[1]), answer, hint }
+  })
+}
+
+function spans(text: string): ClozeSpan[] {
+  return markup(text).filter((s) => s.n >= 1 && s.answer)
 }
 
 /** The cloze numbers in `text`, ascending and without repeats. Empty for a plain card. */
@@ -73,7 +74,7 @@ export function renderCloze(text: string, n: number, reveal: boolean): ClozePart
  */
 export function separatorIndex(text: string): number {
   let from = 0
-  for (const s of spans(text)) {
+  for (const s of markup(text)) {
     const idx = text.slice(from, s.start).indexOf('::')
     if (idx !== -1) return from + idx
     from = s.end

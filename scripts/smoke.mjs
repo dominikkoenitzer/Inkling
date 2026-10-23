@@ -36,11 +36,10 @@ const apiChecks = `
     const welcomeTodo = (await api.tasks.open()).find((t) => t.note_id === first[0].id)
     ok('the welcome note has an open to-do on Today', !!welcomeTodo, welcomeTodo && welcomeTodo.title)
 
-    // As the editor does it: the checkbox in the note, then its task row, then the id stamped back.
+    // As the editor does it: the checkbox in the note, its task row and the id stamped back in one save.
     const docWith = (taskId) => JSON.stringify({ type: 'doc', content: [{ type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false, taskId }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'From a checkbox' }] }] }] }] })
     const note = await api.notes.create({ notebook_id: home, title: 'Smoke note', content: docWith(null) })
-    const ids = await api.notes.syncTasks(note.id, home, [{ taskId: null, title: 'From a checkbox', checked: false }])
-    await api.notes.update(note.id, { content: docWith(ids[0]) })
+    const { ids } = await api.notes.saveWithTasks(note.id, home, { title: 'Smoke note', content: docWith(null) }, [{ taskId: null, title: 'From a checkbox', checked: false }])
     const open = await api.tasks.open()
     const linked = open.find((t) => t.id === ids[0])
     ok('a note checkbox shows up on Today', !!linked && linked.note_id === note.id && linked.note_title === 'Smoke note', linked && linked.title)
@@ -93,7 +92,7 @@ const clipChecks = (themes) => `
     const para = (type, text, attrs) => ({ type, attrs, content: [{ type: 'text', text }] })
     const content = JSON.stringify({ type: 'doc', content: [para('heading', deep, { level: 1 }), para('heading', deep, { level: 2 }), para('paragraph', deep)] })
     const note = await api.notes.create({ notebook_id: home, title: deep + ' ' + deep, content })
-    await api.notes.syncTasks(note.id, home, [{ taskId: null, title: deep, checked: false }])
+    await api.notes.saveWithTasks(note.id, home, { title: note.title, content }, [{ taskId: null, title: deep, checked: false }])
     const deck = await api.decks.create(home, deep)
     await api.decks.addCard(deck.id, deep, deep)
 
