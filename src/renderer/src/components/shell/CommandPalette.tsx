@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search, FileText, CheckSquare, Layers, Plus } from 'lucide-react'
 import { useApp } from '@/stores/app'
+import { searchFor } from '@/lib/calls'
 import type { SearchResult } from '@shared/types'
-
-const api = window.inkling
 
 interface Item {
   key: string
@@ -17,7 +16,7 @@ interface Item {
 export function CommandPalette(): React.JSX.Element {
   const [query, setQuery] = useState('')
   // Results remember the query they answer, so Enter never acts on an older one.
-  const [results, setResults] = useState<{ query: string; hits: SearchResult[] }>({ query: '', hits: [] })
+  const [results, setResults] = useState<{ query: string; hits: SearchResult[]; failed: boolean }>({ query: '', hits: [], failed: false })
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const close = (): void => useApp.getState().setPaletteOpen(false)
@@ -36,7 +35,7 @@ export function CommandPalette(): React.JSX.Element {
   useEffect(() => {
     const q = query.trim()
     if (!q) return
-    const t = setTimeout(() => void api.search.query(q).then((hits) => setResults({ query: q, hits })), 120)
+    const t = setTimeout(() => void searchFor(q).then(setResults), 120)
     return () => clearTimeout(t)
   }, [query])
 
@@ -119,7 +118,7 @@ export function CommandPalette(): React.JSX.Element {
           />
         </div>
         <div ref={listRef} className="max-h-[46vh] overflow-y-auto p-1.5">
-          {q && !pending && found.length === 0 && <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>}
+          {q && !pending && !results.failed && found.length === 0 && <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>}
           {items.map((item, i) => (
             <button
               key={item.key}
