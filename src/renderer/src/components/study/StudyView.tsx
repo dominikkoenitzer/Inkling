@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { hasCloze } from '@shared/cloze'
+import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, inputCls } from '@/components/ui'
 import { ReviewSession } from './ReviewSession'
@@ -273,7 +274,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 }
 
 function CardRow({ card }: { card: Card }): React.JSX.Element {
-  const due = new Date(card.next_review_date) <= new Date()
+  const due = storedTime(card.next_review_date) <= new Date().getTime()
   // A card made from a note line belongs to that line: an edit here would be undone by the
   // next Flashcards press, so it is shown as text and edited in the note.
   if (card.source_line !== null) {

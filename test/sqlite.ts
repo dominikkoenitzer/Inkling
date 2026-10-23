@@ -6,8 +6,8 @@ import type Database from 'better-sqlite3'
  * Node's own SQLite speaks the same prepare/run/get/all dialect; this adds the two
  * better-sqlite3 helpers the main process also uses, `pragma` and `transaction`.
  */
-export function openSqlite(): { raw: DatabaseSync; db: Database.Database } {
-  const raw = new DatabaseSync(':memory:')
+export function openSqlite(file = ':memory:'): { raw: DatabaseSync; db: Database.Database } {
+  const raw = new DatabaseSync(file)
   raw.exec('PRAGMA foreign_keys = ON')
   let depth = 0
   const db = Object.assign(raw, {
