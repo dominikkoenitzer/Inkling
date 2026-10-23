@@ -4,6 +4,7 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { localDay } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, Code } from '@/components/ui'
+import { setTaskDone } from '@/lib/calls'
 import type { Deck, OpenTask } from '@shared/types'
 
 const api = window.inkling
@@ -55,16 +56,16 @@ export function TodayView(): React.JSX.Element {
       else next.delete(t.id)
       return next
     })
-    api.tasks.setDone(t.id, done).then(
-      () => bumpData('notes'),
-      () =>
+    void setTaskDone(t.id, done).then((saved) => {
+      if (saved !== undefined) bumpData('notes')
+      else
         setTicked((prev) => {
           const next = new Set(prev)
           if (done) next.delete(t.id)
           else next.add(t.id)
           return next
         })
-    )
+    })
   }
 
   const empty = loaded && tasks.length === 0 && decks.length === 0
