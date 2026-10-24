@@ -260,7 +260,7 @@ useApp.subscribe((state, prev) => {
     if (!(await api.notes.dropIfEmpty(left))) return
     bumpData('notes')
     if (useApp.getState().selectedNoteId === left) useApp.setState({ selectedNoteId: null })
-  })
+  }).catch((err: unknown) => console.error('Could not clear the empty note.', err)) // it stays, and goes on a later leave
 })
 
 /** Moves a note to the trash once its last edit has landed, with an undo toast. */

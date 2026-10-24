@@ -109,6 +109,25 @@ describe('leaving a note', () => {
     expect(inkling.notes.dropIfEmpty).not.toHaveBeenCalledWith(7)
     expect(inkling.notes.dropIfEmpty).not.toHaveBeenCalledWith(8)
   })
+  it('logs a cleanup that fails and leaves the note alone', async () => {
+    const unhandled: unknown[] = []
+    const catchUnhandled = (reason: unknown): void => void unhandled.push(reason)
+    process.on('unhandledRejection', catchUnhandled)
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    inkling.notes.dropIfEmpty.mockRejectedValueOnce(new Error('SQLITE_BUSY'))
+    try {
+      useApp.setState({ selectedNoteId: 11 })
+      useApp.getState().setView('today')
+      await vi.waitFor(() => expect(inkling.notes.dropIfEmpty).toHaveBeenCalledWith(11))
+      await new Promise((r) => setTimeout(r, 10))
+      expect(unhandled).toEqual([])
+      expect(logged).toHaveBeenCalledWith('Could not clear the empty note.', expect.any(Error))
+      expect(useApp.getState().selectedNoteId).toBe(11)
+    } finally {
+      process.off('unhandledRejection', catchUnhandled)
+      logged.mockRestore()
+    }
+  })
 })
 
 describe('watchFocus', () => {
