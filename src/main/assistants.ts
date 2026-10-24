@@ -151,6 +151,8 @@ export function assistantStatus(p: Places, l: Launch): AssistantStatus[] {
   return targets(p).map((t) => ({ id: t.id, name: t.name, state: stateOf(t, l), file: t.file }))
 }
 
+const WRITE_FAILED = "Could not write the assistant's settings file."
+
 /**
  * Rewrites a JSON file through `change`. The original is copied next to it while the new
  * one is written and checked, put back if anything fails, and removed afterwards.
@@ -169,9 +171,15 @@ function rewrite(file: string, change: (data: Json) => void): void {
 
   const copy = `${file}.inkling-backup`
   const temp = `${file}.inkling-tmp`
-  const mode = current.exists ? fs.statSync(file).mode & 0o777 : 0o600
-  if (current.exists) fs.copyFileSync(file, copy)
-  else fs.mkdirSync(dirname(file), { recursive: true })
+  let mode = 0o600
+  try {
+    if (current.exists) {
+      mode = fs.statSync(file).mode & 0o777
+      fs.copyFileSync(file, copy)
+    } else fs.mkdirSync(dirname(file), { recursive: true })
+  } catch (err) {
+    throw new Error(WRITE_FAILED, { cause: err })
+  }
   try {
     fs.writeFileSync(temp, text, { mode })
     try {
@@ -184,7 +192,7 @@ function rewrite(file: string, change: (data: Json) => void): void {
   } catch (err) {
     if (current.exists) fs.copyFileSync(copy, file)
     else fs.rmSync(file, { force: true })
-    throw new Error(`Could not write the assistant's settings file: ${err instanceof Error ? err.message : String(err)}`, { cause: err })
+    throw new Error(WRITE_FAILED, { cause: err })
   } finally {
     for (const f of current.exists ? [temp, copy] : [temp]) {
       try {

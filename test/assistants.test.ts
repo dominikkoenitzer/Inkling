@@ -110,6 +110,18 @@ describe('connectAssistant', () => {
     expect(fs.readFileSync(cliFile(), 'utf8')).toBe(original)
     expect(fs.existsSync(`${cliFile()}.inkling-backup`)).toBe(false)
   })
+
+  it('says one plain sentence, without the system error, when the file cannot be written', () => {
+    const original = JSON.stringify({ keep: true })
+    write(cliFile(), original)
+    fs.mkdirSync(`${cliFile()}.inkling-tmp`)
+    expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/^Could not write the assistant's settings file\.$/)
+    fs.rmdirSync(`${cliFile()}.inkling-tmp`)
+    // A folder where the copy of the original goes makes the write fail before it starts.
+    fs.mkdirSync(`${cliFile()}.inkling-backup`)
+    expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/^Could not write the assistant's settings file\.$/)
+    expect(fs.readFileSync(cliFile(), 'utf8')).toBe(original)
+  })
 })
 
 describe('disconnectAssistant', () => {
