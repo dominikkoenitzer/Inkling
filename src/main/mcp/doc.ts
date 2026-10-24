@@ -164,9 +164,10 @@ export function replaceText(blocks: Block[], oldText: string, newText: string, a
   // Each match touches a run of blocks; overlapping runs are rebuilt together.
   const runs: Array<{ first: number; last: number; matches: number[] }> = []
   for (const m of matches) {
-    const touched = spans.filter((s) => s.start < m + oldText.length && s.end > m)
-    const first = spans.indexOf(touched[0])
-    const last = spans.indexOf(touched[touched.length - 1])
+    // A match that starts or ends in the blank line between two blocks takes in both of them.
+    const first = spans.findIndex((s, i) => (i + 1 < spans.length ? spans[i + 1].start : full.length) > m)
+    let last = first
+    while (last + 1 < spans.length && spans[last].end < m + oldText.length) last++
     const prev = runs[runs.length - 1]
     if (prev && first <= prev.last) {
       prev.last = Math.max(prev.last, last)

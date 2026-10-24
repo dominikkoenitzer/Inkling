@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import { join } from 'path'
@@ -109,6 +109,39 @@ describe('connectAssistant', () => {
     expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/Could not write/)
     expect(fs.readFileSync(cliFile(), 'utf8')).toBe(original)
     expect(fs.existsSync(`${cliFile()}.inkling-backup`)).toBe(false)
+  })
+
+  it('says one plain sentence, without the system error, when the file cannot be written', () => {
+    const original = JSON.stringify({ keep: true })
+    write(cliFile(), original)
+    fs.mkdirSync(`${cliFile()}.inkling-tmp`)
+    expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/^Could not write the assistant's settings file\.$/)
+    fs.rmdirSync(`${cliFile()}.inkling-tmp`)
+    // A folder where the copy of the original goes makes the write fail before it starts.
+    fs.mkdirSync(`${cliFile()}.inkling-backup`)
+    expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/^Could not write the assistant's settings file\.$/)
+    expect(fs.readFileSync(cliFile(), 'utf8')).toBe(original)
+  })
+
+  it('says the same sentence when another program holds the file and it cannot be put back', () => {
+    const original = JSON.stringify({ keep: true })
+    write(cliFile(), original)
+    const file = cliFile()
+    const busy = (): never => {
+      throw Object.assign(new Error(`EBUSY: resource busy or locked, open '${file}'`), { code: 'EBUSY' })
+    }
+    const writeFile = fs.writeFileSync
+    const copyFile = fs.copyFileSync
+    vi.spyOn(fs, 'renameSync').mockImplementation(busy)
+    vi.spyOn(fs, 'writeFileSync').mockImplementation((f, data, options) => (f === file ? busy() : writeFile(f, data, options)))
+    vi.spyOn(fs, 'copyFileSync').mockImplementation((from, to, mode) => (to === file ? busy() : copyFile(from, to, mode)))
+    try {
+      expect(() => connectAssistant(places, 'terminal', launch)).toThrow(/^Could not write the assistant's settings file\.$/)
+    } finally {
+      vi.restoreAllMocks()
+    }
+    expect(fs.readFileSync(file, 'utf8')).toBe(original)
+    expect(leftovers(home)).toEqual([])
   })
 })
 
