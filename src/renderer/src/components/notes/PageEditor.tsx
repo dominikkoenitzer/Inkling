@@ -13,7 +13,7 @@ import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
 import { tickTodo } from '@/lib/keys'
-import { mergeDocs, replaceChanged, type DocJson } from '@/lib/mergeDoc'
+import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
 
 const api = window.inkling
@@ -93,6 +93,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const titleRef = useRef('')
   // The content as last loaded or saved here, to spot a change made outside (an assistant via MCP).
   const contentRef = useRef<string | null>(null)
+  // The stored title that content came with, the base the title is merged from.
+  const baseTitleRef = useRef<string | null>(null)
   const savingRef = useRef(0)
   const titleInputRef = useRef<HTMLTextAreaElement>(null)
   const queueRef = useRef<Promise<void>>(Promise.resolve())
@@ -152,9 +154,9 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const store = async (notebookId: number, schema: Schema): Promise<void> => {
     if (!editor) return
     for (;;) {
-      // Written only over the content this edit started from; a save that lands on a note an
+      // Written only over the title and content this edit started from; a save that lands on a note an
       // assistant changed meanwhile comes back, is merged with it, and goes again.
-      const base = contentRef.current ?? undefined
+      const base = contentRef.current === null ? undefined : { title: baseTitleRef.current, content: contentRef.current }
       const json = readDoc()
       const items = extractNoteTaskItems(json)
       const patch = { title: titleRef.current || null, content: JSON.stringify(json) }
@@ -179,12 +181,13 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       } else {
         saved = await api.notes.update(noteId, patch, base)
         if (!saved) return // note was deleted out from under us
-        if (saved.content !== patch.content) {
+        if (saved.content !== patch.content || saved.title !== patch.title) {
           takeIn(saved, schema)
           continue
         }
       }
       contentRef.current = saved.content
+      baseTitleRef.current = saved.title
       setSavedAt(new Date())
       bumpData('notes')
       return
@@ -217,7 +220,13 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     } else {
       docRef.current = merged as Record<string, unknown>
     }
+    const title = mergeTitle(baseTitleRef.current, titleRef.current, stored.title) ?? ''
+    if (title !== titleRef.current) {
+      setTitle(title)
+      titleRef.current = title
+    }
     contentRef.current = stored.content
+    baseTitleRef.current = stored.title
     // The task rows are the stored note's now, so the next sync starts from its lines.
     lastItemsRef.current = extractNoteTaskItems(safeParse(stored.content) as Record<string, unknown>)
   }
@@ -237,6 +246,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     titleRef.current = note.title ?? ''
     notebookIdRef.current = note.notebook_id
     contentRef.current = note.content
+    baseTitleRef.current = note.title
     lastItemsRef.current = extractNoteTaskItems(safeParse(note.content) as Record<string, unknown>)
   }
 

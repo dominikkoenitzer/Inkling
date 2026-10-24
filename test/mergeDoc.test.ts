@@ -3,7 +3,7 @@ import { getSchema } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
-import { mergeDocs, replaceChanged, type DocJson } from '../src/renderer/src/lib/mergeDoc'
+import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '../src/renderer/src/lib/mergeDoc'
 
 const p = (text?: string): DocJson => (text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' })
 const item = (text: string, taskId: number | null, checked = false): DocJson => ({ type: 'taskItem', attrs: { checked, taskId }, content: [p(text)] })
@@ -262,6 +262,18 @@ describe('mergeDocs on generated edits', () => {
 
   it('loses no text, copies no line and drops no tick against any stored edit', () => {
     expect(problems(edit)).toEqual([])
+  })
+})
+
+describe('mergeTitle', () => {
+  it('takes the stored title when the editor kept its own', () => {
+    expect(mergeTitle('Lab', 'Lab', 'Lab week 3')).toBe('Lab week 3')
+    expect(mergeTitle(null, '', 'Lab')).toBe('Lab')
+  })
+
+  it('keeps the title typed here, even when the stored one changed too', () => {
+    expect(mergeTitle('Lab', 'Lab notes', 'Lab')).toBe('Lab notes')
+    expect(mergeTitle('Lab', 'Lab notes', 'Lab week 3')).toBe('Lab notes')
   })
 })
 

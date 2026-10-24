@@ -3,7 +3,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type Database from 'better-sqlite3'
 import { openSqlite } from './sqlite'
 import { extractNoteTaskItems } from '../src/shared/noteTasks'
-import { mergeDocs, type DocJson } from '../src/renderer/src/lib/mergeDoc'
+import { mergeDocs, mergeTitle, type DocJson } from '../src/renderer/src/lib/mergeDoc'
 import type { Card, Task } from '../src/shared/types'
 
 let raw: DatabaseSync
@@ -45,15 +45,30 @@ const count = (sql: string, ...args: Array<string | number>): number => (raw.pre
 
 // The editor's save of changed to-dos, as PageEditor makes it: a refused save is merged with the
 // stored note and sent again. Returns how many tries it took.
-const editorSaves = (noteId: number, base: string, doc: Node, maxTries = 3): number => {
-  const title = repos.getNote(noteId)!.title
+const editorSaves = (noteId: number, base: string, doc: Node, maxTries = 3, title = repos.getNote(noteId)!.title, baseTitle = title): number => {
   let json = doc as DocJson
   for (let tries = 1; ; tries++) {
     const items = extractNoteTaskItems(json as never)
-    const result = repos.saveNoteWithTasks(noteId, repos.homeNotebookId(), { title, content: JSON.stringify(json) }, items, base)
+    const result = repos.saveNoteWithTasks(noteId, repos.homeNotebookId(), { title, content: JSON.stringify(json) }, items, { title: baseTitle, content: base })
     if (!result || result.ids || tries === maxTries) return tries
     json = mergeDocs(JSON.parse(base), json, JSON.parse(result.note.content))
+    title = mergeTitle(baseTitle, title, result.note.title)
     base = result.note.content
+    baseTitle = result.note.title
+  }
+}
+
+// The editor's save when its to-dos did not change, as PageEditor makes it.
+const editorUpdates = (noteId: number, base: string, doc: Node, title: string | null, baseTitle = title, maxTries = 3): number => {
+  let json = doc as DocJson
+  for (let tries = 1; ; tries++) {
+    const content = JSON.stringify(json)
+    const saved = repos.updateNote(noteId, { title, content }, { title: baseTitle, content: base })
+    if (!saved || (saved.content === content && saved.title === title) || tries === maxTries) return tries
+    json = mergeDocs(JSON.parse(base), json, JSON.parse(saved.content))
+    title = mergeTitle(baseTitle, title, saved.title)
+    base = saved.content
+    baseTitle = saved.title
   }
 }
 
@@ -311,7 +326,7 @@ describe('an editor save started from an older version of the note', () => {
     tools.appendToNote({ id: note.id, markdown: 'More' })
     const now = repos.getNote(note.id)!
 
-    expect(repos.updateNote(note.id, { title: 'Renamed', content: JSON.stringify(typed(base)) }, base)).toEqual(now)
+    expect(repos.updateNote(note.id, { title: 'Renamed', content: JSON.stringify(typed(base)) }, { title: 'Lab', content: base })).toEqual(now)
     expect(repos.getNote(note.id)).toEqual(now)
   })
 
@@ -319,16 +334,16 @@ describe('an editor save started from an older version of the note', () => {
     const note = tools.createNote({ title: 'Lab', markdown: 'Intro line' })
     const base = repos.getNote(note.id)!.content
     const content = JSON.stringify(typed(base))
-    expect(repos.updateNote(note.id, { content }, base)?.content).toBe(content)
-    expect(repos.updateNote(note.id, { title: 'Renamed', content }, base)?.title).toBe('Renamed')
+    expect(repos.updateNote(note.id, { content }, { title: 'Lab', content: base })?.content).toBe(content)
+    expect(repos.updateNote(note.id, { title: 'Renamed', content }, { title: 'Lab', content: base })?.title).toBe('Renamed')
   })
 
   it('still finds a trashed note gone', () => {
     const note = tools.createNote({ title: 'Lab', markdown: 'Intro line' })
     const base = repos.getNote(note.id)!.content
     repos.removeNote(note.id)
-    expect(repos.updateNote(note.id, { content: JSON.stringify(typed(base)) }, base)).toBeNull()
-    expect(repos.updateNote(note.id, { content: JSON.stringify(typed(base)) }, 'older')).toBeNull()
+    expect(repos.updateNote(note.id, { content: JSON.stringify(typed(base)) }, { title: 'Lab', content: base })).toBeNull()
+    expect(repos.updateNote(note.id, { content: JSON.stringify(typed(base)) }, { title: 'Lab', content: 'older' })).toBeNull()
   })
 
   it('lands once merged with the stored note, with the to-dos matching it', () => {
@@ -394,6 +409,54 @@ describe('an editor save started from an older version of the note', () => {
       [room.id, 'Book the room', 'todo'],
       [anna.id, 'Call Anna', 'done']
     ])
+  })
+
+  it('keeps the title the assistant set while the editor saved its text', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line' })
+    const base = repos.getNote(note.id)!.content
+    tools.renameNote({ id: note.id, title: 'Lab week 3' })
+
+    editorUpdates(note.id, base, typed(base), 'Lab')
+
+    expect(repos.getNote(note.id)!.title).toBe('Lab week 3')
+    expect(tools.readNote({ id: note.id }).markdown).toContain('Typed here')
+  })
+
+  it('keeps the title the assistant set while the editor saved a new to-do', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line\n- [ ] Old task' })
+    const base = repos.getNote(note.id)!.content
+    const mine = JSON.parse(base) as Node
+    mine.content![1].content!.push({ type: 'taskItem', attrs: { checked: false, taskId: null }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Call Anna' }] }] })
+    tools.renameNote({ id: note.id, title: 'Lab week 3' })
+
+    editorSaves(note.id, base, mine, 3, 'Lab')
+
+    expect(repos.getNote(note.id)!.title).toBe('Lab week 3')
+    expect(tools.readNote({ id: note.id }).markdown.trim()).toBe('Intro line\n\n- [ ] Old task\n- [ ] Call Anna')
+  })
+
+  it('keeps the title and text the assistant changed while the editor saved a new to-do', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line\n- [ ] Old task' })
+    const base = repos.getNote(note.id)!.content
+    const mine = JSON.parse(base) as Node
+    mine.content![1].content!.push({ type: 'taskItem', attrs: { checked: false, taskId: null }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Call Anna' }] }] })
+    tools.appendToNote({ id: note.id, markdown: 'More' })
+    tools.renameNote({ id: note.id, title: 'Lab week 3' })
+
+    editorSaves(note.id, base, mine, 3, 'Lab')
+
+    expect(repos.getNote(note.id)!.title).toBe('Lab week 3')
+    expect(tools.readNote({ id: note.id }).markdown.trim()).toBe('Intro line\n\n- [ ] Old task\n- [ ] Call Anna\n\nMore')
+  })
+
+  it('keeps a title typed here over the one the assistant set meanwhile', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'Intro line' })
+    const base = repos.getNote(note.id)!.content
+    tools.renameNote({ id: note.id, title: 'Lab week 3' })
+
+    editorUpdates(note.id, base, typed(base), 'Lab notes', 'Lab')
+
+    expect(repos.getNote(note.id)!.title).toBe('Lab notes')
   })
 })
 
@@ -538,6 +601,28 @@ describe('listNotes paging, recent changes and the trash', () => {
     tools.deleteNote({ id: b.id })
     expect(tools.listNotes({}).notes.map((n) => n.title)).toEqual(['C', 'A'])
     expect(tools.listNotes({ inTrash: true }).notes).toEqual([expect.objectContaining({ id: b.id, title: 'B', deletedAt: expect.any(String) })])
+  })
+
+  it('filters by the change time in either stored form', () => {
+    const early = tools.createNote({ title: 'Early' })
+    const late = tools.createNote({ title: 'Late' })
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23T05:30:00.000Z', early.id)
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23 06:00:00', late.id)
+
+    expect(tools.listNotes({ changedSince: '2026-10-23T06:00:00Z' }).notes.map((n) => n.title)).toEqual(['Late'])
+    expect(tools.listNotes({ changedSince: '2026-10-23T05:45:00+00:00' }).notes.map((n) => n.title)).toEqual(['Late'])
+    expect(tools.listNotes({ changedSince: '2026-10-23T06:00:01Z' }).notes).toEqual([])
+    expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
+  })
+
+  it('lists the latest change first in either stored form', () => {
+    const early = tools.createNote({ title: 'Early' })
+    const late = tools.createNote({ title: 'Late' })
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23T05:30:00.000Z', early.id)
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23 06:00:00', late.id)
+
+    expect(tools.listNotes({}).notes.map((n) => n.title)).toEqual(['Late', 'Early'])
+    expect(tools.listNotes({ limit: 1 }).notes.map((n) => n.title)).toEqual(['Late'])
   })
 })
 
