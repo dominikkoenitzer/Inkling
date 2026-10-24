@@ -4,6 +4,27 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] - 2026-10-24
+
+### Added
+- Enter adds a card from the front field too, so a cloze card needs no answer. In the card list,
+  Enter saves a card's text and Escape puts it back.
+
+### Changed
+- After you add a card, the cursor is back in the front field for the next one.
+
+### Fixed
+- When an assistant and the editor change the same note at once, both changes are kept. Parts only
+  one side touched are merged; a title the assistant set is no longer overwritten by a pending save.
+- A note and its to-dos are saved together, so they can no longer get out of step.
+- A ticked to-do stays ticked when you move it in the editor.
+- Notes, to-dos, due cards and review times are read the same way whichever form their time was
+  stored in, so nothing is sorted out of order or left off an assistant's list of recent changes.
+- An empty cloze no longer splits its card in two.
+- If saving a review, ticking a to-do or a search fails, Inkling now tells you.
+- The error shown when Inkling cannot start no longer includes file paths or technical details.
+- The backup taken at startup is a consistent copy, even while an assistant is writing.
+
 ## [0.9.0] - 2026-10-17
 
 ### Added
@@ -425,6 +446,7 @@ Final QA pass: 15 defects found by an adversarially-verified review and fixed:
 - Nested subtask text no longer folds into the parent task’s title.
 - A quick-add of only a date (e.g. `friday`) gets a neutral title instead of the raw date word.
 
+[0.9.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.1
 [0.9.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.0
 [0.8.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.2
 [0.8.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.1
