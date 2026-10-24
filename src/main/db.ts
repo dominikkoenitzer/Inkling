@@ -441,7 +441,12 @@ function backup(d: Database.Database, dir: string): void {
   const backupsDir = join(dir, 'backups')
   fs.mkdirSync(backupsDir, { recursive: true })
   for (const f of fs.readdirSync(backupsDir)) {
-    if (f.endsWith('.partial')) fs.rmSync(join(backupsDir, f), { force: true })
+    if (!f.endsWith('.partial')) continue
+    try {
+      fs.rmSync(join(backupsDir, f), { force: true })
+    } catch {
+      // an assistant's copy still being written; the next start removes it if it is left
+    }
   }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   const target = join(backupsDir, `inkling-${stamp}.db`)
