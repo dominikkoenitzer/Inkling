@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const inkling = vi.hoisted(() => {
   const api = {
-    settings: { all: vi.fn(async (): Promise<Record<string, string>> => ({})) },
+    settings: { all: vi.fn(async (): Promise<Record<string, string>> => ({})), set: vi.fn(async () => undefined) },
     notebooks: { home: vi.fn(async () => 3) },
     notes: {
       restore: vi.fn(async () => undefined),
@@ -205,6 +205,94 @@ describe('init', () => {
     quiet.mockRestore()
     delete win.window.matchMedia
     expect(useApp.getState().failed).toBe(true)
+    expect(useApp.getState().theme).toBe('dark')
+  })
+})
+
+describe('a note call that fails', () => {
+  let logged: ReturnType<typeof vi.spyOn>
+  let unhandled: unknown[]
+  const catchUnhandled = (reason: unknown): void => void unhandled.push(reason)
+  const toast = (): string | undefined => useApp.getState().toast?.message
+  const notesVersion = (): number => useData.getState().versions['notes'] ?? 0
+
+  beforeEach(() => {
+    useApp.setState({ toast: null })
+    logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    unhandled = []
+    process.on('unhandledRejection', catchUnhandled)
+  })
+
+  afterEach(async () => {
+    // Node reports a rejection nobody handled once the current task is done.
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    process.off('unhandledRejection', catchUnhandled)
+    logged.mockRestore()
+    expect(unhandled).toEqual([])
+  })
+
+  it('says a new note was not made and opens nothing', async () => {
+    useApp.setState({ view: 'today' })
+    inkling.notes.create.mockRejectedValueOnce(new Error('SQLITE_BUSY'))
+    const before = notesVersion()
+    await expect(useApp.getState().newNote()).resolves.toBeUndefined()
+    expect(toast()).toBe('Could not create the note.')
+    expect(logged).toHaveBeenCalledWith('Could not create the note.', expect.any(Error))
+    expect(useApp.getState()).toMatchObject({ view: 'today', selectedNoteId: null })
+    expect(notesVersion()).toBe(before)
+    // The next try is not blocked by the failed one.
+    await useApp.getState().newNote()
+    expect(useApp.getState().selectedNoteId).toBe(77)
+  })
+
+  it('says so when the home notebook could not be read for a new note', async () => {
+    useApp.setState({ view: 'today', homeNotebookId: null })
+    inkling.notebooks.home.mockRejectedValueOnce(new Error('SQLITE_BUSY'))
+    await expect(useApp.getState().newNote()).resolves.toBeUndefined()
+    expect(toast()).toBe('Could not create the note.')
+    expect(inkling.notes.create).not.toHaveBeenCalled()
+    expect(useApp.getState().selectedNoteId).toBeNull()
+  })
+
+  it('says a note was not brought back and does not open it', async () => {
+    inkling.notes.restore.mockRejectedValueOnce(new Error('SQLITE_BUSY'))
+    const before = notesVersion()
+    await expect(useApp.getState().restoreNote(42)).resolves.toBeUndefined()
+    expect(toast()).toBe('Could not bring the note back.')
+    expect(useApp.getState().selectedNoteId).toBeNull()
+    expect(notesVersion()).toBe(before)
+  })
+
+  it('says a note was not deleted, offers no undo and opens it again', async () => {
+    useApp.setState({ selectedNoteId: 12 })
+    inkling.notes.remove.mockRejectedValueOnce(new Error('SQLITE_BUSY'))
+    const before = notesVersion()
+    await expect(deleteNote(12, 'Lab report')).resolves.toBeUndefined()
+    expect(toast()).toBe('Could not delete the note.')
+    expect(useApp.getState().toast?.actionLabel).toBeUndefined()
+    expect(useApp.getState().selectedNoteId).toBe(12)
+    expect(notesVersion()).toBe(before)
+  })
+
+  it('leaves the user where they went while a failing delete was on its way', async () => {
+    useApp.setState({ selectedNoteId: 13 })
+    let fail!: (err: Error) => void
+    inkling.notes.remove.mockImplementationOnce(() => new Promise((_, reject) => (fail = reject)))
+    const deleting = deleteNote(13, null)
+    await vi.waitFor(() => expect(inkling.notes.remove).toHaveBeenCalledWith(13))
+    useApp.getState().openNote(14)
+    fail(new Error('SQLITE_BUSY'))
+    await deleting
+    expect(toast()).toBe('Could not delete the note.')
+    expect(useApp.getState().selectedNoteId).toBe(14)
+  })
+
+  it('says the theme was not saved and keeps it on screen', async () => {
+    inkling.settings.set.mockRejectedValueOnce(new Error('SQLITE_BUSY'))
+    useApp.setState({ theme: 'light' })
+    useApp.getState().setTheme('dark')
+    expect(inkling.settings.set).toHaveBeenLastCalledWith('theme', 'dark')
+    await vi.waitFor(() => expect(toast()).toBe('Could not save the theme.'))
     expect(useApp.getState().theme).toBe('dark')
   })
 })
