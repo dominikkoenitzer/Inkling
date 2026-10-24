@@ -20,6 +20,11 @@ export function mergeDocs(base: DocJson, mine: DocJson, theirs: DocJson): DocJso
   return merged.content?.length ? merged : { ...merged, content: [{ type: 'paragraph' }] }
 }
 
+/** The title, merged from the same three versions: the editor's once it changed it, else the stored one. */
+export function mergeTitle(base: string | null, mine: string | null, theirs: string | null): string | null {
+  return (mine ?? '') === (base ?? '') ? theirs : mine
+}
+
 /** The nodes of `theirs` found in neither `base` nor `mine`. */
 function unseen(base: DocJson[], mine: DocJson[], theirs: DocJson[]): DocJson[] {
   const known = new Set([...base, ...mine].map(key))

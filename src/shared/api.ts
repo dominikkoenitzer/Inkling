@@ -1,6 +1,7 @@
 import type {
   OpenTask,
   Note,
+  NoteBase,
   Task,
   Deck,
   Card,
@@ -21,8 +22,8 @@ export interface InklingApi {
     list(): Promise<Note[]>
     get(id: number): Promise<Note | null>
     create(input: { notebook_id: number; title?: string | null; content?: string }): Promise<Note>
-    /** With `base`, writes only over that content; otherwise returns the stored note as it is. */
-    update(id: number, patch: Partial<Pick<Note, 'title' | 'content' | 'notebook_id'>>, base?: string): Promise<Note | null>
+    /** With `base`, writes only over that title and content; otherwise returns the stored note as it is. */
+    update(id: number, patch: Partial<Pick<Note, 'title' | 'content' | 'notebook_id'>>, base?: NoteBase): Promise<Note | null>
     /** Soft delete, undoable from the toast and cleared for good after the retention window. */
     remove(id: number): Promise<void>
     restore(id: number): Promise<Note | null>
@@ -30,14 +31,14 @@ export interface InklingApi {
     dropIfEmpty(id: number): Promise<boolean>
     /**
      * Syncs the to-dos and saves the note in one step, with their ids stamped in. With `base`,
-     * nothing is written once the stored content is another: the stored note comes back with no ids.
+     * nothing is written once the stored title or content is another: the stored note comes back with no ids.
      */
     saveWithTasks(
       noteId: number,
       notebookId: number,
       patch: { title: string | null; content: string },
       items: NoteTaskItem[],
-      base?: string
+      base?: NoteBase
     ): Promise<{ note: Note; ids: number[] | null } | null>
     /** Syncs the note's card lines into its linked deck, made on the first run and named `name`. */
     syncCards(noteId: number, notebookId: number, name: string, lines: NoteCardLine[]): Promise<{ deck: Deck; lineIds: number[] }>
