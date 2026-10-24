@@ -71,14 +71,30 @@ export function createServer(dataDir: string, version: string): McpServer {
 
   // Before the first write of a session the data is copied into backups/, next to the copies
   // the app makes when it starts, so whatever an assistant does can be undone by hand.
-  let backedUp = false
-  const backupOnce = async (): Promise<void> => {
-    if (backedUp) return
-    const dir = join(dataDir, 'backups')
+  const dir = join(dataDir, 'backups')
+  // The copy gets its `.db` name only once complete, so a failed one never counts among the kept.
+  const copy = async (): Promise<void> => {
     fs.mkdirSync(dir, { recursive: true })
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    await getDb().backup(join(dir, `assistant-${stamp}.db`))
-    backedUp = true
+    const target = join(dir, `assistant-${stamp}.db`)
+    const partial = `${target}.${process.pid}.partial`
+    try {
+      await getDb().backup(partial)
+      fs.renameSync(partial, target)
+    } catch (err) {
+      fs.rmSync(partial, { force: true })
+      throw err
+    }
+  }
+  // Writes that arrive together share one copy; a failed one is tried again on the next write.
+  let backedUp: Promise<void> | undefined
+  const backupOnce = async (): Promise<void> => {
+    if (backedUp) return backedUp
+    backedUp = copy().catch((err: unknown) => {
+      backedUp = undefined
+      throw err
+    })
+    await backedUp
     const old = fs
       .readdirSync(dir)
       .filter((f) => f.startsWith('assistant-') && f.endsWith('.db'))
