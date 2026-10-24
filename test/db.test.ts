@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { DatabaseSync } from 'node:sqlite'
+import { DatabaseSync, type StatementSync } from 'node:sqlite'
 import fs, { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -437,6 +437,92 @@ PRAGMA user_version = 13;
     expect(columns(fresh.raw, 'tasks')).toEqual(columns(upgraded.raw, 'tasks'))
     expect(links(fresh.raw, 'tasks')).toEqual(links(upgraded.raw, 'tasks'))
     expect(indexes(fresh.raw)).toEqual(indexes(upgraded.raw))
+  })
+})
+
+describe('an upgrade while the assistant writes', () => {
+  type Outcome = 'wrote' | 'refused'
+
+  /** A file in WAL mode at schema `from`, with an MCP server from the older build still attached to it. */
+  function attached(from: number): { raw: DatabaseSync; db: ReturnType<typeof open>['db']; assistant: DatabaseSync; close: () => void } {
+    const dir = mkdtempSync(join(tmpdir(), 'inkling-upgrade-'))
+    const file = join(dir, 'inkling.db')
+    const { raw, db } = open(file)
+    raw.exec('PRAGMA journal_mode = WAL')
+    raw.exec(V10)
+    raw.exec(`
+      INSERT INTO notebooks (id, name, color) VALUES (1, 'Biology', 'teal');
+      INSERT INTO notes (id, notebook_id, title, content) VALUES (1, 1, 'Plants', '{"type":"doc","content":[]}');
+      INSERT INTO tasks (id, title, status) VALUES (1, 'Buy agar', 'todo');
+      PRAGMA user_version = ${from};
+    `)
+    const assistant = new DatabaseSync(file)
+    const close = (): void => {
+      assistant.close()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+    return { raw, db, assistant, close }
+  }
+
+  /** One write by the assistant. Node's SQLite does not wait for a lock, so a held one refuses it. */
+  const assistantWrites = (assistant: DatabaseSync): void =>
+    void assistant.prepare(`INSERT INTO notebooks (name, color) VALUES ('Probe', 'teal')`).run()
+
+  /** Runs `fn` and has the assistant try a write before each statement the app runs inside a transaction. */
+  function whileAssistantWrites(raw: DatabaseSync, assistant: DatabaseSync, fn: () => void): Outcome[] {
+    const prepare = raw.prepare.bind(raw)
+    const exec = raw.exec.bind(raw)
+    const outcomes: Outcome[] = []
+    const attempt = (): void => {
+      if (!raw.isTransaction) return
+      try {
+        assistantWrites(assistant)
+        outcomes.push('wrote')
+      } catch (err) {
+        if (!/locked|busy/i.test(String(err))) throw err
+        outcomes.push('refused')
+      }
+    }
+    raw.prepare = ((sql: string) => {
+      const stmt = prepare(sql)
+      for (const m of ['run', 'get', 'all'] as const) {
+        const call = stmt[m].bind(stmt) as (...args: unknown[]) => unknown
+        Object.assign(stmt, {
+          [m]: (...args: unknown[]) => {
+            attempt()
+            return call(...args)
+          }
+        })
+      }
+      return stmt as StatementSync
+    }) as typeof raw.prepare
+    raw.exec = ((sql: string) => {
+      attempt()
+      exec(sql)
+    }) as typeof raw.exec
+    try {
+      fn()
+      return outcomes
+    } finally {
+      raw.prepare = prepare
+      raw.exec = exec
+    }
+  }
+
+  it.each([9, 10, 11, 12, 13])('from schema %i holds the write lock before its first statement', (from) => {
+    const { raw, db, assistant, close } = attached(from)
+    try {
+      const outcomes = whileAssistantWrites(raw, assistant, () => migrate(db))
+
+      expect(version(raw)).toBe(14)
+      expect(outcomes.length).toBeGreaterThan(1)
+      expect(outcomes).not.toContain('wrote')
+      // The write that waited lands once the upgrade is done.
+      assistantWrites(assistant)
+    } finally {
+      close()
+    }
   })
 })
 
