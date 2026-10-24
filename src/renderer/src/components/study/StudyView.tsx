@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
+import { peekNote } from '@/lib/calls'
 import { hasCloze } from '@shared/cloze'
 import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
@@ -148,7 +149,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
   useEffect(() => {
     if (deck.note_id === null) return
     let stale = false
-    void api.notes.get(deck.note_id).then((n) => !stale && setNoteExists(!!n && !n.deleted_at))
+    void peekNote(deck.note_id).then((n) => n !== undefined && !stale && setNoteExists(!!n && !n.deleted_at))
     return () => {
       stale = true
     }
