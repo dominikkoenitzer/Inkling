@@ -269,6 +269,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 
         <div className="mt-8 grid grid-cols-[1fr_1fr_auto] gap-2">
           <input
+            ref={frontRef}
             className={inputCls}
             placeholder="Question"
             aria-label="Front"
