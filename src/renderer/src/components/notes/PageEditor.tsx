@@ -9,6 +9,7 @@ import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown, Trash2 } from 'lucide-react'
 import { useApp, bumpData, registerFlush, trackSave, deleteNote } from '@/stores/app'
 import { extractNoteTaskItems, extractNoteCardLines, oneLine } from '@/lib/parse'
+import { loadNote, peekNote, syncNoteCards } from '@/lib/calls'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
@@ -254,8 +255,9 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   useEffect(() => {
     if (!editor) return
     let alive = true
-    void api.notes.get(noteId).then((note: Note | null) => {
-      if (!alive || editor.isDestroyed) return
+    void loadNote(noteId).then((note) => {
+      // Not loaded: the page stays read-only, so nothing typed can overwrite the note.
+      if (note === undefined || !alive || editor.isDestroyed) return
       if (!note || note.deleted_at) {
         useApp.setState({ selectedNoteId: null })
         return
@@ -277,8 +279,9 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     const idle = (): boolean => !timerRef.current && savingRef.current === 0 && contentRef.current !== null
     const onFocus = (): void => {
       if (!idle()) return
-      void api.notes.get(noteId).then((note: Note | null) => {
-        if (!alive || editor.isDestroyed || !idle()) return
+      void peekNote(noteId).then((note) => {
+        // Not read: the page keeps what it shows, and the next save merges with what is stored.
+        if (note === undefined || !alive || editor.isDestroyed || !idle()) return
         if (!note || note.deleted_at) {
           useApp.setState({ selectedNoteId: null })
           return
@@ -322,13 +325,14 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       return
     }
     // The note's own deck: made on the first run, updated in place on every later one.
-    const { deck, lineIds } = await api.notes.syncCards(
+    const synced = await syncNoteCards(
       noteId,
       notebookIdRef.current,
       titleRef.current || 'Untitled deck',
       lines.map(({ lineId, front, back }) => ({ lineId, front, back }))
     )
-    if (editor.isDestroyed) return
+    if (!synced || editor.isDestroyed) return
+    const { deck, lineIds } = synced
     // Stamped by paragraph position: continuation lines and plain text get no id.
     const perParagraph: number[] = []
     lines.forEach((l, i) => (perParagraph[l.paragraph] = lineIds[i]))
