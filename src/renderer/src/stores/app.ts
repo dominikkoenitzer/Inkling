@@ -23,6 +23,12 @@ export function msUntilNextLocalDay(now: Date = new Date()): number {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime()
 }
 
+/** Logs a failed call and tells the user in `message`. */
+function sayFailed(message: string, err: unknown): void {
+  console.error(message, err)
+  useApp.getState().showToast({ message })
+}
+
 function systemTheme(): Theme {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
@@ -111,7 +117,8 @@ export const useApp = create<AppState>((set, get) => ({
 
   setTheme: (theme) => {
     set({ theme })
-    void api.settings.set('theme', theme)
+    // Not saved: it stays on screen until the app starts again.
+    api.settings.set('theme', theme).catch((err: unknown) => sayFailed('Could not save the theme.', err))
   },
 
   setView: (view) => set({ view, selectedDeckId: null, reviewingDeckId: null, paletteOpen: false }),
@@ -126,12 +133,19 @@ export const useApp = create<AppState>((set, get) => ({
       bumpData('notes')
       set({ paletteOpen: false, settingsOpen: false, shortcutsOpen: false })
       get().openNote(note.id)
+    } catch (err) {
+      sayFailed('Could not create the note.', err)
     } finally {
       creatingNote = false
     }
   },
   restoreNote: async (noteId) => {
-    await api.notes.restore(noteId)
+    try {
+      await api.notes.restore(noteId)
+    } catch (err) {
+      sayFailed('Could not bring the note back.', err)
+      return
+    }
     bumpData('notes')
     get().openNote(noteId)
   },
@@ -268,9 +282,20 @@ export async function deleteNote(noteId: number, title: string | null): Promise<
   deleting.add(noteId)
   // The open editor's last edit lands first, then the note goes.
   const settled = settleNote(noteId)
-  if (useApp.getState().selectedNoteId === noteId) useApp.setState({ selectedNoteId: null })
+  const wasOpen = useApp.getState().selectedNoteId === noteId
+  if (wasOpen) useApp.setState({ selectedNoteId: null })
   await settled
-  await api.notes.remove(noteId).finally(() => deleting.delete(noteId))
+  try {
+    await api.notes.remove(noteId)
+  } catch (err) {
+    sayFailed('Could not delete the note.', err)
+    // Still there: open it again, unless the user has gone on to something else.
+    const s = useApp.getState()
+    if (wasOpen && s.view === 'notes' && s.selectedNoteId === null) useApp.setState({ selectedNoteId: noteId })
+    return
+  } finally {
+    deleting.delete(noteId)
+  }
   bumpData('notes')
   bumpData('tasks')
   // Opened again in the meantime: it is gone now, so close it.

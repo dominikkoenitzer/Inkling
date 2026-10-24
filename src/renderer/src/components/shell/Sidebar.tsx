@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Keyboard, Layers, Plus, Settings, Sun } from 'lucide-react'
 import { useApp, useVersion, type View } from '@/stores/app'
+import { loadNotes, peekDecks } from '@/lib/calls'
 import type { Note } from '@shared/types'
-
-const api = window.inkling
 
 /** One quiet column: the main action, two places to go, every note, then help and settings. */
 export function Sidebar(): React.JSX.Element {
@@ -14,7 +13,7 @@ export function Sidebar(): React.JSX.Element {
 
   useEffect(() => {
     let stale = false
-    void api.decks.list().then((decks) => !stale && setDue(decks.reduce((n, d) => n + d.due_count, 0)))
+    void peekDecks().then((decks) => decks && !stale && setDue(decks.reduce((n, d) => n + d.due_count, 0)))
     return () => {
       stale = true
     }
@@ -111,7 +110,7 @@ function NotesList(): React.JSX.Element {
 
   useEffect(() => {
     let stale = false
-    void api.notes.list().then((n) => !stale && setNotes(n))
+    void loadNotes().then((n) => n && !stale && setNotes(n))
     return () => {
       stale = true
     }
