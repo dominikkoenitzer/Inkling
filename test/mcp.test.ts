@@ -614,6 +614,16 @@ describe('listNotes paging, recent changes and the trash', () => {
     expect(tools.listNotes({ changedSince: '2026-10-23T06:00:01Z' }).notes).toEqual([])
     expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
   })
+
+  it('lists the latest change first in either stored form', () => {
+    const early = tools.createNote({ title: 'Early' })
+    const late = tools.createNote({ title: 'Late' })
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23T05:30:00.000Z', early.id)
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23 06:00:00', late.id)
+
+    expect(tools.listNotes({}).notes.map((n) => n.title)).toEqual(['Late', 'Early'])
+    expect(tools.listNotes({ limit: 1 }).notes.map((n) => n.title)).toEqual(['Late'])
+  })
 })
 
 describe('sections', () => {
