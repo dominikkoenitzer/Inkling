@@ -7,9 +7,9 @@ import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown, Trash2 } from 'lucide-react'
-import { useApp, bumpData, registerFlush, trackSave, deleteNote } from '@/stores/app'
+import { useApp, bumpData, registerFlush, deleteNote } from '@/stores/app'
 import { extractNoteTaskItems, extractNoteCardLines, oneLine } from '@/lib/parse'
-import { loadNote, peekNote, syncNoteCards } from '@/lib/calls'
+import { loadNote, peekNote, saveFile, saveNote, syncNoteCards } from '@/lib/calls'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
@@ -233,7 +233,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   }
 
   // Tracked, so deleting this note waits for the save to land.
-  const doSave = (): Promise<void> => trackSave(noteId, save())
+  const doSave = (): Promise<boolean> => saveNote(noteId, save())
 
   /** Puts a stored note into the editor, kept out of the undo history. */
   const showNote = (note: Note): void => {
@@ -347,10 +347,10 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     await doSave() // flush latest edits so the file matches what's on screen
     const md = tiptapDocToMarkdown(editor.getJSON())
     const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
-    const res = await api.app.saveFile(`${base}.md`, md)
-    if (res.saved) {
+    const res = await saveFile(`${base}.md`, md)
+    if (res?.saved) {
       say('Saved as Markdown', 2500)
-    } else if (res.error) {
+    } else if (res?.error) {
       say('Could not save the file.', 3500)
     }
   }
