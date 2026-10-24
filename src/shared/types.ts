@@ -22,6 +22,9 @@ export interface Note {
   deleted_at: string | null
 }
 
+/** The title and content an editor save started from. */
+export type NoteBase = Pick<Note, 'title' | 'content'>
+
 export interface Task {
   id: number
   notebook_id: number
