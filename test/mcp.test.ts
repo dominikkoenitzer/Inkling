@@ -621,6 +621,16 @@ describe('editNote', () => {
     tools.editNote({ id: note.id, oldText: 'drop me', newText: '' })
     expect(tools.readNote({ id: note.id }).markdown).toBe('keep\n\nkeep too\n')
   })
+
+  it('swaps text that starts or ends in the blank line between blocks', () => {
+    const note = tools.createNote({ title: 'Lab', markdown: 'one\ntwo words' })
+    tools.editNote({ id: note.id, oldText: '\n\ntwo', newText: '\n\nthree' })
+    expect(tools.readNote({ id: note.id }).markdown).toBe('one\n\nthree words\n')
+    tools.editNote({ id: note.id, oldText: '\nthree', newText: '\nfour' })
+    expect(tools.readNote({ id: note.id }).markdown).toBe('one\n\nfour words\n')
+    tools.editNote({ id: note.id, oldText: 'one\n\n', newText: 'one ' })
+    expect(tools.readNote({ id: note.id }).markdown).toBe('one four words\n')
+  })
 })
 
 describe('undoEdit', () => {
