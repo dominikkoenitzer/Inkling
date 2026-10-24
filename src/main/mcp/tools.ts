@@ -122,11 +122,12 @@ export function listNotes(input: { limit?: number; offset?: number; changedSince
 } {
   const limit = input.limit ?? 50
   const offset = input.offset ?? 0
-  const since = input.changedSince !== undefined ? isoFrom(input.changedSince, 'changedSince') : null
+  const since = input.changedSince !== undefined ? Date.parse(isoFrom(input.changedSince, 'changedSince')) : null
   const rows = input.inTrash
     ? (getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`).all() as Note[])
     : repos.listNotes()
-  const picked = since ? rows.filter((n) => n.updated_at >= since) : rows
+  // Compared as times: rows hold either the ISO form or SQLite's own.
+  const picked = since !== null ? rows.filter((n) => storedTime(n.updated_at) >= since) : rows
   const page = picked.slice(offset, offset + limit)
   return {
     notes: page.map((n) => (input.inTrash ? { ...summary(n), deletedAt: n.deleted_at! } : summary(n))),
