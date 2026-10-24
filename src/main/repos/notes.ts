@@ -2,7 +2,7 @@ import { getDb } from '../db'
 import { now } from './dates'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
 import { isEmptyNote } from '@shared/emptyNote'
-import type { Note } from '@shared/types'
+import type { Note, NoteBase } from '@shared/types'
 
 const EMPTY_DOC = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] })
 
@@ -29,19 +29,30 @@ export function createNote(input: { notebook_id: number; title?: string | null; 
 }
 
 /**
- * With `base`, the content an edit started from, nothing is written once the stored content is
- * neither that nor the new content (an assistant wrote to the note meanwhile), and the stored
- * note comes back unchanged, so the caller can tell by its content that the save did not land.
+ * With `base`, the title and content an edit started from, nothing is written once the stored
+ * content, or the stored title the patch sets, is neither that nor the new one (an assistant
+ * wrote to the note meanwhile), and the stored note comes back unchanged, so the caller can tell
+ * by its title and content that the save did not land.
  */
-export function updateNote(id: number, patch: Record<string, unknown>, base?: string): Note | null {
+export function updateNote(id: number, patch: Record<string, unknown>, base?: NoteBase): Note | null {
   const allowed = ['title', 'content', 'notebook_id'] as const
   const keys = allowed.filter((k) => k in patch)
   if (keys.length > 0) {
     const sets = keys.map((k) => `${k} = @${k}`).join(', ')
-    const unchanged = base === undefined ? '' : 'content' in patch ? ' AND content IN (@base, @content)' : ' AND content = @base'
+    const unchanged =
+      base === undefined
+        ? ''
+        : ('content' in patch ? ' AND content IN (@base, @content)' : ' AND content = @base') +
+          ('title' in patch ? ' AND (title IS @baseTitle OR title IS @title)' : '')
     const info = getDb()
       .prepare(`UPDATE notes SET ${sets}, updated_at = @ts WHERE id = @id AND deleted_at IS NULL${unchanged}`)
-      .run({ ...patch, id, ts: now(), ...(base === undefined ? {} : { base }) })
+      .run({
+        ...patch,
+        id,
+        ts: now(),
+        ...(base === undefined ? {} : { base: base.content }),
+        ...(base !== undefined && 'title' in patch ? { baseTitle: base.title } : {})
+      })
     if (info.changes === 0) {
       // Trashed or gone: a debounced save landing after the delete must not revive the page in search.
       const stored = base === undefined ? null : getNote(id)

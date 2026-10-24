@@ -4,7 +4,7 @@ import { homeNotebookId } from './notebooks'
 import { createNote, getNote, updateNote } from './notes'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
 import { extractNoteTaskItems, stampTaskIds } from '@shared/noteTasks'
-import type { Note, NoteTaskItem, OpenTask, Task } from '@shared/types'
+import type { Note, NoteBase, NoteTaskItem, OpenTask, Task } from '@shared/types'
 
 // A task is a checkbox line in a note. The rows here mirror those lines for Today and search.
 
@@ -133,21 +133,24 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
 /**
  * The editor's save of a note whose checkbox lines changed: the task rows, their ids stamped into
  * the content, and the note, in one transaction, so no write from the MCP server lands between
- * rows and note. With `base`, the content the edit started from, nothing is written once the
- * stored content is another, and the stored note comes back with no ids. Null for a note gone.
+ * rows and note. With `base`, the title and content the edit started from, nothing is written once
+ * the stored content is another or the stored title is neither that nor the new one, and the stored
+ * note comes back with no ids. Null for a note gone.
  */
 export function saveNoteWithTasks(
   noteId: number,
   notebookId: number,
   patch: { title: string | null; content: string },
   items: NoteTaskItem[],
-  base?: string
+  base?: NoteBase
 ): { note: Note; ids: number[] | null } | null {
   return getDb()
     .transaction(() => {
       const stored = getNote(noteId)
       if (!stored || stored.deleted_at) return null
-      if (base !== undefined && stored.content !== base) return { note: stored, ids: null }
+      if (base !== undefined && (stored.content !== base.content || (stored.title !== base.title && stored.title !== patch.title))) {
+        return { note: stored, ids: null }
+      }
       const ids = syncNoteTasks(noteId, notebookId, items)
       const content = JSON.stringify(stampTaskIds(JSON.parse(patch.content) as Record<string, unknown>, ids))
       const note = updateNote(noteId, { ...patch, content })
