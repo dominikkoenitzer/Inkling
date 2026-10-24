@@ -594,4 +594,27 @@ describe('the startup backup', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it('still makes its copy while an assistant is writing one', () => {
+    const { dir, raw } = folder(false)
+    const busy = 'assistant-2026-10-06T08-00-00.db.4242.partial'
+    writeFileSync(join(dir, 'backups', busy), 'half')
+    // Windows refuses to delete a file the MCP server's SQLite still holds open.
+    const rm = fs.rmSync.bind(fs)
+    const remove = vi.spyOn(fs, 'rmSync').mockImplementation((path, opts) => {
+      if (String(path).endsWith(busy)) throw Object.assign(new Error(`EBUSY: resource busy or locked, unlink '${String(path)}'`), { code: 'EBUSY' })
+      rm(path, opts)
+    })
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      openDb(dir)
+      expect(quiet).not.toHaveBeenCalled()
+      expect(kept(dir)).toEqual([busy, expect.stringMatching(/^inkling-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)])
+    } finally {
+      remove.mockRestore()
+      quiet.mockRestore()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
