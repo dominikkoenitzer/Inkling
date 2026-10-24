@@ -30,6 +30,21 @@ export function peekNote(noteId: number): Promise<Note | null | undefined> {
   return orLog(api.notes.get(noteId), 'Could not read the note.')
 }
 
+/** Undefined when the notes did not load. */
+export function loadNotes(): Promise<Note[] | undefined> {
+  return orSay(api.notes.list(), 'Could not load the notes.')
+}
+
+/** Undefined when the decks did not load, for a count the user did not ask for. */
+export function peekDecks(): Promise<Deck[] | undefined> {
+  return orLog(api.decks.list(), 'Could not read the decks.')
+}
+
+/** Settles either way: a title bar left in the old theme is only logged. */
+export async function setTitlebar(theme: 'light' | 'dark'): Promise<void> {
+  await orLog(api.app.setTitlebar(theme), 'Could not set the title bar theme.')
+}
+
 /** The note's deck and line ids, or undefined when the cards were not made. */
 export function syncNoteCards(
   noteId: number,
