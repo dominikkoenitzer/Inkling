@@ -8,6 +8,7 @@ import { SettingsModal } from '@/components/shell/SettingsModal'
 import { ShortcutsModal } from '@/components/shell/ShortcutsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
+import { setTitlebar } from '@/lib/calls'
 
 const api = window.inkling
 
@@ -48,7 +49,7 @@ export default function App(): React.JSX.Element {
   useLayoutEffect(() => {
     if (!ready && !failed) return
     document.documentElement.dataset.theme = theme
-    void api.app.setTitlebar(theme)
+    void setTitlebar(theme)
   }, [ready, failed, theme])
 
   // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts.
