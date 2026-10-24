@@ -232,6 +232,7 @@ export function migrate(d: Database.Database): void {
   }
 
   // Everything below upgrades a database written by an older version of Inkling.
+  // Its MCP server may still write, so each step in a transaction takes the write lock before it reads.
   if (version < 2) {
     // Grade tracker (added in v0.2.0): additive, keeps existing data intact.
     d.exec(GRADES_SCHEMA)
@@ -319,7 +320,7 @@ export function migrate(d: Database.Database): void {
       for (const c of ['icon', 'kind', 'is_journal']) dropIfPresent('notebooks', c)
       d.exec(`CREATE INDEX IF NOT EXISTS idx_notes_notebook ON notes(notebook_id)`)
       d.pragma('user_version = 10')
-    })()
+    }).immediate()
   }
   if (version < 11) {
     // Cards made from a note stay linked to it. The deck points at its note, and each card
@@ -337,7 +338,7 @@ export function migrate(d: Database.Database): void {
       if (!has('flashcards', 'cloze')) d.exec(`ALTER TABLE flashcards ADD COLUMN cloze INTEGER NOT NULL DEFAULT 0`)
       d.exec(`CREATE INDEX IF NOT EXISTS idx_decks_note ON flashcard_decks(note_id)`)
       d.pragma('user_version = 11')
-    })()
+    }).immediate()
   }
   if (version < 12) {
     // `external_id` marked cards from the removed deck import; null for everything else. Additive.
@@ -347,7 +348,7 @@ export function migrate(d: Database.Database): void {
       if (!has('flashcards', 'external_id')) d.exec(`ALTER TABLE flashcards ADD COLUMN external_id TEXT`)
       d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_external ON flashcards(external_id) WHERE external_id IS NOT NULL`)
       d.pragma('user_version = 12')
-    })()
+    }).immediate()
   }
   if (version < 13) {
     // Note search text used to put a space between text nodes, so a word with part of it
@@ -366,7 +367,7 @@ export function migrate(d: Database.Database): void {
         add.run(n.title ?? 'Untitled', tiptapToText(n.content), String(n.id))
       }
       d.pragma('user_version = 13')
-    })()
+    }).immediate()
   }
   if (version < 14) {
     // Task ids are never handed out twice from here on, so a line cut and pasted back
@@ -425,7 +426,7 @@ function taskIdsAutoincrement(d: Database.Database): void {
         if (raised.changes === 0) d.prepare(`INSERT INTO sqlite_sequence (name, seq) VALUES ('tasks', ?)`).run(top)
       }
       d.pragma('user_version = 14')
-    })()
+    }).immediate()
   } finally {
     if (enforced) d.pragma('foreign_keys = ON')
   }
