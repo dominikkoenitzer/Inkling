@@ -11,6 +11,7 @@ import type { Note, NoteTaskItem, OpenTask, Task } from '@shared/types'
 /**
  * Open checkboxes from live notes: dated ones first, then the most recently edited notes.
  * An emptied line keeps its row with an empty title; that is no to-do and never listed.
+ * The edit time is compared as a time: notes hold it as ISO or in SQLite's own form.
  */
 export function openTasks(): OpenTask[] {
   return getDb()
@@ -18,7 +19,7 @@ export function openTasks(): OpenTask[] {
       `SELECT t.*, n.title AS note_title FROM tasks t
        JOIN notes n ON n.id = t.note_id
        WHERE t.status != 'done' AND n.deleted_at IS NULL AND TRIM(t.title) != ''
-       ORDER BY t.due_date IS NULL, t.due_date, n.updated_at DESC, t.id`
+       ORDER BY t.due_date IS NULL, t.due_date, julianday(n.updated_at) DESC, t.id`
     )
     .all() as OpenTask[]
 }

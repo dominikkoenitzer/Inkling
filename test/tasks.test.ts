@@ -111,6 +111,21 @@ describe('openTasks', () => {
     raw.prepare(`UPDATE notes SET deleted_at = '2026-01-01' WHERE id = ?`).run(noteId)
     expect(openTasks()).toEqual([])
   })
+
+  it('puts the to-do of the later edited note first on the same due date, in either stored form', () => {
+    const due = '2026-11-02T09:00:00.000Z'
+    for (const [title, edited] of [
+      ['Early', '2026-10-23T05:30:00.000Z'],
+      ['Late', '2026-10-23 06:00:00']
+    ]) {
+      const note = createNote({ notebook_id: 1, title, content: docOf(list(item(null, `Call from ${title}`))) })
+      syncNoteTasks(note.id, 1, itemsOf(note.content))
+      raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run(edited, note.id)
+      raw.prepare(`UPDATE tasks SET due_date = ? WHERE note_id = ?`).run(due, note.id)
+    }
+
+    expect(openTasks().map((t) => t.note_title)).toEqual(['Late', 'Early'])
+  })
 })
 
 describe('a dated to-do that moves', () => {
