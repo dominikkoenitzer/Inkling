@@ -55,7 +55,7 @@
     "@vitejs/plugin-react": "^6.0.5",
     "electron": "^44.9.2",
     "electron-builder": "^26.18.0",
-    "electron-vite": "^5.0.0",
+    "electron-vite": "^6.0.0",
     "eslint": "^10",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
