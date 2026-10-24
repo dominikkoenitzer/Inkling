@@ -190,8 +190,12 @@ function rewrite(file: string, change: (data: Json) => void): void {
     }
     JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
   } catch (err) {
-    if (current.exists) fs.copyFileSync(copy, file)
-    else fs.rmSync(file, { force: true })
+    try {
+      if (current.exists) fs.copyFileSync(copy, file)
+      else fs.rmSync(file, { force: true })
+    } catch {
+      // a file another program holds; the write's own error is the one kept
+    }
     throw new Error(WRITE_FAILED, { cause: err })
   } finally {
     for (const f of current.exists ? [temp, copy] : [temp]) {
