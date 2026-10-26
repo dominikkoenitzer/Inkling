@@ -126,7 +126,11 @@ export function Modal({
     <div
       className={`no-drag fixed inset-0 flex items-center justify-center p-6 ${closing ? 'pointer-events-none z-40' : 'z-50'}`}
       inert={closing || undefined}
-      onMouseDown={onClose}
+      // The press itself must not move focus, or it lands on the page instead of the opener.
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onClose()
+      }}
     >
       <div
         ref={panelRef}

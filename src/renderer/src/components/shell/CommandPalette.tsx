@@ -113,7 +113,11 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
     <div
       className={`no-drag fixed inset-0 flex items-start justify-center pt-[15vh] ${closing ? 'pointer-events-none z-40' : 'z-50'}`}
       inert={closing || undefined}
-      onMouseDown={close}
+      // The press itself must not move focus, or it lands on the page instead of the opener.
+      onMouseDown={(e) => {
+        e.preventDefault()
+        close()
+      }}
     >
       <div
         ref={sheetRef}
