@@ -152,6 +152,18 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
   const [back, setBack] = useState('')
   const [name, setName] = useState(deck.name)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // The delete buttons swap in place; focus that was on them moves to what takes their place.
+  const deleteBox = useRef<HTMLSpanElement>(null)
+  const deleteFocus = useRef(false)
+  const askDelete = (ask: boolean): void => {
+    deleteFocus.current = !!deleteBox.current?.contains(document.activeElement)
+    setConfirmDelete(ask)
+  }
+  useEffect(() => {
+    if (!deleteFocus.current) return
+    deleteFocus.current = false
+    deleteBox.current?.querySelector('button')?.focus()
+  }, [confirmDelete])
 
   useEffect(() => {
     let stale = false
@@ -252,29 +264,31 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
                 Review now
               </Button>
             )}
-            {confirmDelete ? (
-              <>
-                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-                  Keep it
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() =>
-                    void removeDeck(deck.id).then((done) => {
-                      if (!done) return
-                      bumpData('decks')
-                      useApp.getState().openDeck(null)
-                    })
-                  }
-                >
-                  Delete deck and cards
-                </Button>
-              </>
-            ) : (
-              <IconBtn title="Delete deck" onClick={() => setConfirmDelete(true)}>
-                <Trash2 size={15} />
-              </IconBtn>
-            )}
+            <span ref={deleteBox} className="contents">
+              {confirmDelete ? (
+                <>
+                  <Button variant="ghost" onClick={() => askDelete(false)}>
+                    Keep it
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={() =>
+                      void removeDeck(deck.id).then((done) => {
+                        if (!done) return
+                        bumpData('decks')
+                        useApp.getState().openDeck(null)
+                      })
+                    }
+                  >
+                    Delete deck and cards
+                  </Button>
+                </>
+              ) : (
+                <IconBtn title="Delete deck" onClick={() => askDelete(true)}>
+                  <Trash2 size={15} />
+                </IconBtn>
+              )}
+            </span>
           </span>
         </div>
 
