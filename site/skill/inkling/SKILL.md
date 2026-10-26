@@ -72,7 +72,7 @@ To turn text into card lines, follow [references/cards.md](references/cards.md).
 | Space, then 1 to 4 | In a review: show the answer, then Again, Hard, Good or Easy |
 | Esc | End a review |
 
-On macOS, press Cmd where the table says Ctrl. Ctrl+K, Ctrl+N, Ctrl+1, Ctrl+2 and Ctrl+, work with either key there.
+On macOS, press Cmd where the table says Ctrl, and Cmd+/ for all shortcuts. Ctrl+K, Ctrl+N, Ctrl+1, Ctrl+2 and Ctrl+, work with either key there.
 
 Search matches note titles and text, to-do text and deck names. It does not search card text.
 
