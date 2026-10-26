@@ -124,11 +124,17 @@ function NotesList(): React.JSX.Element {
   const view = useApp((s) => s.view)
   const selectedNoteId = useApp((s) => s.selectedNoteId)
   const version = useVersion('notes')
-  const [notes, setNotes] = useState<Note[]>([])
+  // Null until the first list arrives, so an empty list is never claimed before then.
+  const [notes, setNotes] = useState<Note[] | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     let stale = false
-    void loadNotes().then((n) => n && !stale && setNotes(n))
+    void loadNotes().then((n) => {
+      if (stale) return
+      if (n) setNotes(n)
+      setFailed(!n)
+    })
     return () => {
       stale = true
     }
@@ -146,8 +152,9 @@ function NotesList(): React.JSX.Element {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4" onKeyDown={onKey}>
-      {notes.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
-      {notes.map((n) => {
+      {notes === null && failed && <p className="px-2.5 py-1.5 text-sm text-faint">Could not load the notes.</p>}
+      {notes?.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
+      {notes?.map((n) => {
         const active = view === 'notes' && selectedNoteId === n.id
         return (
           <button
