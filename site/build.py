@@ -349,7 +349,8 @@ TERM_CSS = r"""
 .term { scroll-margin-top: 1.5rem; }
 .term > .small:first-child { margin-top: 0; }
 .term .codecard { margin-top: 0.75rem; padding: 1rem 1.25rem; border-radius: 1rem; box-shadow: var(--shadow-sm); }
-.term code { font-size: 0.95rem; -webkit-user-select: all; user-select: all; }
+.term pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.term code { font-size: 0.92rem; -webkit-user-select: all; user-select: all; }
 """
 
 TERM_ANCHOR = '  else d.getElementById("away").hidden = false;\n'
