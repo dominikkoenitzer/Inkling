@@ -141,6 +141,7 @@ export function Modal({
         aria-modal={closing ? undefined : 'true'}
         aria-labelledby={titleId}
         tabIndex={-1}
+        data-sheet=""
         data-closing={closing || undefined}
         onAnimationEnd={onExitEnd}
         className="motion-sheet max-h-[85vh] overflow-y-auto rounded-lg border border-edge bg-raised p-5"

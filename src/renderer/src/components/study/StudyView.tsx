@@ -36,6 +36,14 @@ export function StudyView(): React.JSX.Element {
     }
   }, [version, today])
 
+  // After a deck is deleted, focus goes to New deck once the list is back.
+  const focusNew = useRef(false)
+  useEffect(() => {
+    if (!focusNew.current || !newDeck.current) return
+    focusNew.current = false
+    newDeck.current.focus()
+  })
+
   if (decks === null) {
     if (!failed) return <div />
     return (
@@ -52,7 +60,7 @@ export function StudyView(): React.JSX.Element {
   if (reviewing) return <ReviewSession deck={reviewing} onDone={() => useApp.getState().reviewDeck(null)} />
 
   const selected = decks.find((d) => d.id === selectedDeckId)
-  if (selected) return <DeckDetail key={selected.id} deck={selected} />
+  if (selected) return <DeckDetail key={selected.id} deck={selected} onDeleted={() => (focusNew.current = true)} />
 
   const create = async (): Promise<void> => {
     const n = name.trim()
@@ -144,7 +152,7 @@ export function StudyView(): React.JSX.Element {
 
 /* -------------------------------- Deck detail ------------------------------ */
 
-function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
+function DeckDetail({ deck, onDeleted }: { deck: Deck; onDeleted: () => void }): React.JSX.Element {
   const version = useVersion('decks')
   // Null until the cards arrive, so a deck is never shown empty before then.
   const [cards, setCards] = useState<Card[] | null>(null)
@@ -200,7 +208,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const app = useApp.getState()
-      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
+      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[data-sheet]') !== null
       if (e.key === 'Escape' && !ignoresShortcut(e, overlayOpen)) app.openDeck(null)
     }
     window.addEventListener('keydown', onKey)
@@ -286,6 +294,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
                       void removeDeck(deck.id).then((done) => {
                         if (!done) return
                         bumpData('decks')
+                        onDeleted()
                         useApp.getState().openDeck(null)
                       })
                     }
@@ -472,7 +481,7 @@ function EditableCardRow({ card, due, motion }: { card: Card; due: boolean; moti
           type="button"
           title="Delete card"
           aria-label="Delete card"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
           onClick={() => void removeCard(card.id).then((done) => done && bumpData('decks'))}
         >
           <Trash2 size={14} />

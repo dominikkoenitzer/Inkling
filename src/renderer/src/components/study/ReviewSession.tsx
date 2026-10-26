@@ -72,7 +72,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
     const onKey = (e: KeyboardEvent): void => {
       // Typing "Chapter 2" in a field, or Esc in the palette, must not reveal, grade or end.
       const app = useApp.getState()
-      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
+      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[data-sheet]') !== null
       if (ignoresShortcut(e, overlayOpen) || e.repeat) return
       if (!queue[index]) {
         // The last screen: Esc or Enter ends it; Space and the grades do nothing here.

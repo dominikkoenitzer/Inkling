@@ -125,6 +125,7 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
         aria-modal={closing ? undefined : 'true'}
         aria-label="Search"
         data-search=""
+        data-sheet=""
         data-closing={closing || undefined}
         onAnimationEnd={onExitEnd}
         className="motion-sheet w-[560px] overflow-hidden rounded-lg border border-edge bg-raised"
