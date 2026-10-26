@@ -67,6 +67,55 @@ export function saveFile(name: string, contents: string): Promise<SavedFile | un
   return orSay(api.app.saveFile(name, contents), 'Could not save the file.')
 }
 
+/** Undefined when the decks did not load. */
+export function loadDecks(): Promise<Deck[] | undefined> {
+  return orSay(api.decks.list(), 'Could not load the decks.')
+}
+
+/** Undefined when the deck was not made. */
+export function createDeck(name: string): Promise<Deck | undefined> {
+  const home = useApp.getState().homeNotebookId
+  return orSay(
+    (home !== null ? Promise.resolve(home) : api.notebooks.home()).then((id) => api.decks.create(id, name)),
+    'Could not make the deck.'
+  )
+}
+
+/** True once the deck has its new name. */
+export function renameDeck(deckId: number, name: string): Promise<true | undefined> {
+  return orSay(api.decks.rename(deckId, name).then(() => true as const), 'Could not rename the deck.')
+}
+
+/** True once the deck and its cards are gone. */
+export function removeDeck(deckId: number): Promise<true | undefined> {
+  return orSay(api.decks.remove(deckId).then(() => true as const), 'Could not delete the deck.')
+}
+
+/** Undefined when the cards did not load. */
+export function loadCards(deckId: number): Promise<Card[] | undefined> {
+  return orSay(api.decks.cards(deckId), 'Could not load the cards.')
+}
+
+/** Undefined when the due cards did not load. */
+export function loadDueCards(deckId: number): Promise<Card[] | undefined> {
+  return orSay(api.decks.dueCards(deckId), 'Could not load the cards.')
+}
+
+/** Undefined when the card was not added. */
+export function addCard(deckId: number, front: string, back: string): Promise<Card | undefined> {
+  return orSay(api.decks.addCard(deckId, front, back), 'Could not add the card.')
+}
+
+/** True once the edit is saved. */
+export function updateCard(cardId: number, front: string, back: string): Promise<true | undefined> {
+  return orSay(api.decks.updateCard(cardId, front, back).then(() => true as const), 'Could not save the card.')
+}
+
+/** True once the card is gone. */
+export function removeCard(cardId: number): Promise<true | undefined> {
+  return orSay(api.decks.removeCard(cardId).then(() => true as const), 'Could not delete the card.')
+}
+
 /** Undefined when the review was not saved, so the card stays to be graded again. */
 export function reviewCard(cardId: number, grade: ReviewGrade): Promise<Card | undefined> {
   return orSay(api.decks.review(cardId, grade), 'Could not save the review.')
