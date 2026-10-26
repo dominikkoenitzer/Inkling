@@ -65,6 +65,12 @@ export interface Row<T> {
   item: T
   state: RowState
 }
+/** What a row element carries so its list can tell its motion. */
+export interface RowProps {
+  'data-row': string
+  'data-motion'?: RowState
+  inert?: boolean
+}
 
 /**
  * The rows to draw for `items`, given the rows drawn before. Rows that join are `entering`,
@@ -114,7 +120,7 @@ export function useRows<T>(
 ): {
   rows: Row<T>[] | null
   onAnimationEnd: (e: React.AnimationEvent) => void
-  row: (r: Pick<Row<T>, 'key' | 'state'>) => { 'data-row': string; 'data-motion'?: RowState; inert?: boolean }
+  row: (r: Pick<Row<T>, 'key' | 'state'>) => RowProps
 } {
   const [state, setState] = useState(() => ({ items, rows: nextRows<T>(null, items, keyOf) }))
   if (state.items !== items) setState({ items, rows: nextRows(state.rows, items, keyOf) })
@@ -131,7 +137,7 @@ export function useRows<T>(
     const el = e.target as HTMLElement
     if (el.dataset.motion && el.dataset.row !== undefined) settle(el.dataset.row)
   }
-  const row = (r: Pick<Row<T>, 'key' | 'state'>): { 'data-row': string; 'data-motion'?: RowState; inert?: boolean } => ({
+  const row = (r: Pick<Row<T>, 'key' | 'state'>): RowProps => ({
     'data-row': String(r.key),
     'data-motion': r.state === 'shown' ? undefined : r.state,
     inert: r.state === 'leaving' ? true : undefined
