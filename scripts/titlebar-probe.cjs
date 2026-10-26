@@ -36,7 +36,8 @@ const MEASURE = `(() => {
   const o = navigator.windowControlsOverlay
   const area = o && o.visible ? r(o.getTitlebarAreaRect()) : null
   const pad = parseFloat(getComputedStyle(h.firstElementChild).paddingLeft)
-  return JSON.stringify({ items, area, pad, header: r(h.getBoundingClientRect()), vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio })
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  return JSON.stringify({ items, area, pad, rem, header: r(h.getBoundingClientRect()), vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio })
 })()`
 
 // The three lights as the system paints them on an active window, in red, yellow and green.
@@ -207,20 +208,26 @@ async function run(win) {
     }
   }
 
-  // Zoomed text scales the page but not the window buttons: the bar keeps their height.
+  // Zoomed text scales the page but not the window buttons: the bar keeps their height, and grows
+  // past it only where its own controls would not fit (2.125rem, the floor in App.tsx).
   win.setSize(1100, 860)
-  for (const level of [-2.5, 1.5]) {
+  for (const level of [-2.5, 1.5, 3]) {
     win.webContents.setZoomLevel(level)
     await wait(800)
     const name = 'zoom' + level
     const z = await measure(win, name, gap)
     if (!z || !z.page) continue
-    const bar = z.page.header.y + z.page.header.h / 2
+    const head = z.page.header
+    const spill = z.page.items.filter((i) => i.y < head.y - 0.5 || i.y + i.h > head.y + head.h + 0.5)
+    ok(name + ': everything in the title bar stays inside it', spill.length === 0, spill.slice(0, 4).map((i) => i.what + ' ' + i.y.toFixed(1) + ' to ' + (i.y + i.h).toFixed(1) + ' in bar ' + head.y.toFixed(1) + ' to ' + (head.y + head.h).toFixed(1)).join('; '))
+    const bar = head.y + head.h / 2
     if (mac && z.buttons.length) {
+      if (level > 1.5) continue
       const mid = z.buttons.reduce((m, b) => m + b.y + b.h / 2, 0) / z.buttons.length
       ok(name + ': the window buttons stay centred in the title bar', Math.abs(mid - bar) <= 1.5, 'button middle ' + mid.toFixed(1) + ', bar middle ' + bar.toFixed(1))
     } else if (z.page.area) {
-      ok(name + ': the title bar keeps the height of the window controls', Math.abs(z.page.header.h - z.page.area.h) <= 1, 'bar ' + z.page.header.h.toFixed(1) + ', controls ' + z.page.area.h.toFixed(1))
+      const want = Math.max(z.page.area.h, 2.125 * z.page.rem)
+      ok(name + ': the title bar keeps the height of the window controls or its floor', Math.abs(head.h - want) <= 1, 'bar ' + head.h.toFixed(1) + ', controls ' + z.page.area.h.toFixed(1) + ', floor ' + (2.125 * z.page.rem).toFixed(1))
     }
   }
   win.webContents.setZoomLevel(0)
