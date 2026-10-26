@@ -110,7 +110,9 @@
       "icon": "resources/icon.png",
       "category": "public.app-category.productivity",
       "x64ArchFiles": "**/node_modules/better-sqlite3/prebuilds/*.node",
-      "artifactName": "${productName}-mac.${ext}"
+      "artifactName": "${productName}-mac.${ext}",
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "linux": {
       "target": [
