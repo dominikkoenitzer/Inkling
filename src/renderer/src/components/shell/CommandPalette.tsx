@@ -63,12 +63,16 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
   const matching = q ? actions.filter((a) => a.key === 'new-note' || a.label.toLowerCase().includes(lower)) : actions
   const items: Item[] = [...found, ...matching]
   const clamped = Math.min(selected, items.length - 1)
+  // Nothing runs once the palette is on its way out, even an Enter that was waiting for results.
+  const runItem = (item: Item | undefined): void => {
+    if (!closing) item?.run()
+  }
 
   const enterWaiting = useRef(false)
   useEffect(() => {
     if (enterWaiting.current && !pending) {
       enterWaiting.current = false
-      items[clamped]?.run()
+      runItem(items[clamped])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending])
@@ -97,7 +101,7 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
       e.preventDefault()
       // While the answer for what was just typed is on its way, Enter waits for it.
       if (pending) enterWaiting.current = true
-      else items[clamped]?.run()
+      else runItem(items[clamped])
     }
   }
 
@@ -149,7 +153,7 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
               type="button"
               tabIndex={-1}
               onMouseEnter={() => setSelected(i)}
-              onClick={item.run}
+              onClick={() => runItem(item)}
               aria-keyshortcuts={item.keys && ariaKeys(item.keys)}
               className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm ${clamped === i ? 'bg-active text-ink' : 'text-ink'}`}
             >

@@ -229,6 +229,33 @@ async function run(win) {
   )
   ok('the first note shows its focus ring', ring.visible)
   ok('its ring is not cut off by the list', ring.top >= 0, 'room above ' + ring.top + 'px')
+
+  const key = (keyCode, modifiers) => {
+    win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers })
+    win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers })
+  }
+
+  // Enter waiting on a search, then Escape: the result never runs once the search is dismissed.
+  await js(shut)
+  await js(app(`setView('today')`))
+  await wait(400)
+  const place = `window.inkling.notes.list().then((n) => JSON.stringify([window.__app.getState().view, window.__app.getState().selectedNoteId, n.length]))`
+  const placeBefore = await js(place)
+  key('K', [mod])
+  await wait(300)
+  win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'E' })
+  win.webContents.sendInputEvent({ type: 'char', keyCode: 'e' })
+  win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'E' })
+  key('Return')
+  key('Escape')
+  // The exit is held, as a slow frame would, so the search answers while the palette is still there.
+  await js('window.__motion.seek(0)')
+  await wait(800)
+  const placeAfter = await js(place)
+  await js('window.__motion.release()')
+  ok('Enter then Escape in the search runs nothing', placeAfter === placeBefore, placeBefore + ' then ' + placeAfter)
+  await js(shut)
+  await wait(300)
 }
 
 // Preloaded before Electron sets up its own modules, so `electron` is asked for once it has.
