@@ -93,6 +93,29 @@ export function canTab(el: { tabIndex: number; disabled?: boolean; closest: (sel
   return el.tabIndex >= 0 && !el.disabled && !el.closest('[inert]')
 }
 
+/** The row Up or Down moves to from row `at` of `count`; null when the key is not for the rows. */
+export function nextRow(at: number, count: number, key: string): number | null {
+  if (at < 0 || (key !== 'ArrowDown' && key !== 'ArrowUp')) return null
+  return Math.max(0, Math.min(count - 1, at + (key === 'ArrowDown' ? 1 : -1)))
+}
+
+/**
+ * Up and Down between the `[data-row]` rows inside the element, onto the control in the same
+ * place in the next row, or its last one when it has fewer.
+ */
+export function stepRows(e: KeyboardEvent<HTMLElement>): void {
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+  const from = e.target as HTMLElement
+  const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[data-row]')).filter((r) => !r.closest('[inert]'))
+  const row = from.closest<HTMLElement>('[data-row]')
+  const to = row ? nextRow(rows.indexOf(row), rows.length, e.key) : null
+  if (to === null || !row) return
+  e.preventDefault()
+  const stops = (r: HTMLElement): HTMLElement[] => Array.from(r.querySelectorAll<HTMLElement & { disabled?: boolean }>(TAB_STOPS)).filter(canTab)
+  const next = stops(rows[to])
+  next[Math.min(Math.max(stops(row).indexOf(from), 0), next.length - 1)]?.focus()
+}
+
 /**
  * Enter and Space on a focused `role="button"` element, the way a real button behaves. Keys
  * that start on a control nested inside it are left to that control.
