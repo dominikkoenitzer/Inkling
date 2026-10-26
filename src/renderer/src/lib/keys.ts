@@ -93,6 +93,13 @@ export function canTab(el: { tabIndex: number; disabled?: boolean; closest: (sel
   return el.tabIndex >= 0 && !el.disabled && !el.closest('[inert]')
 }
 
+/** On the last screen of a review, Escape or Enter ends it; Enter on a button stays with the button. */
+export function endsReview(e: { key: string; target: EventTarget | null }): boolean {
+  if (e.key === 'Escape') return true
+  const tag = (e.target as { tagName?: string } | null)?.tagName
+  return e.key === 'Enter' && tag !== 'BUTTON' && tag !== 'A'
+}
+
 /** The row Up or Down moves to from row `at` of `count`; null when the key is not for the rows. */
 export function nextRow(at: number, count: number, key: string): number | null {
   if (at < 0 || (key !== 'ArrowDown' && key !== 'ArrowUp')) return null
