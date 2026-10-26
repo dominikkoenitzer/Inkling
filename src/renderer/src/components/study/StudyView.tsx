@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { peekNote } from '@/lib/calls'
+import { addCard, createDeck, loadCards, loadDecks, peekNote, removeCard, removeDeck, renameDeck, updateCard } from '@/lib/calls'
 import { hasCloze } from '@shared/cloze'
 import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
@@ -11,27 +11,40 @@ import { oneLine } from '@/lib/parse'
 import { ReviewSession } from './ReviewSession'
 import type { Deck, Card } from '@shared/types'
 
-const api = window.inkling
-
 export function StudyView(): React.JSX.Element {
   const selectedDeckId = useApp((s) => s.selectedDeckId)
   const reviewingDeckId = useApp((s) => s.reviewingDeckId)
   const today = useApp((s) => s.today)
   const version = useVersion('decks')
   const [decks, setDecks] = useState<Deck[] | null>(null)
+  const [failed, setFailed] = useState(false)
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const creating = useRef(false)
 
   useEffect(() => {
     let stale = false
-    void api.decks.list().then((d) => !stale && setDecks(d))
+    void loadDecks().then((d) => {
+      if (stale) return
+      if (d) setDecks(d)
+      setFailed(!d)
+    })
     return () => {
       stale = true
     }
   }, [version, today])
 
-  if (decks === null) return <div />
+  if (decks === null) {
+    if (!failed) return <div />
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
+          <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
+          <p className="mt-16 text-sm text-muted">Could not load the decks.</p>
+        </div>
+      </div>
+    )
+  }
 
   const reviewing = decks.find((d) => d.id === reviewingDeckId)
   if (reviewing) return <ReviewSession deck={reviewing} onDone={() => useApp.getState().reviewDeck(null)} />
@@ -44,8 +57,8 @@ export function StudyView(): React.JSX.Element {
     if (!n || creating.current) return
     creating.current = true
     try {
-      const home = useApp.getState().homeNotebookId ?? (await api.notebooks.home())
-      const deck = await api.decks.create(home, n)
+      const deck = await createDeck(n)
+      if (!deck) return
       bumpData('decks')
       setAdding(false)
       setName('')
@@ -129,7 +142,9 @@ export function StudyView(): React.JSX.Element {
 
 function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
   const version = useVersion('decks')
-  const [cards, setCards] = useState<Card[]>([])
+  // Null until the cards arrive, so a deck is never shown empty before then.
+  const [cards, setCards] = useState<Card[] | null>(null)
+  const [cardsFailed, setCardsFailed] = useState(false)
   const [front, setFront] = useState('')
   const [back, setBack] = useState('')
   const [name, setName] = useState(deck.name)
@@ -137,7 +152,11 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 
   useEffect(() => {
     let stale = false
-    void api.decks.cards(deck.id).then((c) => !stale && setCards(c))
+    void loadCards(deck.id).then((c) => {
+      if (stale) return
+      if (c) setCards(c)
+      setCardsFailed(!c)
+    })
     return () => {
       stale = true
     }
@@ -169,6 +188,8 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const count = cards?.length ?? deck.card_count
+
   // A cloze front is a whole card on its own; the back is then an optional extra.
   const canAdd = !!front.trim() && (!!back.trim() || hasCloze(front))
 
@@ -177,7 +198,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     if (!canAdd || adding.current) return false
     adding.current = true
     try {
-      await api.decks.addCard(deck.id, front.trim(), back.trim())
+      if (!(await addCard(deck.id, front.trim(), back.trim()))) return false
       setFront('')
       setBack('')
       bumpData('decks')
@@ -189,7 +210,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 
   const rename = (): void => {
     const n = name.trim()
-    if (n && n !== deck.name) void api.decks.rename(deck.id, n).then(() => bumpData('decks'))
+    if (n && n !== deck.name) void renameDeck(deck.id, n).then((done) => (done ? bumpData('decks') : setName(deck.name)))
     else setName(deck.name)
   }
 
@@ -219,7 +240,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
         />
         <div className="mt-2 flex items-center gap-3 text-sm text-muted">
           <span>
-            {cards.length} card{cards.length === 1 ? '' : 's'}
+            {count} card{count === 1 ? '' : 's'}
             {deck.due_count > 0 && ` · ${deck.due_count} due`}
           </span>
           <span className="ml-auto flex gap-1">
@@ -236,7 +257,8 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
                 <Button
                   variant="danger"
                   onClick={() =>
-                    void api.decks.remove(deck.id).then(() => {
+                    void removeDeck(deck.id).then((done) => {
+                      if (!done) return
                       bumpData('decks')
                       useApp.getState().openDeck(null)
                     })
@@ -253,7 +275,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           </span>
         </div>
 
-        {deck.note_id !== null && cards.some((c) => c.source_line !== null) && (
+        {deck.note_id !== null && cards?.some((c) => c.source_line !== null) && (
           <p className="mt-6 text-sm text-muted">
             These cards live in a note. Edit them there, then press Flashcards again.{' '}
             {noteExists && (
@@ -303,7 +325,9 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           Press Enter to go on. For a fill-in-the-blank card, write <Code>{'{{c1::word}}'}</Code> in the question.
         </p>
 
-        {cards.length === 0 ? (
+        {cards === null ? (
+          cardsFailed && <p className="py-10 text-center text-sm text-faint">Could not load the cards.</p>
+        ) : cards.length === 0 ? (
           <p className="py-10 text-center text-sm text-faint">No cards yet. Type a question and its answer above.</p>
         ) : (
           <ul className="mt-6 border-t border-edge">
@@ -362,7 +386,12 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
       return
     }
     if (f !== card.front || b !== card.back) {
-      void api.decks.updateCard(card.id, f, b).then(() => bumpData('decks'))
+      void updateCard(card.id, f, b).then((done) => {
+        if (done) return bumpData('decks')
+        // Not saved: the row shows what is stored again.
+        setFront(card.front)
+        setBack(card.back)
+      })
     }
   }
 
@@ -409,7 +438,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
           title="Delete card"
           aria-label="Delete card"
           className="flex h-7 w-7 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-          onClick={() => void api.decks.removeCard(card.id).then(() => bumpData('decks'))}
+          onClick={() => void removeCard(card.id).then((done) => done && bumpData('decks'))}
         >
           <Trash2 size={14} />
         </button>
