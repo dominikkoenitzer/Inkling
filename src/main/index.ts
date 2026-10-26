@@ -12,6 +12,7 @@ import { watchOutsideWrites } from './watch'
 import { macMenu } from './menu'
 import { commandRelay } from './commands'
 import { contextMenu } from './context-menu'
+import { updatesItself } from './updates'
 import type { AppCommand } from '@shared/api'
 import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, firstSize, themeOf } from './window'
 
@@ -252,7 +253,7 @@ app.whenReady().then(() => {
   watchOutsideWrites()
 
   // Packaged builds only, never in dev or during a headless capture.
-  if (app.isPackaged) {
+  if (updatesItself(process.platform, app.isPackaged)) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
   }
 
