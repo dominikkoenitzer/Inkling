@@ -135,6 +135,14 @@ async function shoot(win, name) {
 async function measure(win, name, gap) {
   const page = JSON.parse(await win.webContents.executeJavaScript(MEASURE))
   if (!page.header) return ok(name + ': the title bar is there', false)
+  // The page measures in its own pixels, which zoom scales; the Mac buttons are in window points.
+  if (mac) {
+    const zoom = win.webContents.getZoomFactor()
+    const scale = (b) => ({ ...b, x: b.x * zoom, y: b.y * zoom, w: b.w * zoom, h: b.h * zoom })
+    page.zoom = zoom
+    page.items = page.items.map(scale)
+    page.header = scale(page.header)
+  }
   await shoot(win, name)
   if (mac && !onScreen) return ok(name + ': the window buttons are only drawn on screen', false, 'run with CI set')
   let buttons
