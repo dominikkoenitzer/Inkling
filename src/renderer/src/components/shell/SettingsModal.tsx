@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '@/stores/app'
 import { Button, Modal, Segmented } from '@/components/ui'
+import type { Exit } from '@/lib/motion'
 import type { AssistantStatus } from '@shared/types'
 
 const api = window.inkling
@@ -13,12 +14,12 @@ const STATUS: Record<AssistantStatus['state'], string> = {
   unreadable: 'Its settings file cannot be read'
 }
 
-export function SettingsModal(): React.JSX.Element {
+export function SettingsModal(exit: Exit): React.JSX.Element {
   const theme = useApp((s) => s.theme)
   const setTheme = useApp((s) => s.setTheme)
 
   return (
-    <Modal title="Settings" width={460} onClose={() => useApp.getState().setSettingsOpen(false)}>
+    <Modal title="Settings" width={460} onClose={() => useApp.getState().setSettingsOpen(false)} {...exit}>
       <div className="flex items-center justify-between">
         <span className="text-sm">Theme</span>
         <Segmented

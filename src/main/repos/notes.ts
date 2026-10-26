@@ -8,7 +8,7 @@ const EMPTY_DOC = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }]
 
 /** Every live note, newest edit first. */
 export function listNotes(): Note[] {
-  return getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY julianday(updated_at) DESC`).all() as Note[]
+  return getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY julianday(updated_at) DESC, id DESC`).all() as Note[]
 }
 
 export function getNote(id: number): Note | null {

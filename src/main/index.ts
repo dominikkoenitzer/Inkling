@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
@@ -9,7 +9,12 @@ import * as repos from './repos'
 import { seedDemo } from './seed'
 import { startMcpHost } from './mcp/host'
 import { watchOutsideWrites } from './watch'
-import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
+import { macMenu } from './menu'
+import { commandRelay } from './commands'
+import { contextMenu } from './context-menu'
+import { updatesItself } from './updates'
+import type { AppCommand } from '@shared/api'
+import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, firstSize, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
 if (process.env['INKLING_USERDATA']) {
@@ -30,6 +35,7 @@ const isPrimary = !mcpMode && app.requestSingleInstanceLock()
 if (!isPrimary && !mcpMode) app.quit()
 
 let mainWindow: BrowserWindow | null = null
+const commands = commandRelay()
 
 const isDev = !!process.env['ELECTRON_RENDERER_URL']
 
@@ -76,11 +82,14 @@ function blockOffAppNavigation(contents: Electron.WebContents): void {
 
 function createMainWindow(): void {
   // Built in the saved theme from the first frame, so a light setup never flashes dark.
-  const chrome = CHROME[themeOf(repos.getSetting('theme'))]
+  const theme = themeOf(repos.getSetting('theme'))
+  const chrome = CHROME[theme]
+  // The Mac draws its buttons, menus and sheets in the native theme: it follows the app's.
+  if (process.platform === 'darwin') nativeTheme.themeSource = theme
+  commands.reset()
   const shotPath = devHooks ? process.env['INKLING_SCREENSHOT'] : undefined
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 860,
+    ...firstSize(screen.getPrimaryDisplay().workAreaSize),
     minWidth: 860,
     minHeight: 560,
     show: false,
@@ -89,6 +98,7 @@ function createMainWindow(): void {
     backgroundColor: chrome.color,
     titleBarStyle: 'hidden',
     titleBarOverlay: { ...chrome, height: TITLEBAR_HEIGHT },
+    ...(process.platform === 'darwin' ? { trafficLightPosition: WINDOW_BUTTONS } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -103,6 +113,27 @@ function createMainWindow(): void {
     return { action: 'deny' }
   })
   blockOffAppNavigation(mainWindow.webContents)
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    const template = contextMenu(
+      params,
+      (word) => mainWindow?.webContents.replaceMisspelling(word),
+      (word) => mainWindow?.webContents.session.addWordToSpellCheckerDictionary(word)
+    )
+    if (template.length) Menu.buildFromTemplate(template).popup({ window: mainWindow ?? undefined })
+  })
+  // On a Mac closing the window only hides it, so it comes back as it was; quitting still closes it.
+  if (process.platform === 'darwin') {
+    mainWindow.on('close', (event) => {
+      if (quitting || !mainWindow) return
+      event.preventDefault()
+      const win = mainWindow
+      // A full-screen window leaves its space first, or the space stays behind empty.
+      if (win.isFullScreen()) {
+        win.once('leave-full-screen', () => win.hide())
+        win.setFullScreen(false)
+      } else win.hide()
+    })
+  }
 
   if (isDev) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] as string)
@@ -150,10 +181,21 @@ function createMainWindow(): void {
   })
 }
 
-app.on('second-instance', () => {
-  if (!mainWindow) return
+let quitting = false
+app.on('before-quit', () => {
+  quitting = true
+})
+
+/** Brings the window to the front: restored when minimised, shown again after a close on a Mac. */
+function showMainWindow(): void {
+  if (!mainWindow) return createMainWindow()
   if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
   mainWindow.focus()
+}
+
+app.on('second-instance', () => {
+  if (mainWindow || process.platform === 'darwin') showMainWindow()
 })
 
 app.whenReady().then(() => {
@@ -201,21 +243,31 @@ app.whenReady().then(() => {
   // Test hook: the profile is set up, no window needed (the MCP check uses it).
   if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
+  ipcMain.on('app.listening', (event) => {
+    if (event.sender === mainWindow?.webContents) commands.listening((command) => event.sender.send('app.command', command))
+  })
+  if (process.platform === 'darwin') {
+    const run = (command: AppCommand): void => {
+      showMainWindow()
+      commands.run(command)
+    }
+    Menu.setApplicationMenu(Menu.buildFromTemplate(macMenu(run, showMainWindow, app.isPackaged)))
+  }
   createMainWindow()
   watchOutsideWrites()
 
   // Packaged builds only, never in dev or during a headless capture.
-  if (app.isPackaged) {
+  if (updatesItself(process.platform, app.isPackaged)) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
   }
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
-  })
+  // The Dock icon: the window again after a close, and back from the Dock when minimised.
+  app.on('activate', showMainWindow)
 })
 
 
 
+// On a Mac the app stays in the Dock with its window closed, and the Dock icon opens it again.
 app.on('window-all-closed', () => {
-  app.quit()
+  if (process.platform !== 'darwin') app.quit()
 })

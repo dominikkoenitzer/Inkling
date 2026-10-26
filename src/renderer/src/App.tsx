@@ -9,8 +9,33 @@ import { ShortcutsModal } from '@/components/shell/ShortcutsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 import { setTitlebar } from '@/lib/calls'
+import { ariaKeys, keyLabel, takeShortcut } from '@/lib/keys'
+import { usePresence } from '@/lib/motion'
+import type { AppCommand } from '@shared/api'
 
 const api = window.inkling
+
+/** A menu bar command: what its shortcut does, except that it always opens rather than toggles. */
+function runCommand(command: AppCommand): void {
+  const app = useApp.getState()
+  if (command === 'new-note') void app.newNote()
+  else if (command === 'search') app.setPaletteOpen(true)
+  else if (command === 'settings') app.setSettingsOpen(true)
+  else if (command === 'shortcuts') app.setShortcutsOpen(true)
+  else {
+    app.setView(command)
+    app.setSettingsOpen(false)
+    app.setShortcutsOpen(false)
+  }
+}
+
+/** A shortcut key: its menu command, except that search and the shortcuts list close again. */
+function runKey(command: AppCommand): void {
+  const app = useApp.getState()
+  if (command === 'search') app.setPaletteOpen(!app.paletteOpen)
+  else if (command === 'shortcuts') app.setShortcutsOpen(!app.shortcutsOpen)
+  else runCommand(command)
+}
 
 export default function App(): React.JSX.Element {
   const ready = useApp((s) => s.ready)
@@ -19,6 +44,10 @@ export default function App(): React.JSX.Element {
   const paletteOpen = useApp((s) => s.paletteOpen)
   const settingsOpen = useApp((s) => s.settingsOpen)
   const shortcutsOpen = useApp((s) => s.shortcutsOpen)
+  // Each sheet stays for its exit after it closes; reopening mounts a fresh one.
+  const palette = usePresence(paletteOpen)
+  const settings = usePresence(settingsOpen)
+  const shortcuts = usePresence(shortcutsOpen)
 
   useEffect(() => {
     void useApp.getState().init()
@@ -33,6 +62,7 @@ export default function App(): React.JSX.Element {
 
   // And while it is in front: the main process says when another process has written.
   useEffect(() => api.events.onDataChanged(() => window.dispatchEvent(new Event('inkling:outside-write'))), [])
+  useEffect(() => api.events.onCommand(runCommand), [])
 
   // Cards answered "Again" come due again within minutes: recount every few minutes.
   // The day is checked too: after sleep the midnight timer can land late, with focus never lost.
@@ -52,33 +82,9 @@ export default function App(): React.JSX.Element {
     void setTitlebar(theme)
   }, [ready, failed, theme])
 
-  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts.
+  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts; Command on a Mac, where Command+/ opens the shortcuts too.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'F1' && !e.repeat) {
-        e.preventDefault()
-        useApp.getState().setShortcutsOpen(!useApp.getState().shortcutsOpen)
-        return
-      }
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.repeat) return
-      const key = e.key.toLowerCase()
-      const app = useApp.getState()
-      if (key === 'k') {
-        e.preventDefault()
-        app.setPaletteOpen(!app.paletteOpen)
-      } else if (key === 'n') {
-        e.preventDefault()
-        void app.newNote()
-      } else if (key === '1' || key === '2') {
-        e.preventDefault()
-        app.setView(key === '1' ? 'today' : 'study')
-        app.setSettingsOpen(false)
-        app.setShortcutsOpen(false)
-      } else if (key === ',') {
-        e.preventDefault()
-        app.setSettingsOpen(true)
-      }
-    }
+    const onKey = (e: KeyboardEvent): void => takeShortcut(e, runKey)
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -100,24 +106,37 @@ export default function App(): React.JSX.Element {
       </div>
     )
   }
-  if (!ready) return <div className="h-full bg-app" />
+  if (!ready) return <div className="titlebar-drag h-full bg-app" />
 
   return (
     <div className="flex h-full flex-col bg-app text-ink">
-      {/* Draggable title bar; the window buttons sit over its right end. */}
-      <header className="titlebar-drag flex h-11 shrink-0 items-center border-b border-edge">
-        <div className="flex h-full shrink-0 items-center gap-2 pl-4" style={{ width: 'var(--sidebar-w)' }}>
+      {/* Draggable title bar under the window buttons: as tall as they are but never shorter than its own controls, which stop short of them. */}
+      <header
+        className="titlebar-drag flex shrink-0 items-center border-b border-edge"
+        style={{
+          height: 'max(env(titlebar-area-height, 2.75rem), 2.125rem)',
+          paddingRight: 'calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 0.5rem)'
+        }}
+      >
+        {/* Starts after the window buttons when they share the bar, as on a Mac. */}
+        <div
+          className="flex h-full shrink-0 items-center gap-2"
+          style={{ width: 'var(--sidebar-w)', paddingLeft: 'max(1rem, env(titlebar-area-x, 0px))' }}
+        >
           <LogoMark size={18} />
           <span className="text-sm font-semibold tracking-tight">Inkling</span>
         </div>
         <button
           type="button"
           onClick={() => useApp.getState().setPaletteOpen(true)}
+          aria-keyshortcuts={ariaKeys('Ctrl+K')}
           className="no-drag ml-4 flex h-8 w-80 items-center gap-2 rounded-md bg-hover px-3 text-sm text-muted transition-colors hover:text-ink"
         >
           <Search size={15} />
           Search
-          <span className="ml-auto text-xs">Ctrl+K</span>
+          <span aria-hidden="true" className="ml-auto text-xs">
+            {keyLabel('Ctrl+K')}
+          </span>
         </button>
       </header>
 
@@ -128,9 +147,9 @@ export default function App(): React.JSX.Element {
         </main>
       </div>
 
-      {paletteOpen && <CommandPalette />}
-      {settingsOpen && <SettingsModal />}
-      {shortcutsOpen && <ShortcutsModal />}
+      {palette.present && <CommandPalette key={palette.generation} closing={palette.closing} onGone={palette.gone} />}
+      {settings.present && <SettingsModal key={settings.generation} closing={settings.closing} onGone={settings.gone} />}
+      {shortcuts.present && <ShortcutsModal key={shortcuts.generation} closing={shortcuts.closing} onGone={shortcuts.gone} />}
       <Toaster />
     </div>
   )

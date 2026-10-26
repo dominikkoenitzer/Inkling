@@ -2,7 +2,7 @@
   "name": "inkling",
   "packageManager": "bun@1.4.2",
   "productName": "Inkling",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "A calm place for your notes, to-dos and flashcards",
   "main": "out/main/index.js",
   "author": "Inkling",
@@ -26,6 +26,8 @@
     "smoke": "node scripts/smoke.mjs",
     "mcp": "electron . --mcp",
     "mcp:smoke": "node scripts/mcp-smoke.mjs",
+    "titlebar": "node scripts/titlebar.mjs",
+    "motion": "node scripts/motion.mjs",
     "postinstall": "electron-builder install-app-deps",
     "dist": "electron-vite build && electron-builder --win nsis"
   },
@@ -108,7 +110,9 @@
       "icon": "resources/icon.png",
       "category": "public.app-category.productivity",
       "x64ArchFiles": "**/node_modules/better-sqlite3/prebuilds/*.node",
-      "artifactName": "${productName}-mac.${ext}"
+      "artifactName": "${productName}-mac.${ext}",
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "linux": {
       "target": [

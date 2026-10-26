@@ -344,6 +344,29 @@ SCRIPT = r"""
 })();
 """
 
+# Only pages with a "terminal" field in page.json get these, so every other page builds unchanged.
+TERM_CSS = r"""
+.term { scroll-margin-top: 1.5rem; }
+.term > .small:first-child { margin-top: 0; }
+.term .codecard { margin-top: 0.75rem; padding: 1rem 1.25rem; border-radius: 1rem; box-shadow: var(--shadow-sm); }
+.term pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.term code { font-size: 0.92rem; -webkit-user-select: all; user-select: all; }
+"""
+
+TERM_ANCHOR = '  else d.getElementById("away").hidden = false;\n'
+
+TERM_SCRIPT = r"""
+  var term = names[os] && d.getElementById("install-" + os);
+  if (term) {
+    term.hidden = false;
+    d.getElementById("primary").style.display = "none";
+    d.querySelectorAll(".closing [data-primary]").forEach(function (a) {
+      a.href = "#install-" + os;
+      a.textContent = term.getAttribute("data-button");
+    });
+  }
+"""
+
 
 def esc(s):
     return html.escape(s, quote=True)
@@ -414,6 +437,9 @@ def build(page):
     w("  }")
     w("}")
     w("/* shared */" + CSS)
+    terms = page.get("terminal") or {}
+    if terms:
+        w("/* terminal install */" + TERM_CSS)
     w("</style>")
     w("</head>")
     w(f"<body data-platforms='{esc(json.dumps(page['platforms']))}'>")
@@ -438,6 +464,14 @@ def build(page):
     w(f'<p class="lede">{page["hero"]["lede"]}</p>')
     w('<div class="get">')
     w(f'<a class="btn" id="primary" data-primary href="/download/{first}">Download for {esc(page["platforms"][first])}</a>')
+    for key, t in terms.items():
+        # Shown instead of the download button when the visitor is on this platform.
+        w(f'<div class="term" id="install-{esc(key)}" data-button="{esc(t["button"])}" hidden>')
+        w(f'<p class="small">{t["intro"]}</p>')
+        w(f'<div class="codecard"><pre><code>{esc(t["command"])}</code></pre></div>')
+        if t.get("file"):
+            w(f'<p class="small">{t["file"]}</p>')
+        w("</div>")
     if page["hero"].get("also"):
         w(f'<p class="small" id="others">{page["hero"]["also"]}</p>')
     for line in page["hero"].get("notes", []):
@@ -597,7 +631,11 @@ def build(page):
         w(f"<p>{line}</p>")
     w("</footer>")
     w("</main>")
-    w("<script>" + SCRIPT + "</script>")
+    script = SCRIPT
+    if terms:
+        assert TERM_ANCHOR in script
+        script = script.replace(TERM_ANCHOR, TERM_ANCHOR + TERM_SCRIPT)
+    w("<script>" + script + "</script>")
     w("</body>")
     w("</html>")
     return "\n".join(parts) + "\n"
