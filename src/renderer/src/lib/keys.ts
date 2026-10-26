@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import { NodeSelection, type Transaction } from '@tiptap/pm/state'
+import type { AppCommand } from '@shared/api'
 
 const TEXT_ENTRY = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
 
@@ -20,17 +21,53 @@ export function keyLabel(combo: string, mac = isMac): string {
   return mods.join('') + (MAC_KEYS[key] ?? key)
 }
 
+/** A shortcut written as "Ctrl+K", in the names `aria-keyshortcuts` takes: "Meta+K" on a Mac. */
+export function ariaKeys(combo: string, mac = isMac): string {
+  return combo
+    .split('+')
+    .map((part) => (part === 'Ctrl' ? (mac ? 'Meta' : 'Control') : part))
+    .join('+')
+}
+
+/** The key for the shortcuts list: F1, or Command and slash on a Mac, whose F1 needs fn. */
+export function shortcutsKey(mac = isMac): string {
+  return mac ? 'Ctrl+/' : 'F1'
+}
+
 /** The modifier of the app's own shortcuts: Command on a Mac, where Control edits text, and Ctrl elsewhere. */
 export function isCommandKey(e: { ctrlKey: boolean; metaKey: boolean }, mac = isMac): boolean {
   return mac ? e.metaKey && !e.ctrlKey : e.ctrlKey || e.metaKey
 }
 
+const COMMAND_KEYS: Record<string, AppCommand> = { k: 'search', n: 'new-note', '1': 'today', '2': 'study', ',': 'settings' }
+
+/**
+ * A window keydown that is one of the app's shortcuts is taken from the page and runs once. A
+ * held key is taken too, or a Mac hands each repeat on to the menu, which runs it again.
+ */
+export function takeShortcut(
+  e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; repeat: boolean; preventDefault(): void },
+  run: (command: AppCommand) => void,
+  mac = isMac
+): void {
+  let command: AppCommand | undefined
+  if (e.key === 'F1') command = 'shortcuts'
+  else if (isCommandKey(e, mac) && !e.altKey) command = mac && e.key === '/' ? 'shortcuts' : COMMAND_KEYS[e.key.toLowerCase()]
+  if (!command) return
+  e.preventDefault()
+  if (!e.repeat) run(command)
+}
+
 /**
  * Whether a window-level single-key shortcut should leave this keystroke alone: it is
- * going into a field, an open overlay owns the keyboard, or a handler already took it.
+ * going into a field, an open overlay owns the keyboard, a handler already took it, or it
+ * is held with a modifier and so belongs to some other shortcut.
  */
-export function ignoresShortcut(e: { target: EventTarget | null; defaultPrevented: boolean }, overlayOpen: boolean): boolean {
-  if (e.defaultPrevented || overlayOpen) return true
+export function ignoresShortcut(
+  e: { target: EventTarget | null; defaultPrevented: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean },
+  overlayOpen: boolean
+): boolean {
+  if (e.defaultPrevented || overlayOpen || e.ctrlKey || e.metaKey || e.altKey) return true
   const el = e.target as { tagName?: string; isContentEditable?: boolean } | null
   return !!el && (el.isContentEditable === true || TEXT_ENTRY.has(el.tagName ?? ''))
 }
@@ -55,6 +92,8 @@ export function editKey(
   commit: (field: HTMLInputElement) => void,
   cancel?: (field: HTMLInputElement) => void
 ): void {
+  // Enter that ends a word in an input method belongs to the input method.
+  if (e.nativeEvent.isComposing) return
   if (e.key === 'Enter') {
     e.preventDefault()
     commit(e.currentTarget)

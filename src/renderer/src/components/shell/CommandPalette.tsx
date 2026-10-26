@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Search, FileText, CheckSquare, Layers, Plus, Sun, Keyboard, Settings } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { searchFor } from '@/lib/calls'
-import { keyLabel } from '@/lib/keys'
+import { ariaKeys, keyLabel, shortcutsKey } from '@/lib/keys'
 import type { SearchResult } from '@shared/types'
 
 interface Item {
@@ -10,6 +10,8 @@ interface Item {
   icon: React.JSX.Element
   label: string
   detail?: string
+  /** Its shortcut, written as "Ctrl+N". */
+  keys?: string
   run: () => void
 }
 
@@ -52,11 +54,11 @@ export function CommandPalette(): React.JSX.Element {
     run: () => (r.note_id !== null ? app.openNote(r.note_id) : app.openDeck(r.source_id))
   }))
   const actions: Item[] = [
-    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: keyLabel('Ctrl+N'), run: () => void app.newNote().then(close) },
-    { key: 'today', icon: <Sun size={16} />, label: 'Today', detail: keyLabel('Ctrl+1'), run: () => app.setView('today') },
-    { key: 'study', icon: <Layers size={16} />, label: 'Flashcards', detail: keyLabel('Ctrl+2'), run: () => app.setView('study') },
-    { key: 'shortcuts', icon: <Keyboard size={16} />, label: 'Keyboard shortcuts', detail: 'F1', run: () => app.setShortcutsOpen(true) },
-    { key: 'settings', icon: <Settings size={16} />, label: 'Settings', detail: keyLabel('Ctrl+,'), run: () => app.setSettingsOpen(true) }
+    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', keys: 'Ctrl+N', run: () => void app.newNote().then(close) },
+    { key: 'today', icon: <Sun size={16} />, label: 'Today', keys: 'Ctrl+1', run: () => app.setView('today') },
+    { key: 'study', icon: <Layers size={16} />, label: 'Flashcards', keys: 'Ctrl+2', run: () => app.setView('study') },
+    { key: 'shortcuts', icon: <Keyboard size={16} />, label: 'Keyboard shortcuts', keys: shortcutsKey(), run: () => app.setShortcutsOpen(true) },
+    { key: 'settings', icon: <Settings size={16} />, label: 'Settings', keys: 'Ctrl+,', run: () => app.setSettingsOpen(true) }
   ]
   // With nothing typed every action shows; while searching, the ones whose name matches,
   // and New note always, so Enter on a miss still starts one.
@@ -88,7 +90,7 @@ export function CommandPalette(): React.JSX.Element {
       e.preventDefault()
       setSelected(Math.max(clamped - 1, 0))
     }
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       // Handled here, so the key never reaches what gets focus once the palette closes.
       e.preventDefault()
       // While the answer for what was just typed is on its way, Enter waits for it.
@@ -136,11 +138,16 @@ export function CommandPalette(): React.JSX.Element {
               type="button"
               onMouseEnter={() => setSelected(i)}
               onClick={item.run}
+              aria-keyshortcuts={item.keys && ariaKeys(item.keys)}
               className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm ${clamped === i ? 'bg-active text-ink' : 'text-ink'}`}
             >
               <span className="text-faint">{item.icon}</span>
               <span className="shrink-0">{item.label}</span>
-              {item.detail && <span className={`ml-auto truncate pl-3 text-xs ${clamped === i ? 'text-muted' : 'text-faint'}`}>{item.detail}</span>}
+              {(item.keys || item.detail) && (
+                <span aria-hidden={item.keys ? true : undefined} className={`ml-auto truncate pl-3 text-xs ${clamped === i ? 'text-muted' : 'text-faint'}`}>
+                  {item.keys ? keyLabel(item.keys) : item.detail}
+                </span>
+              )}
             </button>
           ))}
         </div>

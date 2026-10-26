@@ -1,6 +1,6 @@
 import { useApp } from '@/stores/app'
 import { Kbd, Modal } from '@/components/ui'
-import { keyLabel } from '@/lib/keys'
+import { keyLabel, shortcutsKey } from '@/lib/keys'
 
 const GROUPS: Array<{ title: string; rows: Array<[string, string[]]> }> = [
   {
@@ -11,7 +11,7 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string[]]> }> = [
       ['Today', ['Ctrl+1']],
       ['Flashcards', ['Ctrl+2']],
       ['Settings', ['Ctrl+,']],
-      ['These shortcuts', ['F1']]
+      ['These shortcuts', [shortcutsKey()]]
     ]
   },
   {

@@ -4,12 +4,29 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { editKey, ignoresShortcut, isCommandKey, keyLabel, onActivateKey, tickTodo } from '../src/renderer/src/lib/keys'
+import {
+  ariaKeys,
+  editKey,
+  ignoresShortcut,
+  isCommandKey,
+  keyLabel,
+  onActivateKey,
+  shortcutsKey,
+  takeShortcut,
+  tickTodo
+} from '../src/renderer/src/lib/keys'
+import type { AppCommand } from '../src/shared/api'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */
-const key = (target: object | null, defaultPrevented = false): { target: EventTarget | null; defaultPrevented: boolean } => ({
+const key = (
+  target: object | null,
+  defaultPrevented = false
+): { target: EventTarget | null; defaultPrevented: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean } => ({
   target: target as EventTarget | null,
-  defaultPrevented
+  defaultPrevented,
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false
 })
 
 describe('ignoresShortcut', () => {
@@ -32,6 +49,74 @@ describe('ignoresShortcut', () => {
 
   it('stands back when another handler already took the key', () => {
     expect(ignoresShortcut(key({ tagName: 'BODY' }, true), false)).toBe(true)
+  })
+
+  it('leaves a key held with Control, Command or Option to its own shortcut', () => {
+    for (const mod of ['ctrlKey', 'metaKey', 'altKey']) {
+      expect(ignoresShortcut({ ...key({ tagName: 'BODY' }), [mod]: true }, false), mod).toBe(true)
+    }
+    expect(ignoresShortcut({ ...key({ tagName: 'BODY' }), shiftKey: true }, false)).toBe(false)
+  })
+})
+
+describe('takeShortcut', () => {
+  const press = (
+    init: { key: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; shiftKey?: boolean; repeat?: boolean },
+    mac: boolean
+  ): { ran: AppCommand[]; prevented: boolean } => {
+    const ran: AppCommand[] = []
+    let prevented = false
+    const e = { ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, repeat: false, ...init, preventDefault: () => (prevented = true) }
+    takeShortcut(e, (c) => ran.push(c), mac)
+    return { ran, prevented }
+  }
+
+  it('runs the app shortcuts on Command on a Mac and on Ctrl elsewhere', () => {
+    expect(press({ key: 'n', metaKey: true }, true)).toEqual({ ran: ['new-note'], prevented: true })
+    expect(press({ key: 'k', ctrlKey: true }, false)).toEqual({ ran: ['search'], prevented: true })
+    expect(press({ key: '1', metaKey: true }, true).ran).toEqual(['today'])
+    expect(press({ key: '2', ctrlKey: true }, false).ran).toEqual(['study'])
+    expect(press({ key: ',', metaKey: true }, true).ran).toEqual(['settings'])
+  })
+
+  it('leaves Control on a Mac to text editing', () => {
+    expect(press({ key: 'n', ctrlKey: true }, true)).toEqual({ ran: [], prevented: false })
+    expect(press({ key: 'k', ctrlKey: true }, true)).toEqual({ ran: [], prevented: false })
+  })
+
+  it('takes a held key without running it again, so the Mac menu never sees the repeats', () => {
+    expect(press({ key: 'n', metaKey: true, repeat: true }, true)).toEqual({ ran: [], prevented: true })
+    expect(press({ key: 'F1', repeat: true }, true)).toEqual({ ran: [], prevented: true })
+  })
+
+  it('opens the shortcuts on F1, and on Command and slash on a Mac', () => {
+    expect(press({ key: 'F1' }, false).ran).toEqual(['shortcuts'])
+    expect(press({ key: 'F1' }, true).ran).toEqual(['shortcuts'])
+    expect(press({ key: '/', metaKey: true }, true).ran).toEqual(['shortcuts'])
+    expect(press({ key: '/', metaKey: true, shiftKey: true }, true).ran).toEqual(['shortcuts'])
+    expect(press({ key: '/', ctrlKey: true }, false)).toEqual({ ran: [], prevented: false })
+  })
+
+  it('leaves Option combinations and other keys alone', () => {
+    expect(press({ key: 'n', metaKey: true, altKey: true }, true)).toEqual({ ran: [], prevented: false })
+    expect(press({ key: 'b', metaKey: true }, true)).toEqual({ ran: [], prevented: false })
+    expect(press({ key: 'n' }, false)).toEqual({ ran: [], prevented: false })
+  })
+})
+
+describe('shortcutsKey', () => {
+  it('is F1 off a Mac and Command and slash on one', () => {
+    expect(keyLabel(shortcutsKey(false), false)).toBe('F1')
+    expect(keyLabel(shortcutsKey(true), true)).toBe(String.fromCodePoint(0x2318) + '/')
+  })
+})
+
+describe('ariaKeys', () => {
+  it('names the keys the way assistive tech expects', () => {
+    expect(ariaKeys('Ctrl+K', true)).toBe('Meta+K')
+    expect(ariaKeys('Ctrl+K', false)).toBe('Control+K')
+    expect(ariaKeys('Ctrl+Shift+8', true)).toBe('Meta+Shift+8')
+    expect(ariaKeys('F1', true)).toBe('F1')
   })
 })
 
@@ -70,7 +155,7 @@ describe('editKey', () => {
     let prevented = false
     const field = {}
     editKey(
-      { key, currentTarget: field, preventDefault: () => (prevented = true) } as never,
+      { key, nativeEvent: { isComposing: false }, currentTarget: field, preventDefault: () => (prevented = true) } as never,
       (el) => (committed = el),
       cancels ? (el) => (cancelled = el) : undefined
     )
@@ -87,6 +172,15 @@ describe('editKey', () => {
 
   it('leaves Escape alone in a field with nothing to cancel', () => {
     expect(press('Escape', false)).toEqual({ committed: false, cancelled: false, prevented: false })
+  })
+
+  it('leaves Enter to the input method while it is composing a word', () => {
+    let committed = false
+    editKey(
+      { key: 'Enter', nativeEvent: { isComposing: true }, currentTarget: {}, preventDefault: () => {} } as never,
+      () => (committed = true)
+    )
+    expect(committed).toBe(false)
   })
 
   it('ignores other keys', () => {
