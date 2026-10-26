@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect, useId, useRef } from 'react'
 import { useApp } from '@/stores/app'
+import { closesSheet } from '@/lib/keys'
 
 export function Button({
   children,
@@ -93,7 +94,10 @@ export function Modal({
   const opener = useRef<HTMLElement | null>(null)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (closesSheet(e)) {
+        e.preventDefault()
+        onClose()
+      }
       // Tab stays inside the dialog.
       if (e.key === 'Tab' && panelRef.current) {
         const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])'))
@@ -121,7 +125,7 @@ export function Modal({
     }
   }, [])
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onMouseDown={onClose}>
+    <div className="no-drag fixed inset-0 z-50 flex items-center justify-center p-6" onMouseDown={onClose}>
       <div
         ref={panelRef}
         role="dialog"
