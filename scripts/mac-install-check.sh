@@ -16,6 +16,24 @@ failed=0
 
 line() { printf '\n== %s\n' "$1"; }
 
+# Runs a command for at most $1 seconds; a Gatekeeper dialog can keep open or hdiutil waiting forever.
+bounded() {
+  secs="$1"
+  shift
+  "$@" &
+  bpid=$!
+  n=0
+  while kill -0 "$bpid" 2>/dev/null && [ "$n" -lt "$secs" ]; do sleep 1; n=$((n + 1)); done
+  if kill -0 "$bpid" 2>/dev/null; then
+    kill "$bpid" 2>/dev/null
+    sleep 1
+    kill -9 "$bpid" 2>/dev/null
+    echo "(still waiting after $secs s, stopped)"
+    return 124
+  fi
+  wait "$bpid"
+}
+
 check() {
   what="$1"
   shift
@@ -54,7 +72,7 @@ report() {
   echo "exit $?"
   if command -v syspolicy_check >/dev/null 2>&1; then
     echo "-- syspolicy_check distribution"
-    syspolicy_check distribution "$app" >"$work/policy.txt" 2>&1
+    bounded 120 syspolicy_check distribution "$app" >"$work/policy.txt" 2>&1
     rc=$?
     head -40 "$work/policy.txt"
     echo "exit $rc"
@@ -68,14 +86,14 @@ try_open() {
   stop_all
   since="$(date '+%Y-%m-%d %H:%M:%S')"
   echo "-- open"
-  open "$app" 2>&1
+  bounded 15 open "$app" 2>&1
   echo "exit $?"
   sleep 10
   pid="$(running)"
   if [ -n "$pid" ]; then echo "result: Inkling is running after 10 s"; else echo "result: Inkling is not running after 10 s"; fi
   screencapture -x "$work/screen-$tag.png" 2>/dev/null || echo "no screen capture"
   echo "-- Gatekeeper log"
-  log show --start "$since" --style compact \
+  bounded 180 log show --start "$since" --style compact \
     --predicate 'process == "syspolicyd" OR process == "CoreServicesUIAgent" OR subsystem == "com.apple.syspolicy"' \
     2>/dev/null >"$work/gk-$tag.txt"
   grep -iE 'gk |gatekeeper|malware|damaged|notar|prompt|evaluat|assess|translocat|reject|adhoc|unsigned' "$work/gk-$tag.txt" | tail -30
@@ -90,7 +108,7 @@ dmg_route() {
   dst="$work/$tag"
   rm -rf "$dst"
   mkdir -p "$mnt" "$dst"
-  hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg" >/dev/null || { echo "the disk image did not mount"; return 1; }
+  bounded 300 hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg" >/dev/null || { echo "the disk image did not mount"; return 1; }
   cp -R "$mnt/Inkling.app" "$dst/"
   hdiutil detach "$mnt" >/dev/null || hdiutil detach -force "$mnt" >/dev/null
   if xattr -p com.apple.quarantine "$dst/Inkling.app" >/dev/null 2>&1; then
@@ -120,7 +138,7 @@ zip_route() {
 }
 
 run_install() {
-  HOME="$1" INKLING_ZIP_URL="$2" sh "$root/site/install" >"$work/out.txt" 2>"$work/err.txt"
+  bounded 300 env HOME="$1" INKLING_ZIP_URL="$2" sh "$root/site/install" >"$work/out.txt" 2>"$work/err.txt"
   rc=$?
   sed 's/^/  out: /' "$work/out.txt"
   sed 's/^/  err: /' "$work/err.txt"
@@ -255,7 +273,7 @@ stage_install() {
 
   line "Inkling is open while the command runs"
   launch_with_profile open "$app"
-  sleep 5
+  sleep 10
   check "refuses with one plain sentence" fails_with_one_line "$work/home-b" "$url"
   stop_all
 
@@ -312,7 +330,7 @@ EOF
   electron="$root/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
   for spec in "1440 900 light" "1440 900 dark" "1100 800 light" "820 1000 dark"; do
     set -- $spec
-    env -u ELECTRON_RUN_AS_NODE "$electron" "$shot" "http://127.0.0.1:8766/" "$work/page-$1-$3.png" "$1" "$2" "$3" >/dev/null 2>&1
+    bounded 120 env -u ELECTRON_RUN_AS_NODE "$electron" "$shot" "http://127.0.0.1:8766/" "$work/page-$1-$3.png" "$1" "$2" "$3" >/dev/null 2>&1
     check "page shot $1 $3" test -s "$work/page-$1-$3.png"
   done
   return $failed
