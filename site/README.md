@@ -25,6 +25,8 @@ It names no author and does not link to this repository.
   - `/update/latest-mac.yml`
   - `/update/latest-linux.yml`
   - `/update/:file`
+- `install` is the Mac install script behind `curl -fsSL https://inkling.punds.ch/install | sh`. It is plain
+  POSIX sh, and `vercel.json` serves it as text. `INKLING_ZIP_URL` points it at another zip for a test.
 - `llms.txt` describes the app for AI assistants.
 - `skill/inkling/` is the assistant skill, and `skill/inkling.zip` is that folder zipped. Rebuild the zip
   after an edit, from this folder:

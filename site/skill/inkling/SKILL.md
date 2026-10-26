@@ -84,7 +84,7 @@ Search matches note titles and text, to-do text and deck names. It does not sear
 
 ## Updates and removal
 
-- Inkling checks for a new version at each start. On Windows and Linux it downloads it in the background and installs it when Inkling closes. On macOS, download the new disk image from the Inkling download page.
+- Inkling checks for a new version at each start. On Windows and Linux it downloads it in the background and installs it when Inkling closes. On macOS, run `curl -fsSL https://inkling.punds.ch/install | sh` in Terminal again.
 - To remove it on Windows, uninstall Inkling under Settings, Apps, Installed apps. The notes stay. To delete them too, close Inkling and delete `%APPDATA%\Inkling` (notes and backups), `%LOCALAPPDATA%\inkling-updater` (downloaded updates) and `%TEMP%\inkling-mcp` (only there if the MCP server ran).
 - On macOS, move Inkling from Applications to the Trash, then delete `~/Library/Application Support/Inkling` and `~/Library/Caches/inkling-updater`. On Linux, delete the AppImage, `~/.config/Inkling` and `~/.cache/inkling-updater`.
 
