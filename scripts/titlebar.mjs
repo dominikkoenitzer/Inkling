@@ -1,8 +1,8 @@
 /**
  * Title bar check: runs the built app on a throwaway seeded profile and fails when anything in
  * the title bar sits under the window buttons, at three widths, in both themes, and in full
- * screen when the window may go on screen (CI). On macOS the button rects come from the real
- * window through the accessibility API; elsewhere from the window controls overlay.
+ * screen when the window may go on screen (CI). On macOS the buttons are found by their colours
+ * in a shot of the real window; elsewhere they fill what the window controls overlay leaves out.
  *
  *   bun run build && bun run titlebar
  *
