@@ -118,40 +118,6 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Native reference
-        if: runner.os == 'macOS'
-        run: |
-          sw_vers
-          system_profiler SPDisplaysDataType | grep -E 'Resolution|Retina' || true
-          cat > "$RUNNER_TEMP/native.swift" <<'SWIFT'
-          import AppKit
-          let app = NSApplication.shared
-          app.setActivationPolicy(.regular)
-          func measure(_ name: String, _ style: NSWindow.ToolbarStyle?) {
-            let w = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 900, height: 600), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
-            w.titlebarAppearsTransparent = true
-            w.titleVisibility = .hidden
-            if let style = style { w.toolbar = NSToolbar(identifier: name); w.toolbarStyle = style }
-            w.orderFront(nil)
-            w.layoutIfNeeded()
-            let height = w.frame.height
-            var parts = [name, "bar=\(height - w.contentLayoutRect.maxY)"]
-            for (key, type) in [("close", NSWindow.ButtonType.closeButton), ("min", .miniaturizeButton), ("zoom", .zoomButton)] {
-              if let b = w.standardWindowButton(type) {
-                let f = b.convert(b.bounds, to: nil)
-                parts.append("\(key) x=\(f.minX) top=\(height - f.maxY) w=\(f.width) h=\(f.height)")
-              }
-            }
-            print(parts.joined(separator: " "))
-            w.close()
-          }
-          measure("plain", nil)
-          measure("unified", .unified)
-          measure("compact", .unifiedCompact)
-          measure("expanded", .expanded)
-          SWIFT
-          swift "$RUNNER_TEMP/native.swift"
-
       - name: Title bar check
         if: runner.os != 'Linux'
         run: bun run titlebar
