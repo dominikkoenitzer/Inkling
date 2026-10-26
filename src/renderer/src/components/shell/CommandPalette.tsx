@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Search, FileText, CheckSquare, Layers, Plus, Sun, Keyboard, Settings } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { searchFor } from '@/lib/calls'
@@ -26,6 +26,9 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
   const close = (): void => useApp.getState().setPaletteOpen(false)
 
   const listRef = useRef<HTMLDivElement>(null)
+  // The box stays focused and names the picked result to screen readers by its id.
+  const listId = useId()
+  const optionId = (item: Item): string => `${listId}-${item.key}`
   const sheetRef = useRef<HTMLDivElement>(null)
   const onExitEnd = useExit(sheetRef, closing, onGone)
 
@@ -140,6 +143,11 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
             onKeyDown={onKey}
             placeholder="Search notes, to-dos and decks"
             aria-label="Search"
+            role="combobox"
+            aria-expanded={items.length > 0}
+            aria-controls={listId}
+            aria-activedescendant={items[clamped] && optionId(items[clamped])}
+            aria-autocomplete="list"
             className="h-12 flex-1 bg-transparent text-[15px] placeholder:text-faint"
           />
         </div>
@@ -147,25 +155,30 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
           {q && !pending && !results.failed && found.length === 0 && matching.length === 1 && (
             <p className="px-3 py-3 text-sm text-faint">Nothing found.</p>
           )}
-          {items.map((item, i) => (
-            <button
-              key={item.key}
-              type="button"
-              tabIndex={-1}
-              onMouseEnter={() => setSelected(i)}
-              onClick={() => runItem(item)}
-              aria-keyshortcuts={item.keys && ariaKeys(item.keys)}
-              className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm ${clamped === i ? 'bg-active text-ink' : 'text-ink'}`}
-            >
-              <span className="text-faint">{item.icon}</span>
-              <span className="shrink-0">{item.label}</span>
-              {(item.keys || item.detail) && (
-                <span aria-hidden={item.keys ? true : undefined} className={`ml-auto truncate pl-3 text-xs ${clamped === i ? 'text-muted' : 'text-faint'}`}>
-                  {item.keys ? keyLabel(item.keys) : item.detail}
-                </span>
-              )}
-            </button>
-          ))}
+          <div id={listId} role="listbox" aria-label="Results">
+            {items.map((item, i) => (
+              <button
+                key={item.key}
+                id={optionId(item)}
+                type="button"
+                role="option"
+                aria-selected={clamped === i}
+                tabIndex={-1}
+                onMouseEnter={() => setSelected(i)}
+                onClick={() => runItem(item)}
+                aria-keyshortcuts={item.keys && ariaKeys(item.keys)}
+                className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm ${clamped === i ? 'bg-active text-ink' : 'text-ink'}`}
+              >
+                <span className="text-faint">{item.icon}</span>
+                <span className="shrink-0">{item.label}</span>
+                {(item.keys || item.detail) && (
+                  <span aria-hidden={item.keys ? true : undefined} className={`ml-auto truncate pl-3 text-xs ${clamped === i ? 'text-muted' : 'text-faint'}`}>
+                    {item.keys ? keyLabel(item.keys) : item.detail}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
