@@ -269,6 +269,34 @@ async function run(win) {
   ok('focus is back on the Settings button after that click', beside.focus === 'Settings', 'focus on ' + beside.focus)
   await js(shut)
   await wait(300)
+
+  // A card deleted from the keyboard hands focus to the card that takes its place.
+  await js(app(`openDeck(${French})`))
+  await wait(600)
+  await js(`document.querySelector('main ul [aria-label="Delete card"]').focus()`)
+  key('Space')
+  let gone = true
+  try {
+    await js(`window.__motion.until(() => document.querySelector('main ul [data-motion="leaving"]'))`)
+  } catch {
+    gone = false
+  }
+  await wait(30)
+  const next = JSON.parse(await js(`JSON.stringify({ focus: ${focused}, row: !!document.activeElement.closest('main ul [data-row]:not([inert])') })`))
+  ok('Space on Delete card deletes the card', gone)
+  ok('focus moves to the next card as one leaves', next.row, 'focus on ' + next.focus)
+
+  // Escape leaves the new deck name for the New deck button.
+  await js(app('openDeck(null)'))
+  await js(app(`setView('study')`))
+  await wait(600)
+  await js(`(() => { const b = [...document.querySelectorAll('main button')].find((x) => x.textContent.includes('New deck')); b.focus(); b.click() })()`)
+  await wait(200)
+  const naming = await js(focused)
+  key('Escape')
+  await wait(100)
+  const named = await js(focused)
+  ok('Escape in the deck name puts focus on New deck', naming === 'Deck name' && named === 'New deck', 'focus on ' + naming + ' then ' + named)
 }
 
 // Preloaded before Electron sets up its own modules, so `electron` is asked for once it has.

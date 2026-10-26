@@ -173,14 +173,43 @@ function sweepRows(root: HTMLElement | null, timers: Map<string, () => void>, se
   }
 }
 
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+
+/**
+ * Focus inside a row of `root` that just started to leave moves on before the row turns inert:
+ * to the same control in the next row, else in the one before, else to `home`.
+ */
+function passFocus(root: HTMLElement | null, home: HTMLElement | null | undefined): void {
+  const active = document.activeElement
+  if (!root || !(active instanceof HTMLElement)) return
+  const leaving = active.closest<HTMLElement>('[data-motion="leaving"]')
+  if (!leaving || !root.contains(leaving)) return
+  const label = active.getAttribute('aria-label')
+  const same = (row: HTMLElement): HTMLElement | null =>
+    active === leaving
+      ? row.matches(FOCUSABLE)
+        ? row
+        : null
+      : (label && row.querySelector<HTMLElement>(`[aria-label="${CSS.escape(label)}"]`)) || row.querySelector<HTMLElement>(FOCUSABLE)
+  const rows = Array.from(root.querySelectorAll<HTMLElement>('[data-row]'))
+  const at = rows.indexOf(leaving)
+  for (const row of [...rows.slice(at + 1), ...rows.slice(0, at).reverse()]) {
+    const target = row.dataset.motion === 'leaving' ? null : same(row)
+    if (target) return target.focus()
+  }
+  home?.focus()
+}
+
 /**
  * Rows for a list that animates what joins and leaves it. `list` is the element around the
  * rows; give it `onAnimationEnd`, and spread `row(r)` on each row, which carries motion-row.
+ * Focus in a row that leaves goes to a row beside it, else to `home`.
  */
 export function useRows<T>(
   items: T[] | null,
   keyOf: (item: T) => RowKey,
-  list: React.RefObject<HTMLElement | null>
+  list: React.RefObject<HTMLElement | null>,
+  home?: React.RefObject<HTMLElement | null>
 ): {
   rows: Row<T>[] | null
   onAnimationEnd: (e: React.AnimationEvent) => void
@@ -191,7 +220,10 @@ export function useRows<T>(
   const settle = useCallback((key: RowKey) => setState((s) => (s.rows ? { ...s, rows: settleRow(s.rows, key) } : s)), [])
 
   const timers = useRef(new Map<string, () => void>())
-  useLayoutEffect(() => sweepRows(list.current, timers.current, settle))
+  useLayoutEffect(() => {
+    passFocus(list.current, home?.current)
+    sweepRows(list.current, timers.current, settle)
+  })
   useEffect(() => {
     const all = timers.current
     const onHide = (): void => sweepRows(list.current, all, settle)

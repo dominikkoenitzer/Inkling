@@ -22,6 +22,7 @@ export function StudyView(): React.JSX.Element {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const creating = useRef(false)
+  const newDeck = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     let stale = false
@@ -74,7 +75,7 @@ export function StudyView(): React.JSX.Element {
       <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14">
         <div className="flex items-end justify-between gap-4">
           <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
-          <Button onClick={() => setAdding(true)}>
+          <Button ref={newDeck} onClick={() => setAdding(true)}>
             <Plus size={15} /> New deck
           </Button>
         </div>
@@ -90,6 +91,8 @@ export function StudyView(): React.JSX.Element {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.nativeEvent.isComposing) void create()
               if (e.key === 'Escape' && !e.nativeEvent.isComposing) {
+                // The field goes away, so focus goes back to the button that opened it.
+                newDeck.current?.focus()
                 setAdding(false)
                 setName('')
               }
@@ -147,7 +150,9 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
   const [cards, setCards] = useState<Card[] | null>(null)
   const [cardsFailed, setCardsFailed] = useState(false)
   const cardList = useRef<HTMLUListElement>(null)
-  const cardRows = useRows(cards, (c) => c.id, cardList)
+  const frontRef = useRef<HTMLInputElement>(null)
+  // A card that goes hands its focus to the one beside it, or to the new card's question.
+  const cardRows = useRows(cards, (c) => c.id, cardList, frontRef)
   const [front, setFront] = useState('')
   const [back, setBack] = useState('')
   const [name, setName] = useState(deck.name)
@@ -189,7 +194,6 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     }
   }, [deck.note_id, notesVersion])
   const adding = useRef(false)
-  const frontRef = useRef<HTMLInputElement>(null)
   const backRef = useRef<HTMLInputElement>(null)
 
   // Esc goes back to the deck list, unless a field or a dialog has it.
