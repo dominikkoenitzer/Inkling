@@ -57,7 +57,8 @@ function macButtons(win, file) {
   const bitmap = image.toBitmap()
   const bounds = win.getBounds()
   const content = win.getContentBounds()
-  const scale = width / bounds.width
+  // The shot stops at the screen edge, so its size says nothing about the scale; the display does.
+  const scale = screen.getDisplayMatching(bounds).scaleFactor
   // The lights live in the top left corner of the window.
   const maxX = Math.min(width, Math.round(200 * scale))
   const maxY = Math.min(height, Math.round(80 * scale))
@@ -106,8 +107,20 @@ function overlayButtons(page) {
 const hits = (a, b, gap) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h && b.y < a.y + a.h
 
 async function shoot(win, name) {
-  const image = await win.webContents.capturePage()
-  fs.writeFileSync(path.join(out, 'web-' + name + '.png'), image.toPNG())
+  // Under a virtual display the first frames can still be on their way.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const image = await win.webContents.capturePage()
+      fs.writeFileSync(path.join(out, 'web-' + name + '.png'), image.toPNG())
+      break
+    } catch (e) {
+      if (attempt === 5) {
+        ok('page shot of ' + name, false, String(e.message || e))
+        break
+      }
+      await wait(1000)
+    }
+  }
   if (!mac || !onScreen) return
   // The real window, buttons included: they are drawn outside the page.
   const b = win.getBounds()
@@ -249,9 +262,9 @@ async function run(win) {
 }
 
 // Preloaded before Electron sets up its own modules, so `electron` is asked for once it has.
-let app, Menu, nativeImage
+let app, Menu, nativeImage, screen
 setImmediate(() => {
-  ;({ app, Menu, nativeImage } = require('electron'))
+  ;({ app, Menu, nativeImage, screen } = require('electron'))
   app.on('browser-window-created', (_event, win) => watch(win))
 })
 
