@@ -200,6 +200,28 @@ async function run(win) {
     }
   }
 
+  // The window behind the page follows the theme, or a resize flashes the other one.
+  for (const [theme, color] of [['dark', '#1a1918'], ['light', '#fbfaf8']]) {
+    await state(`setTheme('${theme}')`)
+    await wait(300)
+    const bg = win.getBackgroundColor().toLowerCase()
+    ok('the window background follows the ' + theme + ' theme', bg.startsWith(color), bg)
+  }
+
+  // The app's shortcuts sit on Command on a Mac, where Control moves the cursor, and on Ctrl elsewhere.
+  const press = async (mods) => {
+    await js('window.__app.setState({ paletteOpen: false, settingsOpen: false, shortcutsOpen: false })')
+    win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'K', modifiers: mods })
+    win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'K', modifiers: mods })
+    await wait(300)
+    return js('window.__app.getState().paletteOpen')
+  }
+  const own = mac ? 'meta' : 'control'
+  const other = mac ? 'control' : 'meta'
+  ok(own + '+K opens search', (await press([own])) === true)
+  if (mac) ok(other + '+K leaves search closed', (await press([other])) === false)
+  await js('window.__app.setState({ paletteOpen: false })')
+
   // Shots of the overlays for the record: shortcut sheet, search and settings.
   await state(`setTheme('light')`)
   win.setSize(1100, 860)
@@ -214,6 +236,16 @@ async function run(win) {
     await shoot(win, 'light-' + name)
   }
   data.menu = menuOf(Menu.getApplicationMenu())
+  if (mac) {
+    // The menu bar holds what the app does, with the keys the system expects.
+    const items = []
+    const walk = (list, top) => list.forEach((i) => (items.push({ ...i, top }), i.submenu && walk(i.submenu, top || i.label)))
+    walk(data.menu, '')
+    const has = (label, accel) => items.some((i) => i.label === label && (!accel || (i.accelerator || '').replace('CmdOrCtrl', 'Command') === accel))
+    ok('the app menu opens settings with Command+,', has('Settings…', 'Command+,'))
+    ok('the File menu makes a new note with Command+N', has('New Note', 'Command+N'))
+    ok('the Help menu shows the keyboard shortcuts', has('Keyboard Shortcuts'))
+  }
 }
 
 // Preloaded before Electron sets up its own modules, so `electron` is asked for once it has.
