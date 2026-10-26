@@ -368,7 +368,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* 44px of toolbar plus 12px: the title sits at 56px, like Today and Flashcards. */}
-        <div className="mx-auto max-w-[720px] px-10 pb-32 pt-3">
+        <div className="motion-rise mx-auto max-w-[720px] px-10 pb-32 pt-3">
           <textarea
             ref={titleInputRef}
             rows={1}

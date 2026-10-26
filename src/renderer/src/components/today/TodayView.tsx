@@ -78,7 +78,7 @@ export function TodayView(): React.JSX.Element {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
+      <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14">
         <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Today</h1>
         <p className="mt-1 text-sm text-muted">{longDate.format(new Date())}</p>
 
