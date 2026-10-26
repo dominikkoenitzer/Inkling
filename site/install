@@ -9,6 +9,7 @@ main() {
   url="${INKLING_ZIP_URL:-https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.zip}"
 
   [ "$(uname -s)" = "Darwin" ] || fail "This command is for macOS, so download Inkling from https://inkling.punds.ch instead."
+  [ "$(id -u)" -ne 0 ] || fail "Run the command without sudo, so Inkling belongs to you."
   for tool in curl ditto codesign; do
     command -v "$tool" >/dev/null 2>&1 || fail "This Mac is missing $tool, which the install needs."
   done
@@ -19,7 +20,9 @@ main() {
     mkdir -p "$dest" || fail "Could not make the folder $dest."
   fi
   app="$dest/Inkling.app"
-  if pgrep -f "$app/Contents/MacOS/Inkling" >/dev/null 2>&1; then
+  # pgrep reads a pattern, so a folder name with + or ( in it must not change what it matches.
+  running="$(printf '%s' "$app/Contents/MacOS/Inkling" | sed 's/[][\\.*^$+?(){}|]/\\&/g')"
+  if pgrep -f "$running" >/dev/null 2>&1; then
     fail "Inkling is open, so quit it first and run the command again."
   fi
 
