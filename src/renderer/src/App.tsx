@@ -101,12 +101,12 @@ export default function App(): React.JSX.Element {
       </div>
     )
   }
-  if (!ready) return <div className="h-full bg-app" />
+  if (!ready) return <div className="titlebar-drag h-full bg-app" />
 
   return (
     <div className="flex h-full flex-col bg-app text-ink">
-      {/* Draggable title bar; the window buttons sit over its right end. */}
-      <header className="titlebar-drag flex h-11 shrink-0 items-center border-b border-edge">
+      {/* Draggable title bar; the window buttons sit over its right end. Zoomed text leaves them their size, so the bar keeps theirs. */}
+      <header className="titlebar-drag flex shrink-0 items-center border-b border-edge" style={{ height: 'env(titlebar-area-height, 2.75rem)' }}>
         {/* Starts after the window buttons when they share the bar, as on a Mac. */}
         <div
           className="flex h-full shrink-0 items-center gap-2"
