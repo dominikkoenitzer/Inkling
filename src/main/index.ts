@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog, Menu, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
@@ -9,7 +9,8 @@ import * as repos from './repos'
 import { seedDemo } from './seed'
 import { startMcpHost } from './mcp/host'
 import { watchOutsideWrites } from './watch'
-import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
+import { macMenu } from './menu'
+import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
 if (process.env['INKLING_USERDATA']) {
@@ -89,6 +90,7 @@ function createMainWindow(): void {
     backgroundColor: chrome.color,
     titleBarStyle: 'hidden',
     titleBarOverlay: { ...chrome, height: TITLEBAR_HEIGHT },
+    ...(process.platform === 'darwin' ? { trafficLightPosition: WINDOW_BUTTONS } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -201,6 +203,10 @@ app.whenReady().then(() => {
   // Test hook: the profile is set up, no window needed (the MCP check uses it).
   if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
+  if (process.platform === 'darwin') {
+    const run = (command: string): void => void mainWindow?.webContents.send('app.command', command)
+    Menu.setApplicationMenu(Menu.buildFromTemplate(macMenu(run, app.isPackaged)))
+  }
   createMainWindow()
   watchOutsideWrites()
 
@@ -216,6 +222,7 @@ app.whenReady().then(() => {
 
 
 
+// On a Mac the app stays in the Dock with its window closed, and the Dock icon opens it again.
 app.on('window-all-closed', () => {
-  app.quit()
+  if (process.platform !== 'darwin') app.quit()
 })

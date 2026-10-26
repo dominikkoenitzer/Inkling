@@ -10,8 +10,23 @@ import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 import { setTitlebar } from '@/lib/calls'
 import { isCommandKey, keyLabel } from '@/lib/keys'
+import type { AppCommand } from '@shared/api'
 
 const api = window.inkling
+
+/** A menu bar command: what its shortcut does, except that it always opens rather than toggles. */
+function runCommand(command: AppCommand): void {
+  const app = useApp.getState()
+  if (command === 'new-note') void app.newNote()
+  else if (command === 'search') app.setPaletteOpen(true)
+  else if (command === 'settings') app.setSettingsOpen(true)
+  else if (command === 'shortcuts') app.setShortcutsOpen(true)
+  else {
+    app.setView(command)
+    app.setSettingsOpen(false)
+    app.setShortcutsOpen(false)
+  }
+}
 
 export default function App(): React.JSX.Element {
   const ready = useApp((s) => s.ready)
@@ -34,6 +49,7 @@ export default function App(): React.JSX.Element {
 
   // And while it is in front: the main process says when another process has written.
   useEffect(() => api.events.onDataChanged(() => window.dispatchEvent(new Event('inkling:outside-write'))), [])
+  useEffect(() => api.events.onCommand(runCommand), [])
 
   // Cards answered "Again" come due again within minutes: recount every few minutes.
   // The day is checked too: after sleep the midnight timer can land late, with focus never lost.
@@ -107,7 +123,11 @@ export default function App(): React.JSX.Element {
     <div className="flex h-full flex-col bg-app text-ink">
       {/* Draggable title bar; the window buttons sit over its right end. */}
       <header className="titlebar-drag flex h-11 shrink-0 items-center border-b border-edge">
-        <div className="flex h-full shrink-0 items-center gap-2 pl-4" style={{ width: 'var(--sidebar-w)' }}>
+        {/* Starts after the window buttons when they share the bar, as on a Mac. */}
+        <div
+          className="flex h-full shrink-0 items-center gap-2"
+          style={{ width: 'var(--sidebar-w)', paddingLeft: 'max(1rem, env(titlebar-area-x, 0px))' }}
+        >
           <LogoMark size={18} />
           <span className="text-sm font-semibold tracking-tight">Inkling</span>
         </div>
