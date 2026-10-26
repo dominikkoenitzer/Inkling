@@ -180,6 +180,7 @@
       "The export button above a note saves it as Markdown."
     ]
   },
+  "keys_note": "On a Mac, press <kbd>Cmd</kbd> where it says Ctrl, and <kbd>Cmd+/</kbd> for all shortcuts.",
   "keys": [
     [
       "Ctrl+K",

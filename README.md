@@ -45,6 +45,8 @@ For macOS and Linux, see [Other ways to install](#other-ways-to-install).
 | `Ctrl+Enter` | In a note: tick the to-do the cursor is in |
 | `Space`, then `1` to `4` | In a review: show the answer, then Again, Hard, Good or Easy |
 
+On a Mac, press `Cmd` where the table says `Ctrl`, and `Cmd+/` for all shortcuts.
+
 ## Other ways to install
 
 - macOS, Intel and Apple Silicon: paste `curl -fsSL https://inkling.punds.ch/install | sh` into Terminal. It puts Inkling into Applications and opens it, and running it again updates it. You can also download [Inkling-mac.dmg](https://inkling.punds.ch), open it and drag Inkling into Applications; macOS then asks you to allow it once under System Settings, Privacy & Security.
