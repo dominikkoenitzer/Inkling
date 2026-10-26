@@ -25,6 +25,10 @@
   --text-base--line-height: 1.6;
   --radius-md: 6px;
   --radius-lg: 8px;
+
+  /* Every transition-* class runs on the motion tokens below. */
+  --default-transition-duration: var(--motion-fast);
+  --default-transition-timing-function: var(--ease-standard);
 }
 
 @layer base {
@@ -51,6 +55,31 @@
   --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
   --sidebar-w: 248px;
+
+  /* Motion: the only durations, curves and distances anything moves by. Leaving is faster than arriving. */
+  --motion-fast: 120ms;
+  --motion-enter: 160ms;
+  --motion-sheet: 200ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-rise: 4px;
+  --motion-scale: 0.98;
+  --motion-press: 0.97;
+  /* Lets a row grow from nothing to its own height. */
+  interpolate-size: allow-keywords;
+}
+
+/* Reduced motion: nothing travels or scales, and every fade is short. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 100ms;
+    --motion-enter: 100ms;
+    --motion-sheet: 100ms;
+    --motion-rise: 0px;
+    --motion-scale: 1;
+    --motion-press: 1;
+  }
 }
 
 /* Paper: the default. */
@@ -166,6 +195,120 @@ textarea:focus {
 
 ::selection {
   background: var(--accent-soft);
+}
+
+/* ---------------- Motion ---------------- */
+/* Arrivals keep no fill, so nothing stays transformed afterwards; departures hold their last frame until removed. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+}
+@keyframes rise-out {
+  to {
+    opacity: 0;
+    transform: translateY(var(--motion-rise));
+  }
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--motion-scale));
+  }
+}
+@keyframes sheet-out {
+  to {
+    opacity: 0;
+    transform: scale(var(--motion-scale));
+  }
+}
+@keyframes row-in {
+  from {
+    height: 0;
+    padding-block: 0;
+    border-bottom-width: 0;
+    opacity: 0;
+  }
+  to {
+    height: auto;
+  }
+}
+@keyframes row-out {
+  from {
+    height: auto;
+  }
+  to {
+    height: 0;
+    padding-block: 0;
+    border-bottom-width: 0;
+    opacity: 0;
+  }
+}
+
+/* Dialogs and the search sheet. */
+.motion-backdrop {
+  animation: fade-in var(--motion-sheet) var(--ease-out);
+}
+.motion-backdrop[data-closing] {
+  animation: fade-out var(--motion-fast) var(--ease-in) forwards;
+}
+.motion-sheet {
+  animation: sheet-in var(--motion-sheet) var(--ease-out);
+}
+.motion-sheet[data-search] {
+  transform-origin: top;
+  animation-duration: var(--motion-enter);
+}
+.motion-sheet[data-closing] {
+  animation: sheet-out var(--motion-fast) var(--ease-in) forwards;
+}
+
+/* Pages, toasts and anything that appears in place. */
+.motion-rise {
+  animation: rise-in var(--motion-enter) var(--ease-out);
+}
+.motion-rise[data-closing] {
+  animation: rise-out var(--motion-fast) var(--ease-in) forwards;
+}
+
+/* List rows that join or leave after the list first shows. */
+.motion-row[data-motion='entering'] {
+  overflow: clip;
+  animation: row-in var(--motion-enter) var(--ease-out);
+}
+.motion-row[data-motion='leaving'] {
+  overflow: clip;
+  pointer-events: none;
+  animation: row-out var(--motion-fast) var(--ease-in) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .motion-row[data-motion='entering'] {
+    animation-name: fade-in;
+  }
+  .motion-row[data-motion='leaving'] {
+    animation-name: fade-out;
+  }
+}
+
+/* Compact controls give a little under the pointer; wide rows only change colour. */
+.press {
+  transition-property: color, background-color, border-color, text-decoration-color, opacity, filter, transform;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-out);
+}
+.press:active:not(:disabled) {
+  transform: scale(var(--motion-press));
 }
 
 /* ---------------- Editor ---------------- */
@@ -301,6 +444,9 @@ textarea:focus {
   display: inline-block;
   position: relative;
   background: transparent;
+  transition-property: background-color, border-color;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
 }
 .tiptap ul[data-type='taskList'] input[type='checkbox']:hover,
 .check:hover {
@@ -311,8 +457,9 @@ textarea:focus {
   background: var(--accent);
   border-color: var(--accent);
 }
-.tiptap ul[data-type='taskList'] input[type='checkbox']:checked::after,
-.check:checked::after {
+/* The tick is always there, hidden until checked, so it can grow in and shrink away. */
+.tiptap ul[data-type='taskList'] input[type='checkbox']::after,
+.check::after {
   content: '';
   position: absolute;
   left: 4.3px;
@@ -321,10 +468,37 @@ textarea:focus {
   height: 8.5px;
   border: solid var(--bg-raised);
   border-width: 0 1.8px 1.8px 0;
-  transform: rotate(45deg);
+  opacity: 0;
+  transform: rotate(45deg) scale(0.6);
+  transition:
+    opacity var(--motion-fast) var(--ease-in),
+    transform var(--motion-fast) var(--ease-in);
 }
-.tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
+.tiptap ul[data-type='taskList'] input[type='checkbox']:checked::after,
+.check:checked::after {
+  opacity: 1;
+  transform: rotate(45deg);
+  transition:
+    opacity var(--motion-enter) var(--ease-out),
+    transform var(--motion-enter) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiptap ul[data-type='taskList'] input[type='checkbox']::after,
+  .check::after {
+    transform: rotate(45deg);
+  }
+}
+/* A done to-do fades to faint and its strike line fades in with it. */
+.tiptap ul[data-type='taskList'] li > div,
+.todo-text {
+  text-decoration-line: line-through;
+  text-decoration-color: transparent;
+  transition-property: color, text-decoration-color;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
+}
+.tiptap ul[data-type='taskList'] li[data-checked='true'] > div,
+.todo-text[data-done] {
   color: var(--text-faint);
-  text-decoration: line-through;
   text-decoration-color: var(--text-faint);
 }
