@@ -114,7 +114,7 @@ export function useRows<T>(
 ): {
   rows: Row<T>[] | null
   onAnimationEnd: (e: React.AnimationEvent) => void
-  row: (r: Row<T>) => { 'data-row': string; 'data-motion'?: RowState; inert?: boolean }
+  row: (r: Pick<Row<T>, 'key' | 'state'>) => { 'data-row': string; 'data-motion'?: RowState; inert?: boolean }
 } {
   const [state, setState] = useState(() => ({ items, rows: nextRows<T>(null, items, keyOf) }))
   if (state.items !== items) setState({ items, rows: nextRows(state.rows, items, keyOf) })
@@ -131,7 +131,7 @@ export function useRows<T>(
     const el = e.target as HTMLElement
     if (el.dataset.motion && el.dataset.row !== undefined) settle(el.dataset.row)
   }
-  const row = (r: Row<T>): { 'data-row': string; 'data-motion'?: RowState; inert?: boolean } => ({
+  const row = (r: Pick<Row<T>, 'key' | 'state'>): { 'data-row': string; 'data-motion'?: RowState; inert?: boolean } => ({
     'data-row': String(r.key),
     'data-motion': r.state === 'shown' ? undefined : r.state,
     inert: r.state === 'leaving' ? true : undefined
