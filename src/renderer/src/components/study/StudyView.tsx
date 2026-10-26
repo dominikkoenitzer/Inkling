@@ -9,6 +9,7 @@ import { Button, Code, IconBtn, inputCls, titleFieldCls } from '@/components/ui'
 import { editKey, ignoresShortcut } from '@/lib/keys'
 import { oneLine } from '@/lib/parse'
 import { ReviewSession } from './ReviewSession'
+import { useRows, type RowProps } from '@/lib/motion'
 import type { Deck, Card } from '@shared/types'
 
 export function StudyView(): React.JSX.Element {
@@ -145,6 +146,8 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
   // Null until the cards arrive, so a deck is never shown empty before then.
   const [cards, setCards] = useState<Card[] | null>(null)
   const [cardsFailed, setCardsFailed] = useState(false)
+  const cardList = useRef<HTMLUListElement>(null)
+  const cardRows = useRows(cards, (c) => c.id, cardList)
   const [front, setFront] = useState('')
   const [back, setBack] = useState('')
   const [name, setName] = useState(deck.name)
@@ -327,37 +330,37 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 
         {cards === null ? (
           cardsFailed && <p className="py-10 text-center text-sm text-faint">Could not load the cards.</p>
-        ) : cards.length === 0 ? (
-          <p className="py-10 text-center text-sm text-faint">No cards yet. Type a question and its answer above.</p>
-        ) : (
-          <ul className="mt-6 border-t border-edge">
-            {cards.map((c) => (
-              <CardRow key={c.id} card={c} />
+        ) : cardRows.rows?.length ? (
+          <ul ref={cardList} className="mt-6 border-t border-edge" onAnimationEnd={cardRows.onAnimationEnd}>
+            {cardRows.rows.map((r) => (
+              <CardRow key={r.key} card={r.item} motion={cardRows.row(r)} />
             ))}
           </ul>
+        ) : (
+          <p className="py-10 text-center text-sm text-faint">No cards yet. Type a question and its answer above.</p>
         )}
       </div>
     </div>
   )
 }
 
-function CardRow({ card }: { card: Card }): React.JSX.Element {
+function CardRow({ card, motion }: { card: Card; motion: RowProps }): React.JSX.Element {
   const due = storedTime(card.next_review_date) <= new Date().getTime()
   // A card made from a note line belongs to that line: an edit here would be undone by the
   // next Flashcards press, so it is shown as text and edited in the note.
   if (card.source_line !== null) {
     return (
-      <li className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
+      <li {...motion} className="motion-row grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
         <span className="min-w-0 truncate px-1.5 py-1 text-sm">{card.front}</span>
         <span className="min-w-0 truncate px-1.5 py-1 text-sm text-muted">{card.back}</span>
         <span className="w-14 pr-8 text-right text-xs text-faint">{due ? 'due' : `in ${card.interval_days}d`}</span>
       </li>
     )
   }
-  return <EditableCardRow card={card} due={due} />
+  return <EditableCardRow card={card} due={due} motion={motion} />
 }
 
-function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX.Element {
+function EditableCardRow({ card, due, motion }: { card: Card; due: boolean; motion: RowProps }): React.JSX.Element {
   const [front, setFront] = useState(card.front)
   const [back, setBack] = useState(card.back)
   const dirty = useRef(false)
@@ -408,7 +411,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
     )
 
   return (
-    <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
+    <li {...motion} className="motion-row group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
       <input
         className={field}
         value={front}
