@@ -110,8 +110,14 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col bg-app text-ink">
-      {/* Draggable title bar; the window buttons sit over its right end. Zoomed text leaves them their size, so the bar keeps theirs. */}
-      <header className="titlebar-drag flex shrink-0 items-center border-b border-edge" style={{ height: 'env(titlebar-area-height, 2.75rem)' }}>
+      {/* Draggable title bar under the window buttons: as tall as they are but never shorter than its own controls, which stop short of them. */}
+      <header
+        className="titlebar-drag flex shrink-0 items-center border-b border-edge"
+        style={{
+          height: 'max(env(titlebar-area-height, 2.75rem), 2.125rem)',
+          paddingRight: 'calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 0.5rem)'
+        }}
+      >
         {/* Starts after the window buttons when they share the bar, as on a Mac. */}
         <div
           className="flex h-full shrink-0 items-center gap-2"
