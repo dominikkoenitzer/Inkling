@@ -34,7 +34,7 @@ export function LogoMark({ size = 26 }: { size?: number }): React.JSX.Element {
 /** A quiet empty state: a small Inky, one line, an optional hint and action. */
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }): React.JSX.Element {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+    <div className="motion-rise flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
       <Inky size={44} className="mb-2" />
       <div className="text-[15px] font-medium text-ink">{title}</div>
       {hint && <div className="max-w-sm text-sm text-muted">{hint}</div>}

@@ -1,0 +1,96 @@
+#!/bin/sh
+# Installs or updates Inkling on a Mac: curl -fsSL https://inkling.punds.ch/install | sh
+# Everything runs inside main, so a half-downloaded copy of this script does nothing.
+
+main() {
+  set -u
+  app=""
+  tmp=""
+  url="${INKLING_ZIP_URL:-https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.zip}"
+
+  [ "$(uname -s)" = "Darwin" ] || fail "This command is for macOS, so download Inkling from https://inkling.punds.ch instead."
+  [ "$(id -u)" -ne 0 ] || fail "Run the command without sudo, so Inkling belongs to you."
+  for tool in curl ditto codesign; do
+    command -v "$tool" >/dev/null 2>&1 || fail "This Mac is missing $tool, which the install needs."
+  done
+
+  dest="/Applications"
+  if [ ! -w "$dest" ]; then
+    dest="$HOME/Applications"
+    mkdir -p "$dest" || fail "Could not make the folder $dest."
+  fi
+  app="$dest/Inkling.app"
+  # pgrep reads a pattern, so a folder name with + or ( in it must not change what it matches.
+  running="$(printf '%s' "$app/Contents/MacOS/Inkling" | sed 's/[][\\.*^$+?(){}|]/\\&/g')"
+  if pgrep -f "$running" >/dev/null 2>&1; then
+    fail "Inkling is open, so quit it first and run the command again."
+  fi
+
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/inkling.XXXXXX")" || fail "Could not make a folder for the download."
+  staged=""
+  old=""
+  trap cleanup EXIT
+  trap 'exit 1' HUP INT TERM
+
+  say "Downloading Inkling."
+  progress="-s"
+  [ -t 2 ] && progress="-#"
+  curl -fL "$progress" --retry 2 -o "$tmp/Inkling-mac.zip" "$url" \
+    || fail "The download did not finish, so check your connection and try again."
+
+  say "Checking the download."
+  ditto -x -k "$tmp/Inkling-mac.zip" "$tmp/unpacked" 2>/dev/null \
+    || fail "The download could not be unpacked, so please try again."
+  new="$tmp/unpacked/Inkling.app"
+  [ -x "$new/Contents/MacOS/Inkling" ] || fail "The download does not hold Inkling, so please try again."
+  codesign --verify --deep --strict "$new" 2>/dev/null \
+    || fail "The download is damaged, so please try again."
+
+  plist="$new/Contents/Info.plist"
+  version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist" 2>/dev/null || echo "")"
+  needs="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist" 2>/dev/null || echo "")"
+  have="$(sw_vers -productVersion 2>/dev/null || echo "")"
+  if [ -n "$needs" ] && [ -n "$have" ] && [ "${have%%.*}" -lt "${needs%%.*}" ] 2>/dev/null; then
+    fail "This version of Inkling needs macOS $needs or newer, and this Mac has $have."
+  fi
+
+  if [ "$dest" != "/Applications" ] && [ -e "/Applications/Inkling.app" ]; then
+    say "Your older copy in /Applications stays where it is."
+  fi
+  say "Installing to $dest."
+  staged="$dest/.inkling-new-$$"
+  old="$dest/.inkling-old-$$"
+  rm -rf "$staged"
+  ditto "$new" "$staged" 2>/dev/null || fail "Could not copy Inkling into $dest."
+  if [ -e "$app" ]; then
+    mv "$app" "$old" 2>/dev/null || fail "Could not replace the copy of Inkling in $dest."
+  fi
+  mv "$staged" "$app" 2>/dev/null || fail "Could not put Inkling in $dest, and any old copy is still there."
+  rm -rf "$old" 2>/dev/null || say "Part of the old copy is left in $old, and you can delete it."
+
+  if [ -n "$version" ]; then
+    say "Inkling $version is in $dest."
+  else
+    say "Inkling is in $dest."
+  fi
+  open "$app" 2>/dev/null || fail "Inkling is in $dest but did not open, so open it from there."
+  say "Inkling is open. Run this command again any time to update it."
+}
+
+# Runs on every exit: an interrupted install puts the old copy back.
+cleanup() {
+  [ -n "$old" ] && [ -e "$old" ] && [ ! -e "$app" ] && mv "$old" "$app"
+  [ -n "$staged" ] && rm -rf "$staged"
+  [ -n "$tmp" ] && rm -rf "$tmp"
+}
+
+say() {
+  printf '%s\n' "$1"
+}
+
+fail() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
+main "$@"

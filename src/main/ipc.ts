@@ -1,4 +1,4 @@
-import { app, clipboard, ipcMain, BrowserWindow, dialog } from 'electron'
+import { app, clipboard, ipcMain, BrowserWindow, dialog, nativeTheme } from 'electron'
 import fs from 'fs'
 import * as repos from './repos'
 import { assistantStatus, connectAssistant, disconnectAssistant, placesFor, setupJson, type AssistantId, type Launch } from './assistants'
@@ -82,12 +82,10 @@ export function registerIpc(): void {
 
   ipcMain.handle('app.setTitlebar', (event, theme: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    try {
-      win?.setTitleBarOverlay({ ...CHROME[themeOf(theme)], height: TITLEBAR_HEIGHT })
-      win?.setBackgroundColor(CHROME[themeOf(theme)].color)
-    } catch {
-      /* not supported on this platform */
-    }
+    win?.setBackgroundColor(CHROME[themeOf(theme)].color)
+    // The Mac draws its buttons, menus and sheets in the native theme, which follows the app's.
+    if (process.platform === 'darwin') nativeTheme.themeSource = themeOf(theme)
+    else win?.setTitleBarOverlay({ ...CHROME[themeOf(theme)], height: TITLEBAR_HEIGHT })
   })
 
   // Native "save as" for exporting text (e.g. a note as Markdown).

@@ -1,7 +1,9 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useId, useRef } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useApp } from '@/stores/app'
+import { canTab, closesSheet, TAB_STOPS } from '@/lib/keys'
+import { noop, useExit, useReturnFocus, type Exit } from '@/lib/motion'
 
 export function Button({
   children,
@@ -11,7 +13,8 @@ export function Button({
   disabled,
   title,
   ariaLabel,
-  type
+  type,
+  ref
 }: {
   children: ReactNode
   onClick?: () => void
@@ -22,6 +25,7 @@ export function Button({
   /** Needed when the children are only an icon. */
   ariaLabel?: string
   type?: 'button' | 'submit'
+  ref?: React.Ref<HTMLButtonElement>
 }): React.JSX.Element {
   const styles = {
     default: 'bg-raised border border-edge text-ink hover:bg-hover',
@@ -31,12 +35,13 @@ export function Button({
   }[variant]
   return (
     <button
+      ref={ref}
       type={type ?? 'button'}
       title={title}
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:border-edge disabled:bg-panel disabled:text-faint disabled:brightness-100 ${styles} ${className}`}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium press disabled:cursor-not-allowed disabled:border-edge disabled:bg-panel disabled:text-faint disabled:brightness-100 ${styles} ${className}`}
     >
       {children}
     </button>
@@ -67,7 +72,7 @@ export function IconBtn({
       aria-label={label ?? title}
       aria-pressed={active}
       onClick={onClick}
-      className={`no-drag inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+      className={`no-drag inline-flex h-8 w-8 items-center justify-center rounded-md press ${
         active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
       } ${className}`}
     >
@@ -80,23 +85,30 @@ export function Modal({
   title,
   onClose,
   children,
-  width = 420
+  width = 420,
+  closing = false,
+  onGone = noop
 }: {
   title: string
   onClose: () => void
   children: ReactNode
   width?: number
-}): React.JSX.Element {
+} & Exit): React.JSX.Element {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
-  // Whatever had focus when the dialog opened gets it back when it closes.
-  const opener = useRef<HTMLElement | null>(null)
+  const onExitEnd = useExit(panelRef, closing, onGone)
+  // Whatever had focus when the dialog opened gets it back as it starts to close.
+  useReturnFocus(closing, panelRef)
   useEffect(() => {
+    if (closing) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (closesSheet(e)) {
+        e.preventDefault()
+        onClose()
+      }
       // Tab stays inside the dialog.
       if (e.key === 'Tab' && panelRef.current) {
-        const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])'))
+        const items = Array.from(panelRef.current.querySelectorAll<HTMLElement & { disabled?: boolean }>(TAB_STOPS)).filter(canTab)
         if (items.length === 0) return
         const first = items[0]
         const last = items[items.length - 1]
@@ -111,24 +123,28 @@ export function Modal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  useEffect(() => {
-    opener.current = document.activeElement as HTMLElement | null
-    // An autofocused field inside keeps its focus; otherwise the dialog itself takes it.
-    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus()
-    return () => {
-      if (opener.current?.isConnected) opener.current.focus()
-    }
-  }, [])
+  }, [onClose, closing, panelRef])
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onMouseDown={onClose}>
+    // A closing dialog sits under anything that opens in its place and takes no input.
+    <div
+      className={`no-drag fixed inset-0 flex items-center justify-center p-6 ${closing ? 'pointer-events-none z-40' : 'z-50'}`}
+      inert={closing || undefined}
+      // The press itself must not move focus, or it lands on the page instead of the opener.
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onClose()
+      }}
+    >
       <div
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
+        role={closing ? undefined : 'dialog'}
+        aria-modal={closing ? undefined : 'true'}
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="max-h-[85vh] overflow-y-auto rounded-lg border border-edge bg-raised p-5"
+        data-sheet=""
+        data-closing={closing || undefined}
+        onAnimationEnd={onExitEnd}
+        className="motion-sheet max-h-[85vh] overflow-y-auto rounded-lg border border-edge bg-raised p-5"
         style={{ width, boxShadow: 'var(--shadow)', outline: 'none' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -147,35 +163,53 @@ export function Modal({
 }
 
 /** One transient message at a time, bottom-centre. Used for "that's undoable". */
-export function Toaster(): React.JSX.Element | null {
-  const toast = useApp((s) => s.toast)
+export function Toaster(): React.JSX.Element {
+  const current = useApp((s) => s.toast)
   const dismiss = useApp((s) => s.dismissToast)
-  if (!toast) return null
+  // The last toast stays for its exit once it is dismissed; a new one replaces it at once.
+  const [toast, setToast] = useState(current)
+  if (current && current !== toast) setToast(current)
+  const closing = !current && !!toast
+  const toastRef = useRef<HTMLDivElement>(null)
+  const onExitEnd = useExit(toastRef, closing, useCallback(() => setToast(null), []))
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
-      <div
-        role="status"
-        className="pointer-events-auto flex items-center gap-3 rounded-lg border border-edge bg-raised py-1.5 pl-4 pr-1.5 text-sm"
-        style={{ boxShadow: 'var(--shadow)' }}
-      >
-        <span className="text-ink">{toast.message}</span>
-        {toast.actionLabel && toast.onAction && (
-          <button
-            type="button"
-            onClick={() => {
-              toast.onAction?.()
-              dismiss()
-            }}
-            className="rounded-md px-2 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-hover"
-          >
-            {toast.actionLabel}
-          </button>
-        )}
-        <IconBtn title="Dismiss" onClick={dismiss} className="h-7 w-7">
-          <X size={14} />
-        </IconBtn>
+    <>
+      {/* Screen readers follow a region that is always there and holds only the words. */}
+      <div role="status" className="sr-only">
+        {current?.message ?? ''}
       </div>
-    </div>
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
+          <div
+            key={toast.id}
+            ref={toastRef}
+            data-toast=""
+            inert={closing || undefined}
+            data-closing={closing || undefined}
+            onAnimationEnd={onExitEnd}
+            className={`motion-rise flex items-center gap-3 rounded-lg border border-edge bg-raised py-1.5 pl-4 pr-1.5 text-sm ${closing ? '' : 'pointer-events-auto'}`}
+            style={{ boxShadow: 'var(--shadow)' }}
+          >
+            <span className="text-ink">{toast.message}</span>
+            {toast.actionLabel && toast.onAction && (
+              <button
+                type="button"
+                onClick={() => {
+                  toast.onAction?.()
+                  dismiss()
+                }}
+                className="press rounded-md px-2 py-1 text-sm font-medium text-accent-text hover:bg-hover"
+              >
+                {toast.actionLabel}
+              </button>
+            )}
+            <IconBtn title="Dismiss" onClick={dismiss} className="h-7 w-7">
+              <X size={14} />
+            </IconBtn>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -221,7 +255,7 @@ export function Segmented<T extends string>({
           title={o.title}
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-[5px] px-3 py-1 text-sm transition-colors ${
+          className={`press rounded-[5px] px-3 py-1 text-sm ${
             value === o.value ? 'bg-raised font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'text-muted hover:text-ink'
           }`}
         >

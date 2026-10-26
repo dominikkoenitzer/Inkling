@@ -3,13 +3,11 @@ import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
-import { ignoresShortcut } from '@/lib/keys'
-import { reviewCard } from '@/lib/calls'
+import { endsReview, ignoresShortcut } from '@/lib/keys'
+import { loadDueCards, reviewCard } from '@/lib/calls'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
-
-const api = window.inkling
 
 const GRADES: Array<{ grade: ReviewGrade; label: string; rating: Rating; tone: string }> = [
   { grade: 'again', label: 'Again', rating: 1, tone: 'text-danger' },
@@ -24,6 +22,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   const [showBack, setShowBack] = useState(false)
   const [reviewed, setReviewed] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
   const gradingRef = useRef(false)
   // The position last graded: a second key press before the next card renders must not grade again.
   const gradedAt = useRef(-1)
@@ -33,7 +32,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   useEffect(() => () => bumpData('decks'), [])
 
   useEffect(() => {
-    void api.decks.dueCards(deck.id).then((cards) => {
+    void loadDueCards(deck.id).then((cards) => {
+      if (!cards) return setFailed(true)
       setQueue(cards)
       setLoaded(true)
     })
@@ -72,11 +72,14 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
     const onKey = (e: KeyboardEvent): void => {
       // Typing "Chapter 2" in a field, or Esc in the palette, must not reveal, grade or end.
       const app = useApp.getState()
-      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
+      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[data-sheet]') !== null
       if (ignoresShortcut(e, overlayOpen) || e.repeat) return
       if (!queue[index]) {
-        // completion / empty screen: only Esc is live; ignore Space/number grades
-        if (e.key === 'Escape') finish()
+        // The last screen: Esc or Enter ends it; Space and the grades do nothing here.
+        if (endsReview(e)) {
+          e.preventDefault()
+          finish()
+        }
         return
       }
       if (e.key === ' ') {
@@ -110,7 +113,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   return (
     <div className="flex h-full flex-col">
       {/* Same column as every other page, so the deck name sits where titles do. */}
-      <div className="mx-auto w-full max-w-[680px] px-10 pt-8">
+      <div className="motion-rise mx-auto w-full max-w-[680px] px-10 pt-8">
         <div className="flex items-center gap-3">
           <h2 className="truncate text-sm font-medium text-muted">{deck.name}</h2>
           <span className="text-xs tabular-nums text-faint">
@@ -124,7 +127,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         </div>
         <div className="mt-2 h-0.5 rounded-full bg-hover">
           <div
-            className="h-full rounded-full transition-all duration-300"
+            className="motion-fill h-full rounded-full"
             style={{ width: `${queue.length ? (Math.min(index, queue.length) / queue.length) * 100 : 0}%`, background: 'var(--accent)' }}
           />
         </div>
@@ -132,7 +135,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8">
         {done ? (
-          <div className="flex flex-col items-center gap-2 text-center">
+          <div className="motion-rise flex flex-col items-center gap-2 text-center">
             <Inky size={44} className="mb-2" />
             <div className="text-[15px] font-medium">{reviewed > 0 ? 'All caught up.' : 'Nothing due in this deck.'}</div>
             <div className="max-w-sm text-sm text-muted">
@@ -149,7 +152,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         ) : card ? (
           <>
             <div
-              className="flex min-h-[240px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-edge bg-raised p-10 text-center"
+              className="motion-rise flex min-h-[240px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-edge bg-raised p-10 text-center"
               onClick={() => setShowBack(true)}
               key={`${card.id}-${index}`}
             >
@@ -160,8 +163,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                 // A cloze card's answer is revealed in place; the back only holds an optional extra.
                 card.back && (
                   <>
-                    <div className="h-px w-16 bg-edge" />
-                    <div className="whitespace-pre-line text-base text-muted">{card.back}</div>
+                    <div className="motion-rise h-px w-16 bg-edge" />
+                    <div className="motion-rise whitespace-pre-line text-base text-muted">{card.back}</div>
                   </>
                 )
               ) : (
@@ -171,13 +174,13 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               )}
             </div>
             {showBack && (
-              <div className="flex gap-2">
+              <div className="motion-rise flex gap-2">
                 {GRADES.map((g, i) => (
                   <button
                     key={g.grade}
                     type="button"
                     onClick={() => void grade(g.grade)}
-                    className={`min-w-[88px] rounded-md border border-edge bg-raised px-4 py-2 text-sm font-medium transition-colors hover:bg-hover ${g.tone}`}
+                    className={`min-w-[88px] press rounded-md border border-edge bg-raised px-4 py-2 text-sm font-medium hover:bg-hover ${g.tone}`}
                   >
                     <span className="flex items-center justify-center gap-2">
                       {g.label}
@@ -193,7 +196,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
             )}
           </>
         ) : (
-          <div className="text-muted">Loading cards...</div>
+          <div className="motion-rise text-muted">{failed ? 'Could not load the cards.' : 'Loading cards...'}</div>
         )}
       </div>
     </div>

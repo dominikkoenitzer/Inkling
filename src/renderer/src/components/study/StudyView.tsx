@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, Plus, ArrowLeft } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
-import { peekNote } from '@/lib/calls'
+import { addCard, createDeck, loadCards, loadDecks, peekNote, removeCard, removeDeck, renameDeck, updateCard } from '@/lib/calls'
 import { hasCloze } from '@shared/cloze'
 import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, Code, IconBtn, inputCls, titleFieldCls } from '@/components/ui'
-import { editKey, ignoresShortcut } from '@/lib/keys'
+import { editKey, ignoresShortcut, stepRows } from '@/lib/keys'
 import { oneLine } from '@/lib/parse'
 import { ReviewSession } from './ReviewSession'
+import { useRows, type RowProps } from '@/lib/motion'
 import type { Deck, Card } from '@shared/types'
-
-const api = window.inkling
 
 export function StudyView(): React.JSX.Element {
   const selectedDeckId = useApp((s) => s.selectedDeckId)
@@ -19,33 +18,57 @@ export function StudyView(): React.JSX.Element {
   const today = useApp((s) => s.today)
   const version = useVersion('decks')
   const [decks, setDecks] = useState<Deck[] | null>(null)
+  const [failed, setFailed] = useState(false)
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const creating = useRef(false)
+  const newDeck = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     let stale = false
-    void api.decks.list().then((d) => !stale && setDecks(d))
+    void loadDecks().then((d) => {
+      if (stale) return
+      if (d) setDecks(d)
+      setFailed(!d)
+    })
     return () => {
       stale = true
     }
   }, [version, today])
 
-  if (decks === null) return <div />
+  // After a deck is deleted, focus goes to New deck once the list is back.
+  const focusNew = useRef(false)
+  useEffect(() => {
+    if (!focusNew.current || !newDeck.current) return
+    focusNew.current = false
+    newDeck.current.focus()
+  })
+
+  if (decks === null) {
+    if (!failed) return <div />
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14">
+          <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
+          <p className="mt-16 text-sm text-muted">Could not load the decks.</p>
+        </div>
+      </div>
+    )
+  }
 
   const reviewing = decks.find((d) => d.id === reviewingDeckId)
   if (reviewing) return <ReviewSession deck={reviewing} onDone={() => useApp.getState().reviewDeck(null)} />
 
   const selected = decks.find((d) => d.id === selectedDeckId)
-  if (selected) return <DeckDetail key={selected.id} deck={selected} />
+  if (selected) return <DeckDetail key={selected.id} deck={selected} onDeleted={() => (focusNew.current = true)} />
 
   const create = async (): Promise<void> => {
     const n = name.trim()
     if (!n || creating.current) return
     creating.current = true
     try {
-      const home = useApp.getState().homeNotebookId ?? (await api.notebooks.home())
-      const deck = await api.decks.create(home, n)
+      const deck = await createDeck(n)
+      if (!deck) return
       bumpData('decks')
       setAdding(false)
       setName('')
@@ -57,10 +80,10 @@ export function StudyView(): React.JSX.Element {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
+      <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14">
         <div className="flex items-end justify-between gap-4">
           <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
-          <Button onClick={() => setAdding(true)}>
+          <Button ref={newDeck} onClick={() => setAdding(true)}>
             <Plus size={15} /> New deck
           </Button>
         </div>
@@ -69,13 +92,15 @@ export function StudyView(): React.JSX.Element {
         {adding && (
           <input
             autoFocus
-            className={`${inputCls} mt-8`}
+            className={`${inputCls} motion-rise mt-8`}
             value={name}
             placeholder="Deck name"
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') void create()
-              if (e.key === 'Escape') {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void create()
+              if (e.key === 'Escape' && !e.nativeEvent.isComposing) {
+                // The field goes away, so focus goes back to the button that opened it.
+                newDeck.current?.focus()
                 setAdding(false)
                 setName('')
               }
@@ -93,9 +118,9 @@ export function StudyView(): React.JSX.Element {
             </p>
           </div>
         ) : (
-          <ul className="mt-8 border-t border-edge">
+          <ul className="mt-8 border-t border-edge" onKeyDown={stepRows}>
             {decks.map((d) => (
-              <li key={d.id} className="flex items-center gap-1 border-b border-edge">
+              <li key={d.id} data-row={d.id} className="flex items-center gap-1 border-b border-edge">
                 <button
                   type="button"
                   onClick={() => useApp.getState().openDeck(d.id)}
@@ -111,7 +136,7 @@ export function StudyView(): React.JSX.Element {
                   <button
                     type="button"
                     onClick={() => useApp.getState().reviewDeck(d.id)}
-                    className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-accent-soft"
+                    className="press shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text hover:bg-accent-soft"
                   >
                     Review
                   </button>
@@ -127,17 +152,39 @@ export function StudyView(): React.JSX.Element {
 
 /* -------------------------------- Deck detail ------------------------------ */
 
-function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
+function DeckDetail({ deck, onDeleted }: { deck: Deck; onDeleted: () => void }): React.JSX.Element {
   const version = useVersion('decks')
-  const [cards, setCards] = useState<Card[]>([])
+  // Null until the cards arrive, so a deck is never shown empty before then.
+  const [cards, setCards] = useState<Card[] | null>(null)
+  const [cardsFailed, setCardsFailed] = useState(false)
+  const cardList = useRef<HTMLUListElement>(null)
+  const frontRef = useRef<HTMLInputElement>(null)
+  // A card that goes hands its focus to the one beside it, or to the new card's question.
+  const cardRows = useRows(cards, (c) => c.id, cardList, frontRef)
   const [front, setFront] = useState('')
   const [back, setBack] = useState('')
   const [name, setName] = useState(deck.name)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // The delete buttons swap in place; focus that was on them moves to what takes their place.
+  const deleteBox = useRef<HTMLSpanElement>(null)
+  const deleteFocus = useRef(false)
+  const askDelete = (ask: boolean): void => {
+    deleteFocus.current = !!deleteBox.current?.contains(document.activeElement)
+    setConfirmDelete(ask)
+  }
+  useEffect(() => {
+    if (!deleteFocus.current) return
+    deleteFocus.current = false
+    deleteBox.current?.querySelector('button')?.focus()
+  }, [confirmDelete])
 
   useEffect(() => {
     let stale = false
-    void api.decks.cards(deck.id).then((c) => !stale && setCards(c))
+    void loadCards(deck.id).then((c) => {
+      if (stale) return
+      if (c) setCards(c)
+      setCardsFailed(!c)
+    })
     return () => {
       stale = true
     }
@@ -155,19 +202,20 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     }
   }, [deck.note_id, notesVersion])
   const adding = useRef(false)
-  const frontRef = useRef<HTMLInputElement>(null)
   const backRef = useRef<HTMLInputElement>(null)
 
   // Esc goes back to the deck list, unless a field or a dialog has it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const app = useApp.getState()
-      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
+      const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[data-sheet]') !== null
       if (e.key === 'Escape' && !ignoresShortcut(e, overlayOpen)) app.openDeck(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  const count = cards?.length ?? deck.card_count
 
   // A cloze front is a whole card on its own; the back is then an optional extra.
   const canAdd = !!front.trim() && (!!back.trim() || hasCloze(front))
@@ -177,7 +225,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     if (!canAdd || adding.current) return false
     adding.current = true
     try {
-      await api.decks.addCard(deck.id, front.trim(), back.trim())
+      if (!(await addCard(deck.id, front.trim(), back.trim()))) return false
       setFront('')
       setBack('')
       bumpData('decks')
@@ -187,15 +235,20 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     }
   }
 
+  // Escape drops the typed name; the blur that follows then keeps the old one.
+  const renameDropped = useRef(false)
   const rename = (): void => {
     const n = name.trim()
-    if (n && n !== deck.name) void api.decks.rename(deck.id, n).then(() => bumpData('decks'))
+    if (renameDropped.current) {
+      renameDropped.current = false
+      setName(deck.name)
+    } else if (n && n !== deck.name) void renameDeck(deck.id, n).then((done) => (done ? bumpData('decks') : setName(deck.name)))
     else setName(deck.name)
   }
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-[680px] px-10 pb-20 pt-10">
+      <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-10">
         <button
           type="button"
           onClick={() => useApp.getState().openDeck(null)}
@@ -210,8 +263,9 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           onChange={(e) => setName(oneLine(e.target.value))}
           onBlur={rename}
           onKeyDown={(e) => {
-            if (e.key !== 'Enter') return
+            if (e.nativeEvent.isComposing || (e.key !== 'Enter' && e.key !== 'Escape')) return
             e.preventDefault()
+            renameDropped.current = e.key === 'Escape'
             e.currentTarget.blur()
           }}
           aria-label="Deck name"
@@ -219,7 +273,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
         />
         <div className="mt-2 flex items-center gap-3 text-sm text-muted">
           <span>
-            {cards.length} card{cards.length === 1 ? '' : 's'}
+            {count} card{count === 1 ? '' : 's'}
             {deck.due_count > 0 && ` · ${deck.due_count} due`}
           </span>
           <span className="ml-auto flex gap-1">
@@ -228,32 +282,36 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
                 Review now
               </Button>
             )}
-            {confirmDelete ? (
-              <>
-                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-                  Keep it
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() =>
-                    void api.decks.remove(deck.id).then(() => {
-                      bumpData('decks')
-                      useApp.getState().openDeck(null)
-                    })
-                  }
-                >
-                  Delete deck and cards
-                </Button>
-              </>
-            ) : (
-              <IconBtn title="Delete deck" onClick={() => setConfirmDelete(true)}>
-                <Trash2 size={15} />
-              </IconBtn>
-            )}
+            <span ref={deleteBox} className="contents">
+              {confirmDelete ? (
+                <>
+                  <Button variant="ghost" onClick={() => askDelete(false)}>
+                    Keep it
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={() =>
+                      void removeDeck(deck.id).then((done) => {
+                        if (!done) return
+                        bumpData('decks')
+                        onDeleted()
+                        useApp.getState().openDeck(null)
+                      })
+                    }
+                  >
+                    Delete deck and cards
+                  </Button>
+                </>
+              ) : (
+                <IconBtn title="Delete deck" onClick={() => askDelete(true)}>
+                  <Trash2 size={15} />
+                </IconBtn>
+              )}
+            </span>
           </span>
         </div>
 
-        {deck.note_id !== null && cards.some((c) => c.source_line !== null) && (
+        {deck.note_id !== null && cards?.some((c) => c.source_line !== null) && (
           <p className="mt-6 text-sm text-muted">
             These cards live in a note. Edit them there, then press Flashcards again.{' '}
             {noteExists && (
@@ -276,12 +334,17 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
             aria-label="Front"
             value={front}
             onChange={(e) => setFront(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return
-              // A cloze is a whole card; anything else still needs its answer.
-              if (hasCloze(front) && !back.trim()) void add()
-              else if (front.trim()) backRef.current?.focus()
-            }}
+            onKeyDown={(e) =>
+              // A cloze is a whole card; anything else still needs its answer. Escape leaves the field.
+              editKey(
+                e,
+                () => {
+                  if (hasCloze(front) && !back.trim()) void add()
+                  else if (front.trim()) backRef.current?.focus()
+                },
+                (el) => el.blur()
+              )
+            }
           />
           <input
             ref={backRef}
@@ -290,10 +353,13 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
             aria-label="Back"
             value={back}
             onChange={(e) => setBack(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return
-              void add().then((added) => added && frontRef.current?.focus())
-            }}
+            onKeyDown={(e) =>
+              editKey(
+                e,
+                () => void add().then((added) => added && frontRef.current?.focus()),
+                (el) => el.blur()
+              )
+            }
           />
           <Button variant="primary" onClick={() => void add()} disabled={!canAdd}>
             <Plus size={15} /> Add
@@ -303,37 +369,39 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           Press Enter to go on. For a fill-in-the-blank card, write <Code>{'{{c1::word}}'}</Code> in the question.
         </p>
 
-        {cards.length === 0 ? (
-          <p className="py-10 text-center text-sm text-faint">No cards yet. Type a question and its answer above.</p>
-        ) : (
-          <ul className="mt-6 border-t border-edge">
-            {cards.map((c) => (
-              <CardRow key={c.id} card={c} />
+        {cards === null ? (
+          cardsFailed && <p className="py-10 text-center text-sm text-faint">Could not load the cards.</p>
+        ) : cardRows.rows?.length ? (
+          <ul ref={cardList} className="mt-6 border-t border-edge" onAnimationEnd={cardRows.onAnimationEnd}>
+            {cardRows.rows.map((r) => (
+              <CardRow key={r.key} card={r.item} motion={cardRows.row(r)} />
             ))}
           </ul>
+        ) : (
+          <p className="py-10 text-center text-sm text-faint">No cards yet. Type a question and its answer above.</p>
         )}
       </div>
     </div>
   )
 }
 
-function CardRow({ card }: { card: Card }): React.JSX.Element {
+function CardRow({ card, motion }: { card: Card; motion: RowProps }): React.JSX.Element {
   const due = storedTime(card.next_review_date) <= new Date().getTime()
   // A card made from a note line belongs to that line: an edit here would be undone by the
   // next Flashcards press, so it is shown as text and edited in the note.
   if (card.source_line !== null) {
     return (
-      <li className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
+      <li {...motion} className="motion-row grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
         <span className="min-w-0 truncate px-1.5 py-1 text-sm">{card.front}</span>
         <span className="min-w-0 truncate px-1.5 py-1 text-sm text-muted">{card.back}</span>
         <span className="w-14 pr-8 text-right text-xs text-faint">{due ? 'due' : `in ${card.interval_days}d`}</span>
       </li>
     )
   }
-  return <EditableCardRow card={card} due={due} />
+  return <EditableCardRow card={card} due={due} motion={motion} />
 }
 
-function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX.Element {
+function EditableCardRow({ card, due, motion }: { card: Card; due: boolean; motion: RowProps }): React.JSX.Element {
   const [front, setFront] = useState(card.front)
   const [back, setBack] = useState(card.back)
   const dirty = useRef(false)
@@ -362,7 +430,12 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
       return
     }
     if (f !== card.front || b !== card.back) {
-      void api.decks.updateCard(card.id, f, b).then(() => bumpData('decks'))
+      void updateCard(card.id, f, b).then((done) => {
+        if (done) return bumpData('decks')
+        // Not saved: the row shows what is stored again.
+        setFront(card.front)
+        setBack(card.back)
+      })
     }
   }
 
@@ -379,7 +452,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
     )
 
   return (
-    <li className="group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
+    <li {...motion} className="motion-row group grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
       <input
         className={field}
         value={front}
@@ -408,8 +481,8 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
           type="button"
           title="Delete card"
           aria-label="Delete card"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-          onClick={() => void api.decks.removeCard(card.id).then(() => bumpData('decks'))}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+          onClick={() => void removeCard(card.id).then((done) => done && bumpData('decks'))}
         >
           <Trash2 size={14} />
         </button>

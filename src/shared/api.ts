@@ -13,6 +13,9 @@ import type {
   AssistantId,
 } from './types'
 
+/** What a menu bar item can ask the window to do, the same as its keyboard shortcut. */
+export type AppCommand = 'new-note' | 'today' | 'study' | 'search' | 'settings' | 'shortcuts'
+
 export interface InklingApi {
   notebooks: {
     /** The notebook new notes and decks go into. */
@@ -77,6 +80,8 @@ export interface InklingApi {
   events: {
     /** Called when another process, such as the MCP server, has written to the data. Returns the unsubscribe. */
     onDataChanged(fn: () => void): () => void
+    /** Called when a menu bar item asks for one of the app's commands. Returns the unsubscribe. */
+    onCommand(fn: (command: AppCommand) => void): () => void
   }
   app: {
     /** Matches the window buttons and background to the theme. */
