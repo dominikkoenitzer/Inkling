@@ -38,28 +38,58 @@ const MEASURE = `(() => {
   return JSON.stringify({ items, area, header: r(h.getBoundingClientRect()), vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio })
 })()`
 
-/** The close, minimise and zoom buttons of the real window, read through the accessibility API. */
-function macButtons(win) {
-  const script = [
-    'tell application "System Events"',
-    `  tell (first process whose unix id is ${process.pid})`,
-    '    set out to ""',
-    '    repeat with b in (buttons of window 1)',
-    '      set p to position of b',
-    '      set s to size of b',
-    '      set out to out & (subrole of b) & " " & (item 1 of p) & " " & (item 2 of p) & " " & (item 1 of s) & " " & (item 2 of s) & linefeed',
-    '    end repeat',
-    '    return out',
-    '  end tell',
-    'end tell'
-  ].join('\n')
-  const text = execFileSync('osascript', ['-e', script], { encoding: 'utf8', timeout: 20_000 })
-  const cb = win.getContentBounds()
-  return text
-    .split('\n')
-    .map((l) => l.trim().split(' '))
-    .filter((p) => p.length === 5 && /Close|Minimize|Zoom|FullScreen/.test(p[0]))
-    .map(([what, x, y, w, h]) => ({ what, x: Number(x) - cb.x, y: Number(y) - cb.y, w: Number(w), h: Number(h) }))
+// The three lights as the system paints them on an active window, in red, yellow and green.
+const LIGHTS = [
+  ['close', (r, g, b) => r > 200 && g < 130 && b < 130],
+  ['minimise', (r, g, b) => r > 200 && g > 150 && g < 220 && b < 110],
+  ['zoom', (r, g, b) => g > 150 && r < 120 && b < 120]
+]
+
+/**
+ * The close, minimise and zoom buttons of the real window, found by their colours in a shot of
+ * it, in window content coordinates. A light covers about 14 by 14 points, so a smaller patch of
+ * colour is something else.
+ */
+function macButtons(win, file) {
+  const image = nativeImage.createFromPath(file)
+  const { width, height } = image.getSize()
+  if (!width) throw new Error('the window shot is empty')
+  const bitmap = image.toBitmap()
+  const bounds = win.getBounds()
+  const content = win.getContentBounds()
+  const scale = width / bounds.width
+  // The lights live in the top left corner of the window.
+  const maxX = Math.min(width, Math.round(200 * scale))
+  const maxY = Math.min(height, Math.round(80 * scale))
+  const found = []
+  for (const [what, match] of LIGHTS) {
+    let n = 0
+    let x0 = Infinity
+    let y0 = Infinity
+    let x1 = -1
+    let y1 = -1
+    for (let y = 0; y < maxY; y++) {
+      for (let x = 0; x < maxX; x++) {
+        const i = (y * width + x) * 4
+        // Chromium bitmaps are blue, green, red, alpha.
+        if (!match(bitmap[i + 2], bitmap[i + 1], bitmap[i])) continue
+        n++
+        x0 = Math.min(x0, x)
+        y0 = Math.min(y0, y)
+        x1 = Math.max(x1, x)
+        y1 = Math.max(y1, y)
+      }
+    }
+    if (n < 50 * scale * scale) continue
+    found.push({
+      what,
+      x: x0 / scale + bounds.x - content.x,
+      y: y0 / scale + bounds.y - content.y,
+      w: (x1 - x0 + 1) / scale,
+      h: (y1 - y0 + 1) / scale
+    })
+  }
+  return found
 }
 
 /** On Windows and Linux the buttons fill whatever the overlay leaves out of the bar. */
@@ -91,14 +121,18 @@ async function shoot(win, name) {
 async function measure(win, name, gap) {
   const page = JSON.parse(await win.webContents.executeJavaScript(MEASURE))
   if (!page.header) return ok(name + ': the title bar is there', false)
+  await shoot(win, name)
+  if (mac && !onScreen) return ok(name + ': the window buttons are only drawn on screen', false, 'run with CI set')
   let buttons
   try {
-    buttons = mac ? macButtons(win) : overlayButtons(page)
+    buttons = mac ? macButtons(win, path.join(out, 'mac-' + name + '.png')) : overlayButtons(page)
   } catch (e) {
     return ok(name + ': reading the window buttons', false, String(e.message || e).split('\n')[0])
   }
   data.states.push({ name, page, buttons, bounds: win.getBounds(), fullscreen: win.isFullScreen() })
-  if (mac) ok(name + ': the window buttons are found', buttons.length >= 3, buttons.length + ' found')
+  // In full screen the system hides the buttons until the pointer reaches the top edge.
+  const expected = win.isFullScreen() ? 0 : 3
+  if (mac) ok(name + ': the window buttons are found', buttons.length === expected, buttons.length + ' found, ' + expected + ' expected')
   const under = []
   for (const item of page.items) for (const b of buttons) if (hits(item, b, gap)) under.push(item.what + ' at ' + Math.round(item.x) + ' under ' + b.what)
   ok(name + ': nothing in the title bar sits under the window buttons', under.length === 0, under.slice(0, 4).join('; '))
@@ -122,6 +156,8 @@ async function run(win) {
   // Room a native toolbar keeps between the buttons and its first item.
   const gap = Number(process.env.TITLEBAR_GAP || 0)
   win.setMinimumSize(860, 560)
+  // The lights keep their colours only on the active window.
+  if (mac && onScreen) win.focus()
 
   for (const theme of ['light', 'dark']) {
     await state(`setTheme('${theme}')`)
@@ -130,7 +166,6 @@ async function run(win) {
       await wait(500)
       const name = `${theme}-${width}`
       await measure(win, name, gap)
-      await shoot(win, name)
     }
   }
 
@@ -141,6 +176,12 @@ async function run(win) {
       const mid = s.buttons.reduce((m, b) => m + b.y + b.h / 2, 0) / s.buttons.length
       const bar = s.page.header.y + s.page.header.h / 2
       ok('the window buttons sit centred in the title bar', Math.abs(mid - bar) <= 1, 'button middle ' + mid.toFixed(1) + ', bar middle ' + bar.toFixed(1))
+      // A native toolbar keeps the close button about as far from the left edge as from the top.
+      const close = s.buttons.find((b) => b.what === 'close')
+      if (close) {
+        const top = close.y - s.page.header.y
+        ok('the close button keeps the margin of a native toolbar', Math.abs(close.x - top) <= 2, 'left ' + close.x.toFixed(1) + ', top ' + top.toFixed(1))
+      }
     }
   }
 
@@ -152,7 +193,6 @@ async function run(win) {
       await Promise.race([entered, wait(5000)])
       await wait(1500)
       await measure(win, theme + '-fullscreen', gap)
-      await shoot(win, theme + '-fullscreen')
       const left = new Promise((res) => win.once('leave-full-screen', res))
       win.setFullScreen(false)
       await Promise.race([left, wait(5000)])
@@ -177,9 +217,9 @@ async function run(win) {
 }
 
 // Preloaded before Electron sets up its own modules, so `electron` is asked for once it has.
-let app, Menu
+let app, Menu, nativeImage
 setImmediate(() => {
-  ;({ app, Menu } = require('electron'))
+  ;({ app, Menu, nativeImage } = require('electron'))
   app.on('browser-window-created', (_event, win) => watch(win))
 })
 
