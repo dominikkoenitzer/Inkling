@@ -82,7 +82,7 @@ export function TodayView(): React.JSX.Element {
         <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Today</h1>
         <p className="mt-1 text-sm text-muted">{longDate.format(new Date())}</p>
 
-        {failed && <p className="mt-16 text-sm text-muted">Today could not be loaded. It tries again as soon as anything changes.</p>}
+        {failed && <p className="mt-16 text-sm text-muted">Could not load Today.</p>}
 
         {empty && !failed && (
           <div className="mt-16 flex flex-col items-center text-center">
