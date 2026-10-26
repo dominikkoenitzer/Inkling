@@ -3,6 +3,7 @@ import { Search, FileText, CheckSquare, Layers, Plus, Sun, Keyboard, Settings } 
 import { useApp } from '@/stores/app'
 import { searchFor } from '@/lib/calls'
 import { ariaKeys, closesSheet, keyLabel, shortcutsKey } from '@/lib/keys'
+import { noop, useExit, useReturnFocus, type Exit } from '@/lib/motion'
 import type { SearchResult } from '@shared/types'
 
 interface Item {
@@ -16,7 +17,7 @@ interface Item {
 }
 
 /** Ctrl+K: search notes, to-dos and decks, or jump to a place or action by name. */
-export function CommandPalette(): React.JSX.Element {
+export function CommandPalette({ closing = false, onGone = noop }: Exit): React.JSX.Element {
   const [query, setQuery] = useState('')
   // Results remember the query they answer, so Enter never acts on an older one.
   const [results, setResults] = useState<{ query: string; hits: SearchResult[]; failed: boolean }>({ query: '', hits: [], failed: false })
@@ -25,15 +26,11 @@ export function CommandPalette(): React.JSX.Element {
   const close = (): void => useApp.getState().setPaletteOpen(false)
 
   const listRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const onExitEnd = useExit(sheetRef, closing, onGone)
 
-  // Focus the box, and give focus back to where it was when the palette closes.
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null
-    inputRef.current?.focus()
-    return () => {
-      if (opener?.isConnected) opener.focus()
-    }
-  }, [])
+  // Focus the box, and give focus back to where it was as the palette starts to close.
+  useReturnFocus(closing, inputRef)
 
   useEffect(() => {
     const q = query.trim()
@@ -103,12 +100,21 @@ export function CommandPalette(): React.JSX.Element {
   }
 
   return (
-    <div className="no-drag fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onMouseDown={close}>
+    // A closing palette sits under anything that opens in its place and takes no input.
+    <div
+      className={`no-drag fixed inset-0 flex items-start justify-center pt-[15vh] ${closing ? 'pointer-events-none z-40' : 'z-50'}`}
+      inert={closing || undefined}
+      onMouseDown={close}
+    >
       <div
-        role="dialog"
-        aria-modal="true"
+        ref={sheetRef}
+        role={closing ? undefined : 'dialog'}
+        aria-modal={closing ? undefined : 'true'}
         aria-label="Search"
-        className="w-[560px] overflow-hidden rounded-lg border border-edge bg-raised"
+        data-search=""
+        data-closing={closing || undefined}
+        onAnimationEnd={onExitEnd}
+        className="motion-sheet w-[560px] overflow-hidden rounded-lg border border-edge bg-raised"
         style={{ boxShadow: 'var(--shadow)' }}
         onMouseDown={(e) => {
           e.stopPropagation()

@@ -1,5 +1,6 @@
 import { useApp } from '@/stores/app'
 import { Kbd, Modal } from '@/components/ui'
+import type { Exit } from '@/lib/motion'
 import { keyLabel, shortcutsKey } from '@/lib/keys'
 
 const GROUPS: Array<{ title: string; rows: Array<[string, string[]]> }> = [
@@ -34,9 +35,9 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string[]]> }> = [
   }
 ]
 
-export function ShortcutsModal(): React.JSX.Element {
+export function ShortcutsModal(exit: Exit): React.JSX.Element {
   return (
-    <Modal title="Keyboard shortcuts" width={460} onClose={() => useApp.getState().setShortcutsOpen(false)}>
+    <Modal title="Keyboard shortcuts" width={460} onClose={() => useApp.getState().setShortcutsOpen(false)} {...exit}>
       <div className="space-y-5">
         {GROUPS.map((g) => (
           <section key={g.title}>

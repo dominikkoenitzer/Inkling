@@ -10,6 +10,7 @@ import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 import { setTitlebar } from '@/lib/calls'
 import { ariaKeys, keyLabel, takeShortcut } from '@/lib/keys'
+import { usePresence } from '@/lib/motion'
 import type { AppCommand } from '@shared/api'
 
 const api = window.inkling
@@ -43,6 +44,10 @@ export default function App(): React.JSX.Element {
   const paletteOpen = useApp((s) => s.paletteOpen)
   const settingsOpen = useApp((s) => s.settingsOpen)
   const shortcutsOpen = useApp((s) => s.shortcutsOpen)
+  // Each sheet stays for its exit after it closes; reopening mounts a fresh one.
+  const palette = usePresence(paletteOpen)
+  const settings = usePresence(settingsOpen)
+  const shortcuts = usePresence(shortcutsOpen)
 
   useEffect(() => {
     void useApp.getState().init()
@@ -136,9 +141,9 @@ export default function App(): React.JSX.Element {
         </main>
       </div>
 
-      {paletteOpen && <CommandPalette />}
-      {settingsOpen && <SettingsModal />}
-      {shortcutsOpen && <ShortcutsModal />}
+      {palette.present && <CommandPalette key={palette.generation} closing={palette.closing} onGone={palette.gone} />}
+      {settings.present && <SettingsModal key={settings.generation} closing={settings.closing} onGone={settings.gone} />}
+      {shortcuts.present && <ShortcutsModal key={shortcuts.generation} closing={shortcuts.closing} onGone={shortcuts.gone} />}
       <Toaster />
     </div>
   )
