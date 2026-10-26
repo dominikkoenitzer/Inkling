@@ -5,7 +5,7 @@ description: How the Inkling desktop app handles notes, to-dos and flashcards, a
 
 # Inkling
 
-Inkling is a desktop app for Windows, macOS and Linux. It keeps notes, to-dos and flashcards in one local SQLite database. It has no account, no sync and no import. It has an MCP server built in, see [MCP server](#mcp-server). The only thing it fetches from the internet is its own updates.
+Inkling is a desktop app for Windows, macOS and Linux. It keeps notes, to-dos and flashcards in one local SQLite database. It has no account, no sync and no import. It has an MCP server built in, see [MCP server](#mcp-server). The only thing it fetches from the internet is its own updates, on Windows and Linux.
 
 ## What you can and cannot do
 
@@ -84,7 +84,7 @@ Search matches note titles and text, to-do text and deck names. It does not sear
 
 ## Updates and removal
 
-- Inkling checks for a new version at each start. On Windows and Linux it downloads it in the background and installs it when Inkling closes. On macOS, run `curl -fsSL https://inkling.punds.ch/install | sh` in Terminal again.
+- On Windows and Linux, Inkling checks for a new version at each start, downloads it in the background and installs it when Inkling closes. On macOS it does not check; run `curl -fsSL https://inkling.punds.ch/install | sh` in Terminal again.
 - To remove it on Windows, uninstall Inkling under Settings, Apps, Installed apps. The notes stay. To delete them too, close Inkling and delete `%APPDATA%\Inkling` (notes and backups), `%LOCALAPPDATA%\inkling-updater` (downloaded updates) and `%TEMP%\inkling-mcp` (only there if the MCP server ran).
 - On macOS, move Inkling from Applications to the Trash, then delete `~/Library/Application Support/Inkling` and `~/Library/Caches/inkling-updater`. On Linux, delete the AppImage, `~/.config/Inkling` and `~/.cache/inkling-updater`.
 

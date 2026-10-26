@@ -170,7 +170,7 @@
   "privacy": {
     "title": "Nothing leaves your computer",
     "body": [
-      "Inkling has no account and no analytics. It goes online for one thing: at start, it checks for a new version."
+      "Inkling has no account and no analytics. On Windows and Linux it goes online for one thing: at start, it checks for a new version."
     ]
   },
   "data": {
@@ -262,7 +262,7 @@
     {
       "q": "Does it work offline?",
       "a": [
-        "Yes, all of it. Inkling only goes online at start, to look for a new version."
+        "Yes, all of it. On Windows and Linux, Inkling only goes online at start, to look for a new version."
       ]
     },
     {
