@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useApp, useVersion, bumpData } from '@/stores/app'
 import { localDay } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, Code } from '@/components/ui'
 import { setTaskDone } from '@/lib/calls'
+import { useRows } from '@/lib/motion'
 import type { Deck, OpenTask } from '@shared/types'
 
 const api = window.inkling
@@ -22,6 +23,11 @@ export function TodayView(): React.JSX.Element {
   const [failed, setFailed] = useState(false)
   // Ticked rows stay on screen, struck through, until the next visit.
   const [ticked, setTicked] = useState<Set<number>>(new Set())
+  // Rows that join or leave after the first load slide in and out.
+  const taskList = useRef<HTMLUListElement>(null)
+  const deckList = useRef<HTMLUListElement>(null)
+  const taskRows = useRows(loaded ? tasks : null, (t) => t.id, taskList)
+  const deckRows = useRows(loaded ? decks : null, (d) => d.id, deckList)
 
   useEffect(() => {
     let stale = false
@@ -68,7 +74,7 @@ export function TodayView(): React.JSX.Element {
     })
   }
 
-  const empty = loaded && tasks.length === 0 && decks.length === 0
+  const empty = loaded && tasks.length === 0 && decks.length === 0 && !taskRows.rows?.length && !deckRows.rows?.length
 
   return (
     <div className="h-full overflow-y-auto">
@@ -91,14 +97,15 @@ export function TodayView(): React.JSX.Element {
           </div>
         )}
 
-        {tasks.length > 0 && (
-          <Section title="To-do" count={tasks.length - ticked.size}>
-            {tasks.map((t) => {
+        {!!taskRows.rows?.length && (
+          <Section title="To-do" count={tasks.length - ticked.size} list={taskList} onAnimationEnd={taskRows.onAnimationEnd}>
+            {taskRows.rows.map((r) => {
+              const t = r.item
               const done = ticked.has(t.id)
               const due = t.due_date ? new Date(t.due_date) : null
               const overdue = !!due && !done && localDay(due) < today
               return (
-                <li key={t.id} className="flex items-center gap-3 border-b border-edge py-2.5">
+                <li key={r.key} {...taskRows.row(r)} className="motion-row flex items-center gap-3 border-b border-edge py-2.5">
                   {/* The whole title ticks the box, not only the box itself. */}
                   <label className="flex min-w-0 cursor-pointer items-center gap-3">
                     <input
@@ -108,7 +115,9 @@ export function TodayView(): React.JSX.Element {
                       onChange={() => toggle(t)}
                       aria-label={done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`}
                     />
-                    <span className={`min-w-0 truncate text-[15px] ${done ? 'text-faint line-through' : ''}`}>{t.title}</span>
+                    <span className="todo-text min-w-0 truncate text-[15px]" data-done={done || undefined}>
+                      {t.title}
+                    </span>
                   </label>
                   <span className="flex-1" />
                   {due && <span className={`shrink-0 text-xs ${overdue ? 'text-danger' : 'text-faint'}`}>{shortDate.format(due)}</span>}
@@ -127,10 +136,10 @@ export function TodayView(): React.JSX.Element {
           </Section>
         )}
 
-        {decks.length > 0 && (
-          <Section title="Flashcards" count={decks.reduce((n, d) => n + d.due_count, 0)}>
-            {decks.map((d) => (
-              <li key={d.id} className="flex items-center gap-3 border-b border-edge py-2.5">
+        {!!deckRows.rows?.length && (
+          <Section title="Flashcards" count={decks.reduce((n, d) => n + d.due_count, 0)} list={deckList} onAnimationEnd={deckRows.onAnimationEnd}>
+            {deckRows.rows.map(({ item: d, ...r }) => (
+              <li key={r.key} {...deckRows.row(r)} className="motion-row flex items-center gap-3 border-b border-edge py-2.5">
                 <span className="min-w-0 flex-1 truncate text-[15px]">{d.name}</span>
                 <span className="shrink-0 text-xs text-faint">
                   {d.due_count} card{d.due_count === 1 ? '' : 's'} due
@@ -147,14 +156,28 @@ export function TodayView(): React.JSX.Element {
   )
 }
 
-function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }): React.JSX.Element {
+function Section({
+  title,
+  count,
+  list,
+  onAnimationEnd,
+  children
+}: {
+  title: string
+  count: number
+  list: React.RefObject<HTMLUListElement | null>
+  onAnimationEnd: (e: React.AnimationEvent) => void
+  children: React.ReactNode
+}): React.JSX.Element {
   return (
     <section className="mt-10">
       <h2 className="mb-1 flex items-baseline gap-2 border-b border-edge pb-2 text-sm font-medium text-muted">
         {title}
         {count > 0 && <span className="text-xs tabular-nums text-faint">{count}</span>}
       </h2>
-      <ul>{children}</ul>
+      <ul ref={list} onAnimationEnd={onAnimationEnd}>
+        {children}
+      </ul>
     </section>
   )
 }

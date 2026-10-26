@@ -66,7 +66,7 @@
   --motion-rise: 4px;
   --motion-scale: 0.98;
   --motion-press: 0.97;
-  /* Lets a row grow from nothing to its own height. */
+  /* Lets a row grow from nothing to its own height, auto included. */
   interpolate-size: allow-keywords;
 }
 
@@ -240,14 +240,8 @@ textarea:focus {
     border-bottom-width: 0;
     opacity: 0;
   }
-  to {
-    height: auto;
-  }
 }
 @keyframes row-out {
-  from {
-    height: auto;
-  }
   to {
     height: 0;
     padding-block: 0;
