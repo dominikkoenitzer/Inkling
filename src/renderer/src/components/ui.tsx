@@ -38,7 +38,7 @@ export function Button({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:border-edge disabled:bg-panel disabled:text-faint disabled:brightness-100 ${styles} ${className}`}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium press disabled:cursor-not-allowed disabled:border-edge disabled:bg-panel disabled:text-faint disabled:brightness-100 ${styles} ${className}`}
     >
       {children}
     </button>
@@ -69,7 +69,7 @@ export function IconBtn({
       aria-label={label ?? title}
       aria-pressed={active}
       onClick={onClick}
-      className={`no-drag inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+      className={`no-drag inline-flex h-8 w-8 items-center justify-center rounded-md press ${
         active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
       } ${className}`}
     >
@@ -185,7 +185,7 @@ export function Toaster(): React.JSX.Element | null {
               toast.onAction?.()
               dismiss()
             }}
-            className="rounded-md px-2 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-hover"
+            className="press rounded-md px-2 py-1 text-sm font-medium text-accent-text hover:bg-hover"
           >
             {toast.actionLabel}
           </button>
@@ -240,7 +240,7 @@ export function Segmented<T extends string>({
           title={o.title}
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-[5px] px-3 py-1 text-sm transition-colors ${
+          className={`press rounded-[5px] px-3 py-1 text-sm ${
             value === o.value ? 'bg-raised font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'text-muted hover:text-ink'
           }`}
         >

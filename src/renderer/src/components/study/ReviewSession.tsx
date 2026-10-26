@@ -177,7 +177,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                     key={g.grade}
                     type="button"
                     onClick={() => void grade(g.grade)}
-                    className={`min-w-[88px] rounded-md border border-edge bg-raised px-4 py-2 text-sm font-medium transition-colors hover:bg-hover ${g.tone}`}
+                    className={`min-w-[88px] press rounded-md border border-edge bg-raised px-4 py-2 text-sm font-medium hover:bg-hover ${g.tone}`}
                   >
                     <span className="flex items-center justify-center gap-2">
                       {g.label}
