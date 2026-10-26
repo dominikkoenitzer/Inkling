@@ -26,6 +26,7 @@
     "smoke": "node scripts/smoke.mjs",
     "mcp": "electron . --mcp",
     "mcp:smoke": "node scripts/mcp-smoke.mjs",
+    "titlebar": "node scripts/titlebar.mjs",
     "postinstall": "electron-builder install-app-deps",
     "dist": "electron-vite build && electron-builder --win nsis"
   },

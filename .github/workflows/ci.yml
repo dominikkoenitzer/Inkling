@@ -83,3 +83,91 @@ jobs:
       # The MCP server talked to over stdio, as an assistant app does, next to the open app.
       - name: MCP check
         run: xvfb-run --auto-servernum bun run mcp:smoke
+
+  titlebar:
+    name: Title bar (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      # node-gyp needs distutils, gone in Python 3.12+.
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Fetch the Electron binary
+        run: node node_modules/electron/install.js
+
+      - name: Build native modules for Electron
+        run: bun run postinstall
+
+      - name: Build
+        run: bun run build
+
+      - name: Native reference
+        if: runner.os == 'macOS'
+        run: |
+          sw_vers
+          system_profiler SPDisplaysDataType | grep -E 'Resolution|Retina' || true
+          cat > "$RUNNER_TEMP/native.swift" <<'SWIFT'
+          import AppKit
+          let app = NSApplication.shared
+          app.setActivationPolicy(.regular)
+          func measure(_ name: String, _ style: NSWindow.ToolbarStyle?) {
+            let w = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 900, height: 600), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+            w.titlebarAppearsTransparent = true
+            w.titleVisibility = .hidden
+            if let style = style { w.toolbar = NSToolbar(identifier: name); w.toolbarStyle = style }
+            w.orderFront(nil)
+            w.layoutIfNeeded()
+            let height = w.frame.height
+            var parts = [name, "bar=\(height - w.contentLayoutRect.maxY)"]
+            for (key, type) in [("close", NSWindow.ButtonType.closeButton), ("min", .miniaturizeButton), ("zoom", .zoomButton)] {
+              if let b = w.standardWindowButton(type) {
+                let f = b.convert(b.bounds, to: nil)
+                parts.append("\(key) x=\(f.minX) top=\(height - f.maxY) w=\(f.width) h=\(f.height)")
+              }
+            }
+            print(parts.joined(separator: " "))
+            w.close()
+          }
+          measure("plain", nil)
+          measure("unified", .unified)
+          measure("compact", .unifiedCompact)
+          measure("expanded", .expanded)
+          SWIFT
+          swift "$RUNNER_TEMP/native.swift"
+
+      - name: Title bar check
+        if: runner.os != 'Linux'
+        run: bun run titlebar
+        env:
+          TITLEBAR_SHOTS: titlebar-shots
+
+      - name: Title bar check
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum bun run titlebar
+        env:
+          TITLEBAR_SHOTS: titlebar-shots
+
+      - name: Keep the shots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: titlebar-${{ runner.os }}
+          path: titlebar-shots
+          retention-days: 14
