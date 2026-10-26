@@ -12,8 +12,7 @@ It has an MCP server built in: started as `Inkling --mcp`, it lets an AI assista
 ## Download
 
 - [Inkling for Windows](/download/windows): the installer, Inkling-Setup.exe
-- Inkling for macOS, Intel and Apple Silicon: run `curl -fsSL https://inkling.punds.ch/install | sh` in Terminal; it installs into Applications, opens Inkling, and updates it when run again
-- [Inkling for macOS as a disk image](/download/mac): Inkling-mac.dmg
+- [Inkling for macOS](/download/mac): a disk image for Intel and Apple Silicon, Inkling-mac.dmg
 - [Inkling for Linux](/download/linux): an AppImage, Inkling.AppImage
 
 ## For AI assistants
