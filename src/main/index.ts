@@ -114,7 +114,11 @@ function createMainWindow(): void {
   })
   blockOffAppNavigation(mainWindow.webContents)
   mainWindow.webContents.on('context-menu', (_event, params) => {
-    const template = contextMenu(params, (word) => mainWindow?.webContents.replaceMisspelling(word))
+    const template = contextMenu(
+      params,
+      (word) => mainWindow?.webContents.replaceMisspelling(word),
+      (word) => mainWindow?.webContents.session.addWordToSpellCheckerDictionary(word)
+    )
     if (template.length) Menu.buildFromTemplate(template).popup({ window: mainWindow ?? undefined })
   })
   // On a Mac closing the window only hides it, so it comes back as it was; quitting still closes it.

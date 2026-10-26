@@ -8,12 +8,24 @@ describe('contextMenu', () => {
     const picked: string[] = []
     const menu = contextMenu(
       { isEditable: true, selectionText: '', misspelledWord: 'teh', dictionarySuggestions: ['the', 'ten'], editFlags: flags },
-      (word) => picked.push(word)
+      (word) => picked.push(word),
+      () => {}
     )
     expect(menu.slice(0, 2).map((i) => i.label)).toEqual(['the', 'ten'])
     ;(menu[1].click as () => void)()
     expect(picked).toEqual(['ten'])
     expect(menu.map((i) => i.role).filter(Boolean)).toEqual(['cut', 'copy', 'paste', 'selectAll'])
+  })
+
+  it('learns a misspelt word so it is no longer marked, named as each system names it', () => {
+    const learnt: string[] = []
+    const params = { isEditable: true, selectionText: '', misspelledWord: 'Inkling', dictionarySuggestions: ['Inking'], editFlags: flags }
+    const mac = contextMenu(params, () => {}, (word) => learnt.push(word), true)
+    const item = mac.find((i) => i.label === 'Learn Spelling')
+    expect(item).toBeDefined()
+    ;(item!.click as () => void)()
+    expect(learnt).toEqual(['Inkling'])
+    expect(contextMenu(params, () => {}, () => {}, false).some((i) => i.label === 'Add to Dictionary')).toBe(true)
   })
 
   it('says so when the spell checker has no suggestion', () => {
