@@ -116,7 +116,7 @@ async function run(win) {
   await scene(
     'delete-note',
     `const before = ${rows}; document.querySelector('[aria-label="Delete note"]').click(); await window.__motion.until(() => ${rows} < before)`,
-    { sidebar: `window.__motion.box('aside', 0)`, toast: `window.__motion.box('[role=status]', 24)` }
+    { sidebar: `window.__motion.box('aside', 0)`, toast: `window.__motion.box('[data-toast]', 24)` }
   )
   await scene('toast-close', app('dismissToast()'), { toast: `({ x: 300, y: 640, w: 500, h: 120 })` })
 
