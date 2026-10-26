@@ -39,7 +39,7 @@ export function StudyView(): React.JSX.Element {
     if (!failed) return <div />
     return (
       <div className="h-full overflow-y-auto">
-        <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
+        <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14">
           <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
           <p className="mt-16 text-sm text-muted">Could not load the decks.</p>
         </div>
@@ -71,7 +71,7 @@ export function StudyView(): React.JSX.Element {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
+      <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14">
         <div className="flex items-end justify-between gap-4">
           <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
           <Button onClick={() => setAdding(true)}>
@@ -83,7 +83,7 @@ export function StudyView(): React.JSX.Element {
         {adding && (
           <input
             autoFocus
-            className={`${inputCls} mt-8`}
+            className={`${inputCls} motion-rise mt-8`}
             value={name}
             placeholder="Deck name"
             onChange={(e) => setName(e.target.value)}
@@ -219,7 +219,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-[680px] px-10 pb-20 pt-10">
+      <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-10">
         <button
           type="button"
           onClick={() => useApp.getState().openDeck(null)}
