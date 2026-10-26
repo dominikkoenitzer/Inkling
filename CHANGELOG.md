@@ -4,6 +4,46 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.2] - 2026-10-27
+
+### Added
+- On a Mac, one Terminal command installs Inkling into Applications and opens it. Running it again
+  updates it. The download page shows the command first on a Mac.
+- The Mac app has its own menu bar: the app menu, Edit, View with Today, Flashcards and Search,
+  Window, and Help with the keyboard shortcuts.
+- Right-click in a note offers spelling suggestions, Learn Spelling (Add to Dictionary on Windows
+  and Linux) and the edit commands.
+- Sheets, the toast, pages, list rows and review cards ease in and out in a fraction of a second.
+  With reduced motion turned on in the system, they only fade.
+- Up and Down move through the Today rows and the deck list. Enter ends a review on its last
+  screen, and Escape leaves the deck name and new card fields.
+
+### Changed
+- On a Mac, shortcuts use Command and show the Mac key symbols. Command and slash lists them all.
+- The Mac app is signed ad hoc. It no longer looks for updates it cannot install itself: run the
+  Terminal command again to update.
+- Closing the window on a Mac keeps Inkling and the open note; the Dock icon and the Window menu
+  bring it back. On a Mac, Command+W closes the sheet in front first.
+- A click beside a sheet closes it, and focus goes back to the button that opened it.
+
+### Fixed
+- On a Mac, nothing in the title bar sits under the window buttons, at any width, in either theme
+  and in full screen.
+- The title bar keeps its buttons inside it when the text is zoomed in or out.
+- On keyboards where Shift and 7 type a slash, Shift+Command+7 in a note makes a numbered list
+  again instead of opening the shortcuts.
+- Notes edited in the same instant keep a fixed order.
+- If a note save, a Markdown export, a new, restored or deleted note, or a deck or card fails to
+  load or save, Inkling now tells you in one sentence.
+- The sidebar says there are no notes only once the notes have loaded.
+- Screen readers follow the picked search result and hear toasts and when Today cannot load.
+- Tab stays in the search box and inside a dialog whose last button is disabled. Focus moves to a
+  sensible place when a card or deck goes away, and a focused delete button shows.
+- A second Escape while a sheet closes no longer leaves the deck or review behind it.
+- An assistant's edit that starts or ends between two blocks replaces the right text, and the
+  backup before its first change is one whole copy.
+- Messages about connecting an assistant no longer include system error text.
+
 ## [0.9.1] - 2026-10-24
 
 ### Added
@@ -446,6 +486,7 @@ Final QA pass: 15 defects found by an adversarially-verified review and fixed:
 - Nested subtask text no longer folds into the parent task’s title.
 - A quick-add of only a date (e.g. `friday`) gets a neutral title instead of the raw date word.
 
+[0.9.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.2
 [0.9.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.1
 [0.9.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.0
 [0.8.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.8.2
