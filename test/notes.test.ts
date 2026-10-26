@@ -10,7 +10,7 @@ let db: DatabaseSync
 
 vi.mock('../src/main/db', () => ({ getDb: () => db }))
 
-const { createNote, removeNote, restoreNote, updateNote } = await import('../src/main/repos/notes')
+const { createNote, listNotes, removeNote, restoreNote, updateNote } = await import('../src/main/repos/notes')
 const { searchQuery } = await import('../src/main/repos/search')
 
 const doc = (text: string): string => JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] })
@@ -33,6 +33,16 @@ beforeEach(() => {
       title, content_text, source_type UNINDEXED, source_id UNINDEXED
     );
   `)
+})
+
+describe('listNotes', () => {
+  it('keeps the same order for notes edited in the same instant', () => {
+    const first = createNote({ notebook_id: 1, title: 'First', content: doc('a') })
+    const second = createNote({ notebook_id: 1, title: 'Second', content: doc('b') })
+    const third = createNote({ notebook_id: 1, title: 'Third', content: doc('c') })
+    db.exec(`UPDATE notes SET updated_at = '2026-10-26T10:00:00.000Z'`)
+    expect(listNotes().map((n) => n.id)).toEqual([third.id, second.id, first.id])
+  })
 })
 
 describe('updateNote after a soft delete', () => {
