@@ -56,13 +56,15 @@ const COMMAND_KEYS: Record<string, AppCommand> = { k: 'search', n: 'new-note', '
 
 /**
  * A window keydown that is one of the app's shortcuts is taken from the page and runs once. A
- * held key is taken too, or a Mac hands each repeat on to the menu, which runs it again.
+ * held key is taken too, or a Mac hands each repeat on to the menu, which runs it again. A key
+ * the editor already took stays its own.
  */
 export function takeShortcut(
-  e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; repeat: boolean; preventDefault(): void },
+  e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; repeat: boolean; defaultPrevented?: boolean; preventDefault(): void },
   run: (command: AppCommand) => void,
   mac = isMac
 ): void {
+  if (e.defaultPrevented) return
   let command: AppCommand | undefined
   if (e.key === 'F1') command = 'shortcuts'
   else if (isCommandKey(e, mac) && !e.altKey) command = mac && e.key === '/' ? 'shortcuts' : COMMAND_KEYS[e.key.toLowerCase()]
