@@ -223,9 +223,14 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
     }
   }
 
+  // Escape drops the typed name; the blur that follows then keeps the old one.
+  const renameDropped = useRef(false)
   const rename = (): void => {
     const n = name.trim()
-    if (n && n !== deck.name) void renameDeck(deck.id, n).then((done) => (done ? bumpData('decks') : setName(deck.name)))
+    if (renameDropped.current) {
+      renameDropped.current = false
+      setName(deck.name)
+    } else if (n && n !== deck.name) void renameDeck(deck.id, n).then((done) => (done ? bumpData('decks') : setName(deck.name)))
     else setName(deck.name)
   }
 
@@ -246,8 +251,9 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
           onChange={(e) => setName(oneLine(e.target.value))}
           onBlur={rename}
           onKeyDown={(e) => {
-            if (e.key !== 'Enter') return
+            if (e.nativeEvent.isComposing || (e.key !== 'Enter' && e.key !== 'Escape')) return
             e.preventDefault()
+            renameDropped.current = e.key === 'Escape'
             e.currentTarget.blur()
           }}
           aria-label="Deck name"
@@ -315,12 +321,17 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
             aria-label="Front"
             value={front}
             onChange={(e) => setFront(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return
-              // A cloze is a whole card; anything else still needs its answer.
-              if (hasCloze(front) && !back.trim()) void add()
-              else if (front.trim()) backRef.current?.focus()
-            }}
+            onKeyDown={(e) =>
+              // A cloze is a whole card; anything else still needs its answer. Escape leaves the field.
+              editKey(
+                e,
+                () => {
+                  if (hasCloze(front) && !back.trim()) void add()
+                  else if (front.trim()) backRef.current?.focus()
+                },
+                (el) => el.blur()
+              )
+            }
           />
           <input
             ref={backRef}
@@ -329,10 +340,13 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
             aria-label="Back"
             value={back}
             onChange={(e) => setBack(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return
-              void add().then((added) => added && frontRef.current?.focus())
-            }}
+            onKeyDown={(e) =>
+              editKey(
+                e,
+                () => void add().then((added) => added && frontRef.current?.focus()),
+                (el) => el.blur()
+              )
+            }
           />
           <Button variant="primary" onClick={() => void add()} disabled={!canAdd}>
             <Plus size={15} /> Add
