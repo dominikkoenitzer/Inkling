@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Search, FileText, CheckSquare, Layers, Plus, Sun, Keyboard, Settings } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { searchFor } from '@/lib/calls'
+import { keyLabel } from '@/lib/keys'
 import type { SearchResult } from '@shared/types'
 
 interface Item {
@@ -51,11 +52,11 @@ export function CommandPalette(): React.JSX.Element {
     run: () => (r.note_id !== null ? app.openNote(r.note_id) : app.openDeck(r.source_id))
   }))
   const actions: Item[] = [
-    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: 'Ctrl+N', run: () => void app.newNote().then(close) },
-    { key: 'today', icon: <Sun size={16} />, label: 'Today', detail: 'Ctrl+1', run: () => app.setView('today') },
-    { key: 'study', icon: <Layers size={16} />, label: 'Flashcards', detail: 'Ctrl+2', run: () => app.setView('study') },
+    { key: 'new-note', icon: <Plus size={16} />, label: 'New note', detail: keyLabel('Ctrl+N'), run: () => void app.newNote().then(close) },
+    { key: 'today', icon: <Sun size={16} />, label: 'Today', detail: keyLabel('Ctrl+1'), run: () => app.setView('today') },
+    { key: 'study', icon: <Layers size={16} />, label: 'Flashcards', detail: keyLabel('Ctrl+2'), run: () => app.setView('study') },
     { key: 'shortcuts', icon: <Keyboard size={16} />, label: 'Keyboard shortcuts', detail: 'F1', run: () => app.setShortcutsOpen(true) },
-    { key: 'settings', icon: <Settings size={16} />, label: 'Settings', detail: 'Ctrl+,', run: () => app.setSettingsOpen(true) }
+    { key: 'settings', icon: <Settings size={16} />, label: 'Settings', detail: keyLabel('Ctrl+,'), run: () => app.setSettingsOpen(true) }
   ]
   // With nothing typed every action shows; while searching, the ones whose name matches,
   // and New note always, so Enter on a miss still starts one.

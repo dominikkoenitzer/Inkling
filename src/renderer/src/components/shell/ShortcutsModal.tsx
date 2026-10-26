@@ -1,5 +1,6 @@
 import { useApp } from '@/stores/app'
 import { Kbd, Modal } from '@/components/ui'
+import { keyLabel } from '@/lib/keys'
 
 const GROUPS: Array<{ title: string; rows: Array<[string, string[]]> }> = [
   {
@@ -46,7 +47,7 @@ export function ShortcutsModal(): React.JSX.Element {
                   <span>{label}</span>
                   <span className="flex gap-1">
                     {keys.map((k) => (
-                      <Kbd key={k}>{k}</Kbd>
+                      <Kbd key={k}>{keyLabel(k)}</Kbd>
                     ))}
                   </span>
                 </li>
