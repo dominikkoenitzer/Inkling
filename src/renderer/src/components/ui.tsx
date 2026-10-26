@@ -155,7 +155,7 @@ export function Modal({
 }
 
 /** One transient message at a time, bottom-centre. Used for "that's undoable". */
-export function Toaster(): React.JSX.Element | null {
+export function Toaster(): React.JSX.Element {
   const current = useApp((s) => s.toast)
   const dismiss = useApp((s) => s.dismissToast)
   // The last toast stays for its exit once it is dismissed; a new one replaces it at once.
@@ -164,37 +164,44 @@ export function Toaster(): React.JSX.Element | null {
   const closing = !current && !!toast
   const toastRef = useRef<HTMLDivElement>(null)
   const onExitEnd = useExit(toastRef, closing, useCallback(() => setToast(null), []))
-  if (!toast) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
-      <div
-        key={toast.id}
-        ref={toastRef}
-        role={closing ? undefined : 'status'}
-        inert={closing || undefined}
-        data-closing={closing || undefined}
-        onAnimationEnd={onExitEnd}
-        className={`motion-rise flex items-center gap-3 rounded-lg border border-edge bg-raised py-1.5 pl-4 pr-1.5 text-sm ${closing ? '' : 'pointer-events-auto'}`}
-        style={{ boxShadow: 'var(--shadow)' }}
-      >
-        <span className="text-ink">{toast.message}</span>
-        {toast.actionLabel && toast.onAction && (
-          <button
-            type="button"
-            onClick={() => {
-              toast.onAction?.()
-              dismiss()
-            }}
-            className="press rounded-md px-2 py-1 text-sm font-medium text-accent-text hover:bg-hover"
-          >
-            {toast.actionLabel}
-          </button>
-        )}
-        <IconBtn title="Dismiss" onClick={dismiss} className="h-7 w-7">
-          <X size={14} />
-        </IconBtn>
+    <>
+      {/* Screen readers follow a region that is always there and holds only the words. */}
+      <div role="status" className="sr-only">
+        {current?.message ?? ''}
       </div>
-    </div>
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
+          <div
+            key={toast.id}
+            ref={toastRef}
+            data-toast=""
+            inert={closing || undefined}
+            data-closing={closing || undefined}
+            onAnimationEnd={onExitEnd}
+            className={`motion-rise flex items-center gap-3 rounded-lg border border-edge bg-raised py-1.5 pl-4 pr-1.5 text-sm ${closing ? '' : 'pointer-events-auto'}`}
+            style={{ boxShadow: 'var(--shadow)' }}
+          >
+            <span className="text-ink">{toast.message}</span>
+            {toast.actionLabel && toast.onAction && (
+              <button
+                type="button"
+                onClick={() => {
+                  toast.onAction?.()
+                  dismiss()
+                }}
+                className="press rounded-md px-2 py-1 text-sm font-medium text-accent-text hover:bg-hover"
+              >
+                {toast.actionLabel}
+              </button>
+            )}
+            <IconBtn title="Dismiss" onClick={dismiss} className="h-7 w-7">
+              <X size={14} />
+            </IconBtn>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
