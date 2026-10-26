@@ -1,4 +1,7 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+
+/** For an overlay that has no exit to report. */
+export const noop = (): void => {}
 
 /**
  * Keeps an overlay on screen for its exit after `open` turns false. `closing` is true for
@@ -12,22 +15,47 @@ export function usePresence(open: boolean): { present: boolean; closing: boolean
   return { present: open || state.shown, closing: !open && state.shown, generation: state.generation, gone }
 }
 
+/** Set on an overlay while it plays its exit; `onGone` removes it once that is over. */
+export interface Exit {
+  closing?: boolean
+  onGone?: () => void
+}
+
 /**
- * Calls `gone` when the element's exit animation ends, or at once when it runs none (reduced
- * motion off in tests, or the element hidden). Returns the props for that element.
+ * Calls `gone` when the exit animation of the element in `ref` ends, or at once when it runs
+ * none. Returns the element's onAnimationEnd.
  */
-export function useExit<T extends HTMLElement>(
-  closing: boolean,
-  gone: () => void
-): { ref: React.RefObject<T | null>; onAnimationEnd: (e: React.AnimationEvent<T>) => void } {
-  const ref = useRef<T | null>(null)
+export function useExit(ref: React.RefObject<HTMLElement | null>, closing: boolean, gone: () => void): (e: React.AnimationEvent) => void {
   useLayoutEffect(() => {
     if (closing && ref.current && ref.current.getAnimations().length === 0) gone()
-  }, [closing, gone])
-  const onAnimationEnd = (e: React.AnimationEvent<T>): void => {
+  }, [ref, closing, gone])
+  return (e) => {
     if (closing && e.target === e.currentTarget) gone()
   }
-  return { ref, onAnimationEnd }
+}
+
+/**
+ * Remembers what had focus when an overlay opened and gives it back the moment the overlay
+ * starts to close, so the keys work on what is behind it during the exit. `target` takes focus
+ * on open unless it already holds it.
+ */
+export function useReturnFocus(closing: boolean, target: React.RefObject<HTMLElement | null>): void {
+  const opener = useRef<HTMLElement | null>(null)
+  const given = useRef(false)
+  const giveBack = useCallback(() => {
+    if (given.current) return
+    given.current = true
+    if (opener.current?.isConnected) opener.current.focus()
+  }, [])
+  useEffect(() => {
+    opener.current = document.activeElement as HTMLElement | null
+    given.current = false
+    if (!target.current?.contains(document.activeElement)) target.current?.focus()
+    return giveBack
+  }, [target, giveBack])
+  useLayoutEffect(() => {
+    if (closing) giveBack()
+  }, [closing, giveBack])
 }
 
 export type RowKey = string | number
@@ -76,29 +104,30 @@ export function settleRow<T>(rows: Row<T>[], key: RowKey): Row<T>[] {
 }
 
 /**
- * Rows for a list that animates what joins and leaves it. Spread `list` on the element around
- * the rows and `row(r)` on each row, which carries the motion-row class.
+ * Rows for a list that animates what joins and leaves it. `list` is the element around the
+ * rows; give it `onAnimationEnd`, and spread `row(r)` on each row, which carries motion-row.
  */
-export function useRows<T, E extends HTMLElement = HTMLElement>(
+export function useRows<T>(
   items: T[] | null,
-  keyOf: (item: T) => RowKey
+  keyOf: (item: T) => RowKey,
+  list: React.RefObject<HTMLElement | null>
 ): {
   rows: Row<T>[] | null
-  list: { ref: React.RefObject<E | null>; onAnimationEnd: (e: React.AnimationEvent<E>) => void }
+  onAnimationEnd: (e: React.AnimationEvent) => void
   row: (r: Row<T>) => { 'data-row': string; 'data-motion'?: RowState; inert?: boolean }
 } {
   const [state, setState] = useState(() => ({ items, rows: nextRows<T>(null, items, keyOf) }))
   if (state.items !== items) setState({ items, rows: nextRows(state.rows, items, keyOf) })
   const settle = useCallback((key: RowKey) => setState((s) => (s.rows ? { ...s, rows: settleRow(s.rows, key) } : s)), [])
 
-  const ref = useRef<E | null>(null)
   // A row whose animation never started (say, hidden) settles at once.
   useLayoutEffect(() => {
-    for (const el of ref.current?.querySelectorAll<HTMLElement>('[data-motion]') ?? []) {
+    for (const el of list.current?.querySelectorAll<HTMLElement>('[data-motion]') ?? []) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- only rows no animation will ever settle
       if (el.getAnimations().length === 0 && el.dataset.row !== undefined) settle(el.dataset.row)
     }
   })
-  const onAnimationEnd = (e: React.AnimationEvent<E>): void => {
+  const onAnimationEnd = (e: React.AnimationEvent): void => {
     const el = e.target as HTMLElement
     if (el.dataset.motion && el.dataset.row !== undefined) settle(el.dataset.row)
   }
@@ -107,5 +136,5 @@ export function useRows<T, E extends HTMLElement = HTMLElement>(
     'data-motion': r.state === 'shown' ? undefined : r.state,
     inert: r.state === 'leaving' ? true : undefined
   })
-  return { rows: state.rows, list: { ref, onAnimationEnd }, row }
+  return { rows: state.rows, onAnimationEnd, row }
 }

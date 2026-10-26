@@ -1,8 +1,9 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useId, useRef } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useApp } from '@/stores/app'
 import { closesSheet } from '@/lib/keys'
+import { noop, useExit, useReturnFocus, type Exit } from '@/lib/motion'
 
 export function Button({
   children,
@@ -81,18 +82,22 @@ export function Modal({
   title,
   onClose,
   children,
-  width = 420
+  width = 420,
+  closing = false,
+  onGone = noop
 }: {
   title: string
   onClose: () => void
   children: ReactNode
   width?: number
-}): React.JSX.Element {
+} & Exit): React.JSX.Element {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
-  // Whatever had focus when the dialog opened gets it back when it closes.
-  const opener = useRef<HTMLElement | null>(null)
+  const onExitEnd = useExit(panelRef, closing, onGone)
+  // Whatever had focus when the dialog opened gets it back as it starts to close.
+  useReturnFocus(closing, panelRef)
   useEffect(() => {
+    if (closing) return
     const onKey = (e: KeyboardEvent): void => {
       if (closesSheet(e)) {
         e.preventDefault()
@@ -115,24 +120,23 @@ export function Modal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  useEffect(() => {
-    opener.current = document.activeElement as HTMLElement | null
-    // An autofocused field inside keeps its focus; otherwise the dialog itself takes it.
-    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus()
-    return () => {
-      if (opener.current?.isConnected) opener.current.focus()
-    }
-  }, [])
+  }, [onClose, closing, panelRef])
   return (
-    <div className="no-drag fixed inset-0 z-50 flex items-center justify-center p-6" onMouseDown={onClose}>
+    // A closing dialog sits under anything that opens in its place and takes no input.
+    <div
+      className={`no-drag fixed inset-0 flex items-center justify-center p-6 ${closing ? 'pointer-events-none z-40' : 'z-50'}`}
+      inert={closing || undefined}
+      onMouseDown={onClose}
+    >
       <div
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
+        role={closing ? undefined : 'dialog'}
+        aria-modal={closing ? undefined : 'true'}
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="max-h-[85vh] overflow-y-auto rounded-lg border border-edge bg-raised p-5"
+        data-closing={closing || undefined}
+        onAnimationEnd={onExitEnd}
+        className="motion-sheet max-h-[85vh] overflow-y-auto rounded-lg border border-edge bg-raised p-5"
         style={{ width, boxShadow: 'var(--shadow)', outline: 'none' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -152,14 +156,25 @@ export function Modal({
 
 /** One transient message at a time, bottom-centre. Used for "that's undoable". */
 export function Toaster(): React.JSX.Element | null {
-  const toast = useApp((s) => s.toast)
+  const current = useApp((s) => s.toast)
   const dismiss = useApp((s) => s.dismissToast)
+  // The last toast stays for its exit once it is dismissed; a new one replaces it at once.
+  const [toast, setToast] = useState(current)
+  if (current && current !== toast) setToast(current)
+  const closing = !current && !!toast
+  const toastRef = useRef<HTMLDivElement>(null)
+  const onExitEnd = useExit(toastRef, closing, useCallback(() => setToast(null), []))
   if (!toast) return null
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
       <div
-        role="status"
-        className="pointer-events-auto flex items-center gap-3 rounded-lg border border-edge bg-raised py-1.5 pl-4 pr-1.5 text-sm"
+        key={toast.id}
+        ref={toastRef}
+        role={closing ? undefined : 'status'}
+        inert={closing || undefined}
+        data-closing={closing || undefined}
+        onAnimationEnd={onExitEnd}
+        className={`motion-rise flex items-center gap-3 rounded-lg border border-edge bg-raised py-1.5 pl-4 pr-1.5 text-sm ${closing ? '' : 'pointer-events-auto'}`}
         style={{ boxShadow: 'var(--shadow)' }}
       >
         <span className="text-ink">{toast.message}</span>
