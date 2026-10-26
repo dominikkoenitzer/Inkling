@@ -4,12 +4,10 @@ import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
 import { ignoresShortcut } from '@/lib/keys'
-import { reviewCard } from '@/lib/calls'
+import { loadDueCards, reviewCard } from '@/lib/calls'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
-
-const api = window.inkling
 
 const GRADES: Array<{ grade: ReviewGrade; label: string; rating: Rating; tone: string }> = [
   { grade: 'again', label: 'Again', rating: 1, tone: 'text-danger' },
@@ -24,6 +22,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   const [showBack, setShowBack] = useState(false)
   const [reviewed, setReviewed] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
   const gradingRef = useRef(false)
   // The position last graded: a second key press before the next card renders must not grade again.
   const gradedAt = useRef(-1)
@@ -33,7 +32,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   useEffect(() => () => bumpData('decks'), [])
 
   useEffect(() => {
-    void api.decks.dueCards(deck.id).then((cards) => {
+    void loadDueCards(deck.id).then((cards) => {
+      if (!cards) return setFailed(true)
       setQueue(cards)
       setLoaded(true)
     })
@@ -193,7 +193,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
             )}
           </>
         ) : (
-          <div className="text-muted">Loading cards...</div>
+          <div className="text-muted">{failed ? 'Could not load the cards.' : 'Loading cards...'}</div>
         )}
       </div>
     </div>
