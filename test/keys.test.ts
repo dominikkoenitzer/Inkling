@@ -62,7 +62,7 @@ describe('ignoresShortcut', () => {
 
 describe('takeShortcut', () => {
   const press = (
-    init: { key: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; shiftKey?: boolean; repeat?: boolean },
+    init: { key: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; shiftKey?: boolean; repeat?: boolean; defaultPrevented?: boolean },
     mac: boolean
   ): { ran: AppCommand[]; prevented: boolean } => {
     const ran: AppCommand[] = []
@@ -102,6 +102,11 @@ describe('takeShortcut', () => {
     expect(press({ key: 'n', metaKey: true, altKey: true }, true)).toEqual({ ran: [], prevented: false })
     expect(press({ key: 'b', metaKey: true }, true)).toEqual({ ran: [], prevented: false })
     expect(press({ key: 'n' }, false)).toEqual({ ran: [], prevented: false })
+  })
+
+  it('leaves a key the editor already took, as Shift+Command+7 for a numbered list where Shift+7 types a slash', () => {
+    expect(press({ key: '/', metaKey: true, shiftKey: true, defaultPrevented: true }, true)).toEqual({ ran: [], prevented: false })
+    expect(press({ key: '/', metaKey: true, shiftKey: true }, true).ran).toEqual(['shortcuts'])
   })
 })
 
