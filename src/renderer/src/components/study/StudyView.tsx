@@ -74,7 +74,7 @@ export function StudyView(): React.JSX.Element {
             placeholder="Deck name"
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') void create()
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) void create()
               if (e.key === 'Escape') {
                 setAdding(false)
                 setName('')

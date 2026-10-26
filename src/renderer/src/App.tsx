@@ -9,7 +9,7 @@ import { ShortcutsModal } from '@/components/shell/ShortcutsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 import { setTitlebar } from '@/lib/calls'
-import { isCommandKey, keyLabel } from '@/lib/keys'
+import { ariaKeys, keyLabel, takeShortcut } from '@/lib/keys'
 import type { AppCommand } from '@shared/api'
 
 const api = window.inkling
@@ -26,6 +26,14 @@ function runCommand(command: AppCommand): void {
     app.setSettingsOpen(false)
     app.setShortcutsOpen(false)
   }
+}
+
+/** A shortcut key: its menu command, except that search and the shortcuts list close again. */
+function runKey(command: AppCommand): void {
+  const app = useApp.getState()
+  if (command === 'search') app.setPaletteOpen(!app.paletteOpen)
+  else if (command === 'shortcuts') app.setShortcutsOpen(!app.shortcutsOpen)
+  else runCommand(command)
 }
 
 export default function App(): React.JSX.Element {
@@ -69,33 +77,9 @@ export default function App(): React.JSX.Element {
     void setTitlebar(theme)
   }, [ready, failed, theme])
 
-  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts; Command on a Mac.
+  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts; Command on a Mac, where Command+/ opens the shortcuts too.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'F1' && !e.repeat) {
-        e.preventDefault()
-        useApp.getState().setShortcutsOpen(!useApp.getState().shortcutsOpen)
-        return
-      }
-      if (!isCommandKey(e) || e.altKey || e.repeat) return
-      const key = e.key.toLowerCase()
-      const app = useApp.getState()
-      if (key === 'k') {
-        e.preventDefault()
-        app.setPaletteOpen(!app.paletteOpen)
-      } else if (key === 'n') {
-        e.preventDefault()
-        void app.newNote()
-      } else if (key === '1' || key === '2') {
-        e.preventDefault()
-        app.setView(key === '1' ? 'today' : 'study')
-        app.setSettingsOpen(false)
-        app.setShortcutsOpen(false)
-      } else if (key === ',') {
-        e.preventDefault()
-        app.setSettingsOpen(true)
-      }
-    }
+    const onKey = (e: KeyboardEvent): void => takeShortcut(e, runKey)
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -134,11 +118,14 @@ export default function App(): React.JSX.Element {
         <button
           type="button"
           onClick={() => useApp.getState().setPaletteOpen(true)}
+          aria-keyshortcuts={ariaKeys('Ctrl+K')}
           className="no-drag ml-4 flex h-8 w-80 items-center gap-2 rounded-md bg-hover px-3 text-sm text-muted transition-colors hover:text-ink"
         >
           <Search size={15} />
           Search
-          <span className="ml-auto text-xs">{keyLabel('Ctrl+K')}</span>
+          <span aria-hidden="true" className="ml-auto text-xs">
+            {keyLabel('Ctrl+K')}
+          </span>
         </button>
       </header>
 

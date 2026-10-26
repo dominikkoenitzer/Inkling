@@ -380,7 +380,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
               scheduleSave()
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                 e.preventDefault()
                 editor?.commands.focus('start')
               }
