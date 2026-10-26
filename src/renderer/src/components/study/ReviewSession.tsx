@@ -110,7 +110,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
   return (
     <div className="flex h-full flex-col">
       {/* Same column as every other page, so the deck name sits where titles do. */}
-      <div className="mx-auto w-full max-w-[680px] px-10 pt-8">
+      <div className="motion-rise mx-auto w-full max-w-[680px] px-10 pt-8">
         <div className="flex items-center gap-3">
           <h2 className="truncate text-sm font-medium text-muted">{deck.name}</h2>
           <span className="text-xs tabular-nums text-faint">
@@ -124,7 +124,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         </div>
         <div className="mt-2 h-0.5 rounded-full bg-hover">
           <div
-            className="h-full rounded-full transition-all duration-300"
+            className="motion-fill h-full rounded-full"
             style={{ width: `${queue.length ? (Math.min(index, queue.length) / queue.length) * 100 : 0}%`, background: 'var(--accent)' }}
           />
         </div>
@@ -132,7 +132,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8">
         {done ? (
-          <div className="flex flex-col items-center gap-2 text-center">
+          <div className="motion-rise flex flex-col items-center gap-2 text-center">
             <Inky size={44} className="mb-2" />
             <div className="text-[15px] font-medium">{reviewed > 0 ? 'All caught up.' : 'Nothing due in this deck.'}</div>
             <div className="max-w-sm text-sm text-muted">
@@ -149,7 +149,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         ) : card ? (
           <>
             <div
-              className="flex min-h-[240px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-edge bg-raised p-10 text-center"
+              className="motion-rise flex min-h-[240px] w-full max-w-xl cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-edge bg-raised p-10 text-center"
               onClick={() => setShowBack(true)}
               key={`${card.id}-${index}`}
             >
@@ -160,8 +160,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                 // A cloze card's answer is revealed in place; the back only holds an optional extra.
                 card.back && (
                   <>
-                    <div className="h-px w-16 bg-edge" />
-                    <div className="whitespace-pre-line text-base text-muted">{card.back}</div>
+                    <div className="motion-rise h-px w-16 bg-edge" />
+                    <div className="motion-rise whitespace-pre-line text-base text-muted">{card.back}</div>
                   </>
                 )
               ) : (
@@ -171,7 +171,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               )}
             </div>
             {showBack && (
-              <div className="flex gap-2">
+              <div className="motion-rise flex gap-2">
                 {GRADES.map((g, i) => (
                   <button
                     key={g.grade}
@@ -193,7 +193,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
             )}
           </>
         ) : (
-          <div className="text-muted">{failed ? 'Could not load the cards.' : 'Loading cards...'}</div>
+          <div className="motion-rise text-muted">{failed ? 'Could not load the cards.' : 'Loading cards...'}</div>
         )}
       </div>
     </div>
