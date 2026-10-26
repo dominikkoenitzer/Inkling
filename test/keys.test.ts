@@ -6,6 +6,7 @@ import { EditorState, NodeSelection, TextSelection, type Selection } from '@tipt
 import type { Node as PMNode } from '@tiptap/pm/model'
 import {
   ariaKeys,
+  closesSheet,
   editKey,
   ignoresShortcut,
   isCommandKey,
@@ -108,6 +109,34 @@ describe('shortcutsKey', () => {
   it('is F1 off a Mac and Command and slash on one', () => {
     expect(keyLabel(shortcutsKey(false), false)).toBe('F1')
     expect(keyLabel(shortcutsKey(true), true)).toBe(String.fromCodePoint(0x2318) + '/')
+  })
+})
+
+describe('closesSheet', () => {
+  const press = (key: string, mods: { meta?: boolean; ctrl?: boolean; alt?: boolean; shift?: boolean; composing?: boolean } = {}) => ({
+    key,
+    metaKey: !!mods.meta,
+    ctrlKey: !!mods.ctrl,
+    altKey: !!mods.alt,
+    shiftKey: !!mods.shift,
+    isComposing: !!mods.composing
+  })
+
+  it('closes on Escape everywhere', () => {
+    expect(closesSheet(press('Escape'), false)).toBe(true)
+    expect(closesSheet(press('Escape'), true)).toBe(true)
+  })
+
+  it('closes on Command+W on a Mac, so the key never reaches the window', () => {
+    expect(closesSheet(press('w', { meta: true }), true)).toBe(true)
+    expect(closesSheet(press('W', { meta: true }), true)).toBe(true)
+    expect(closesSheet(press('w', { meta: true, shift: true }), true)).toBe(false)
+    expect(closesSheet(press('w', { ctrl: true }), true)).toBe(false)
+    expect(closesSheet(press('w', { ctrl: true }), false)).toBe(false)
+  })
+
+  it('leaves Escape to an input method that is still composing a word', () => {
+    expect(closesSheet(press('Escape', { composing: true }), true)).toBe(false)
   })
 })
 
