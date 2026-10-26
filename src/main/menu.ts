@@ -3,10 +3,10 @@ import type { AppCommand } from '@shared/api'
 
 /**
  * The menu bar on a Mac: the system's own menus, plus the app's commands with the keys the
- * app already answers to. `run` sends a command to the window; dev builds keep reload and
- * the developer tools.
+ * app already answers to. `run` sends a command to the window, `show` brings the window back
+ * after it was closed; dev builds keep reload and the developer tools.
  */
-export function macMenu(run: (command: AppCommand) => void, packaged: boolean): MenuItemConstructorOptions[] {
+export function macMenu(run: (command: AppCommand) => void, show: () => void, packaged: boolean): MenuItemConstructorOptions[] {
   return [
     {
       role: 'appMenu',
@@ -45,7 +45,17 @@ export function macMenu(run: (command: AppCommand) => void, packaged: boolean): 
         { role: 'togglefullscreen' }
       ]
     },
-    { role: 'windowMenu' },
-    { role: 'help', submenu: [{ label: 'Keyboard Shortcuts', accelerator: 'F1', click: () => run('shortcuts') }] }
+    {
+      role: 'windowMenu',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        { label: 'Main Window', click: show },
+        { type: 'separator' },
+        { role: 'front' }
+      ]
+    },
+    { role: 'help', submenu: [{ label: 'Keyboard Shortcuts', accelerator: 'Command+/', click: () => run('shortcuts') }] }
   ]
 }

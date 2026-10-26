@@ -14,14 +14,14 @@ const find = (menu: MenuItemConstructorOptions[], label: string): MenuItemConstr
 describe('macMenu', () => {
   it('puts each app shortcut on Command and runs its command', () => {
     const sent: AppCommand[] = []
-    const menu = macMenu((c) => sent.push(c), true)
+    const menu = macMenu((c) => sent.push(c), () => {}, true)
     const expected: Array<[string, string, AppCommand]> = [
       ['Settings…', 'Command+,', 'settings'],
       ['New Note', 'Command+N', 'new-note'],
       ['Today', 'Command+1', 'today'],
       ['Flashcards', 'Command+2', 'study'],
       ['Search…', 'Command+K', 'search'],
-      ['Keyboard Shortcuts', 'F1', 'shortcuts']
+      ['Keyboard Shortcuts', 'Command+/', 'shortcuts']
     ]
     for (const [label, accelerator, command] of expected) {
       const item = find(menu, label)
@@ -32,11 +32,20 @@ describe('macMenu', () => {
   })
 
   it('keeps the system menus in their usual order', () => {
-    expect(macMenu(() => {}, true).map((i) => i.role)).toEqual(['appMenu', 'fileMenu', 'editMenu', 'viewMenu', 'windowMenu', 'help'])
+    expect(macMenu(() => {}, () => {}, true).map((i) => i.role)).toEqual(['appMenu', 'fileMenu', 'editMenu', 'viewMenu', 'windowMenu', 'help'])
+  })
+
+  it('brings the window back from the Window menu after it was closed', () => {
+    let shown = 0
+    const menu = macMenu(() => {}, () => shown++, true)
+    const windowMenu = menu.find((i) => i.role === 'windowMenu')
+    const item = items(Array.isArray(windowMenu?.submenu) ? windowMenu.submenu : []).find((i) => i.label === 'Main Window')
+    ;(item?.click as () => void)()
+    expect(shown).toBe(1)
   })
 
   it('leaves reload and the developer tools out of a release', () => {
-    const roles = (packaged: boolean): unknown[] => items(macMenu(() => {}, packaged)).map((i) => i.role)
+    const roles = (packaged: boolean): unknown[] => items(macMenu(() => {}, () => {}, packaged)).map((i) => i.role)
     expect(roles(true)).not.toContain('reload')
     expect(roles(true)).not.toContain('toggleDevTools')
     expect(roles(false)).toContain('toggleDevTools')

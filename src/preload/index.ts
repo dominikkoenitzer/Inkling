@@ -59,6 +59,8 @@ const api: InklingApi = {
     onCommand: (fn) => {
       const listener = (_event: unknown, command: AppCommand): void => fn(command)
       ipcRenderer.on('app.command', listener)
+      // Commands picked while the page loaded wait in the main process until this point.
+      ipcRenderer.send('app.listening')
       return () => void ipcRenderer.removeListener('app.command', listener)
     }
   },
