@@ -7,5 +7,8 @@
     { "source": "/update/latest-mac.yml", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/latest-mac.yml", "permanent": false },
     { "source": "/update/latest-linux.yml", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/latest-linux.yml", "permanent": false },
     { "source": "/update/:file", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/:file", "permanent": false }
+  ],
+  "headers": [
+    { "source": "/install", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] }
   ]
 }
