@@ -82,6 +82,8 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
       e.preventDefault()
       close()
     }
+    // Focus stays in the box: the arrows pick a result, and Tab would only lose the keys.
+    if (e.key === 'Tab') e.preventDefault()
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelected(Math.min(clamped + 1, items.length - 1))
@@ -145,6 +147,7 @@ export function CommandPalette({ closing = false, onGone = noop }: Exit): React.
             <button
               key={item.key}
               type="button"
+              tabIndex={-1}
               onMouseEnter={() => setSelected(i)}
               onClick={item.run}
               aria-keyshortcuts={item.keys && ariaKeys(item.keys)}
