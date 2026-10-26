@@ -297,6 +297,43 @@ async function run(win) {
   await wait(100)
   const named = await js(focused)
   ok('Escape in the deck name puts focus on New deck', naming === 'Deck name' && named === 'New deck', 'focus on ' + naming + ' then ' + named)
+
+  // A second Escape while the settings close stays with the sheet, so the deck stays open.
+  await js(app(`openDeck(${French})`))
+  await wait(600)
+  await js(`(() => { const b = [...document.querySelectorAll('aside button')].find((x) => x.textContent.trim() === 'Settings'); b.focus(); b.click() })()`)
+  await wait(400)
+  key('Escape')
+  await js('window.__motion.seek(0)')
+  key('Escape')
+  await wait(100)
+  const deckAfter = await js('window.__app.getState().selectedDeckId')
+  await js('window.__motion.release()')
+  await wait(300)
+  ok('a second Escape while the settings close keeps the deck open', deckAfter === French, 'deck ' + deckAfter)
+
+  // A delete button that has focus shows, also after a click elsewhere.
+  await js(app(`openDeck(${French})`))
+  await wait(600)
+  const blank = JSON.parse(await js(`JSON.stringify(window.__motion.box('main', 0))`))
+  const spot = { x: Math.round(blank.x + 8), y: Math.round(blank.y + blank.h - 8) }
+  win.webContents.sendInputEvent({ type: 'mouseDown', ...spot, button: 'left', clickCount: 1 })
+  win.webContents.sendInputEvent({ type: 'mouseUp', ...spot, button: 'left', clickCount: 1 })
+  await wait(100)
+  await js(`document.querySelector('main ul [aria-label="Delete card"]').focus()`)
+  await wait(200)
+  const shown = await js(`getComputedStyle(document.activeElement).opacity`)
+  ok('a focused Delete card button shows', shown === '1', 'opacity ' + shown)
+
+  // Deleting the deck hands focus to New deck in the list.
+  await js(`document.querySelector('main [aria-label="Delete deck"]').focus()`)
+  key('Space')
+  await wait(200)
+  await js(`[...document.querySelectorAll('main button')].find((x) => x.textContent.trim() === 'Delete deck and cards').focus()`)
+  key('Space')
+  await wait(600)
+  const afterDeck = JSON.parse(await js(`JSON.stringify({ deck: window.__app.getState().selectedDeckId, focus: ${focused} })`))
+  ok('deleting a deck puts focus on New deck', afterDeck.deck === null && afterDeck.focus === 'New deck', 'deck ' + afterDeck.deck + ', focus on ' + afterDeck.focus)
 }
 
 // Preloaded before Electron sets up its own modules, so `electron` is asked for once it has.
