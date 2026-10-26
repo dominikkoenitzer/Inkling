@@ -328,6 +328,13 @@ footer p { margin: 0.3rem 0; }
   .btn:hover { transform: none; }
 }
 
+/* terminal install */
+.term { scroll-margin-top: 1.5rem; }
+.term > .small:first-child { margin-top: 0; }
+.term .codecard { margin-top: 0.75rem; padding: 1rem 1.25rem; border-radius: 1rem; box-shadow: var(--shadow-sm); }
+.term pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.term code { font-size: 0.92rem; -webkit-user-select: all; user-select: all; }
+
 </style>
 </head>
 <body data-platforms='{&quot;windows&quot;: &quot;Windows&quot;, &quot;mac&quot;: &quot;macOS&quot;, &quot;linux&quot;: &quot;Linux&quot;}'>
@@ -349,6 +356,11 @@ footer p { margin: 0.3rem 0; }
 <p class="lede">A calm place for your notes, to-dos and flashcards. It works offline and you never sign up for anything.</p>
 <div class="get">
 <a class="btn" id="primary" data-primary href="/download/windows">Download for Windows</a>
+<div class="term" id="install-mac" data-button="Install for macOS" hidden>
+<p class="small">Paste this into Terminal and press Return. Inkling installs itself and opens.</p>
+<div class="codecard"><pre><code>curl -fsSL https://inkling.punds.ch/install | sh</code></pre></div>
+<p class="small">You can also <a href="/download/mac">download the disk image</a>. The first time you open it, macOS asks you to allow it in System Settings, under Privacy &amp; Security.</p>
+</div>
 <p class="small" id="others">Also for <a href="/download/mac">macOS</a> and <a href="/download/linux">Linux</a>.</p>
 <p class="small">If Windows says it protected your PC, click More info, then Run anyway.</p>
 <p class="small away" id="away" hidden>Inkling runs on Windows, macOS and Linux. Open this page on your computer to download it.</p>
@@ -481,7 +493,7 @@ footer p { margin: 0.3rem 0; }
 <div class="card">
 <div class="num">02</div>
 <h3>Updates</h3>
-<p>On Windows and Linux, Inkling downloads new versions by itself and installs them when you close it. On a Mac, download the new version from this page.</p>
+<p>On Windows and Linux, Inkling downloads new versions by itself and installs them when you close it. On a Mac, run the Terminal command from the top of this page again.</p>
 </div>
 <div class="card">
 <div class="num">03</div>
@@ -500,6 +512,10 @@ footer p { margin: 0.3rem 0; }
 <details>
 <summary>Why does Windows say it protected my PC?</summary>
 <div class="answer"><p>Inkling is not signed with a paid certificate, so Windows warns about it the first time. Click More info, then Run anyway.</p></div>
+</details>
+<details>
+<summary>Why does my Mac ask before opening Inkling?</summary>
+<div class="answer"><p>Inkling is free and not sold through a store, so Apple has not checked it. The Terminal command at the top of this page installs it without that question.</p><p>If you used the disk image, open Inkling once, then go to System Settings, Privacy &amp; Security and click Open Anyway.</p></div>
 </details>
 <details>
 <summary>Where are my notes?</summary>
@@ -570,6 +586,16 @@ footer p { margin: 0.3rem 0; }
 
   if (names[os]) render(os);
   else d.getElementById("away").hidden = false;
+
+  var term = names[os] && d.getElementById("install-" + os);
+  if (term) {
+    term.hidden = false;
+    d.getElementById("primary").style.display = "none";
+    d.querySelectorAll(".closing [data-primary]").forEach(function (a) {
+      a.href = "#install-" + os;
+      a.textContent = term.getAttribute("data-button");
+    });
+  }
 
   if (os === "windows" && names["windows-arm"] && uad && uad.getHighEntropyValues) {
     uad.getHighEntropyValues(["architecture"]).then(function (v) {

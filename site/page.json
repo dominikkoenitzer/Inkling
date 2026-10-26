@@ -40,6 +40,14 @@
       "alt": "A biology note in Inkling with five terms, two bullet points and a short to-do list"
     }
   },
+  "terminal": {
+    "mac": {
+      "intro": "Paste this into Terminal and press Return. Inkling installs itself and opens.",
+      "command": "curl -fsSL https://inkling.punds.ch/install | sh",
+      "file": "You can also <a href=\"/download/mac\">download the disk image</a>. The first time you open it, macOS asks you to allow it in System Settings, under Privacy &amp; Security.",
+      "button": "Install for macOS"
+    }
+  },
   "features": [
     {
       "label": "Today",
@@ -214,7 +222,7 @@
     {
       "title": "Updates",
       "body": [
-        "On Windows and Linux, Inkling downloads new versions by itself and installs them when you close it. On a Mac, download the new version from this page."
+        "On Windows and Linux, Inkling downloads new versions by itself and installs them when you close it. On a Mac, run the Terminal command from the top of this page again."
       ]
     },
     {
@@ -235,6 +243,13 @@
       "q": "Why does Windows say it protected my PC?",
       "a": [
         "Inkling is not signed with a paid certificate, so Windows warns about it the first time. Click More info, then Run anyway."
+      ]
+    },
+    {
+      "q": "Why does my Mac ask before opening Inkling?",
+      "a": [
+        "Inkling is free and not sold through a store, so Apple has not checked it. The Terminal command at the top of this page installs it without that question.",
+        "If you used the disk image, open Inkling once, then go to System Settings, Privacy &amp; Security and click Open Anyway."
       ]
     },
     {
