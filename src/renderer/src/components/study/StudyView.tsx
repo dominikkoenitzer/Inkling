@@ -6,7 +6,7 @@ import { hasCloze } from '@shared/cloze'
 import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, Code, IconBtn, inputCls, titleFieldCls } from '@/components/ui'
-import { editKey, ignoresShortcut } from '@/lib/keys'
+import { editKey, ignoresShortcut, stepRows } from '@/lib/keys'
 import { oneLine } from '@/lib/parse'
 import { ReviewSession } from './ReviewSession'
 import { useRows, type RowProps } from '@/lib/motion'
@@ -107,9 +107,9 @@ export function StudyView(): React.JSX.Element {
             </p>
           </div>
         ) : (
-          <ul className="mt-8 border-t border-edge">
+          <ul className="mt-8 border-t border-edge" onKeyDown={stepRows}>
             {decks.map((d) => (
-              <li key={d.id} className="flex items-center gap-1 border-b border-edge">
+              <li key={d.id} data-row={d.id} className="flex items-center gap-1 border-b border-edge">
                 <button
                   type="button"
                   onClick={() => useApp.getState().openDeck(d.id)}

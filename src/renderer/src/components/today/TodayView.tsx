@@ -5,6 +5,7 @@ import { localDay } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, Code } from '@/components/ui'
 import { setTaskDone } from '@/lib/calls'
+import { stepRows } from '@/lib/keys'
 import { useRows } from '@/lib/motion'
 import type { Deck, OpenTask } from '@shared/types'
 
@@ -78,7 +79,7 @@ export function TodayView(): React.JSX.Element {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14">
+      <div className="motion-rise mx-auto max-w-[680px] px-10 pb-20 pt-14" onKeyDown={stepRows}>
         <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Today</h1>
         <p className="mt-1 text-sm text-muted">{longDate.format(new Date())}</p>
 
