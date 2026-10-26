@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Search, FileText, CheckSquare, Layers, Plus, Sun, Keyboard, Settings } from 'lucide-react'
 import { useApp } from '@/stores/app'
 import { searchFor } from '@/lib/calls'
-import { ariaKeys, keyLabel, shortcutsKey } from '@/lib/keys'
+import { ariaKeys, closesSheet, keyLabel, shortcutsKey } from '@/lib/keys'
 import type { SearchResult } from '@shared/types'
 
 interface Item {
@@ -81,7 +81,10 @@ export function CommandPalette(): React.JSX.Element {
   }, [clamped])
 
   const onKey = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Escape') close()
+    if (closesSheet(e.nativeEvent)) {
+      e.preventDefault()
+      close()
+    }
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelected(Math.min(clamped + 1, items.length - 1))
@@ -100,7 +103,7 @@ export function CommandPalette(): React.JSX.Element {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onMouseDown={close}>
+    <div className="no-drag fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onMouseDown={close}>
       <div
         role="dialog"
         aria-modal="true"

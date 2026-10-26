@@ -39,6 +39,19 @@ export function isCommandKey(e: { ctrlKey: boolean; metaKey: boolean }, mac = is
   return mac ? e.metaKey && !e.ctrlKey : e.ctrlKey || e.metaKey
 }
 
+/**
+ * Whether a keydown closes the sheet in front: Escape, and on a Mac also Command+W, which there
+ * closes the frontmost panel before any window. Escape that drops a half-typed word stays with the input method.
+ */
+export function closesSheet(
+  e: { key: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; isComposing: boolean },
+  mac = isMac
+): boolean {
+  if (e.isComposing) return false
+  if (e.key === 'Escape') return true
+  return mac && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'w'
+}
+
 const COMMAND_KEYS: Record<string, AppCommand> = { k: 'search', n: 'new-note', '1': 'today', '2': 'study', ',': 'settings' }
 
 /**
