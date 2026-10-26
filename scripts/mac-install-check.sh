@@ -52,6 +52,7 @@ stop_all() {
   n=0
   while [ -n "$(running)" ] && [ $n -lt 10 ]; do sleep 1; n=$((n + 1)); done
   for pid in $(pgrep -f "Inkling.app/Contents/MacOS/Inkling"); do kill -9 "$pid" 2>/dev/null; done
+  pkill -f "Inkling Helper" 2>/dev/null
   pkill -x CoreServicesUIAgent 2>/dev/null
   return 0
 }
@@ -89,8 +90,14 @@ try_open() {
   bounded 15 open "$app" 2>&1
   echo "exit $?"
   sleep 10
-  pid="$(running)"
-  if [ -n "$pid" ]; then echo "result: Inkling is running after 10 s"; else echo "result: Inkling is not running after 10 s"; fi
+  # A launch Gatekeeper holds keeps its main process but never starts the helper processes.
+  if [ -n "$(pgrep -f 'Inkling Helper')" ]; then
+    echo "result: Inkling opened after 10 s"
+  elif [ -n "$(running)" ]; then
+    echo "result: Inkling is held at launch and did not open"
+  else
+    echo "result: Inkling did not start"
+  fi
   screencapture -x "$work/screen-$tag.png" 2>/dev/null || echo "no screen capture"
   echo "-- Gatekeeper log"
   bounded 180 log show --start "$since" --style compact \
@@ -301,6 +308,11 @@ stage_browser() {
   quarantine "$d/Inkling-mac.dmg"
   quarantine "$d/Inkling-mac.zip"
   dmg_route "$d/Inkling-mac.dmg" built-dmg "This build, disk image from a browser"
+  line "Privacy & Security after the blocked launch"
+  bounded 20 open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
+  sleep 8
+  screencapture -x "$work/screen-settings.png" 2>/dev/null || echo "no screen capture"
+  bounded 20 osascript -e 'quit app "System Settings"' >/dev/null 2>&1
   zip_route "$d/Inkling-mac.zip" built-zip "This build, zip from a browser"
   return 0
 }
@@ -321,17 +333,21 @@ app.whenReady().then(async () => {
   const win = new BrowserWindow({ width: +width, height: +height, useContentSize: true, x: 0, y: 0 })
   await win.loadURL(url)
   await new Promise((r) => setTimeout(r, 1500))
-  const image = await win.webContents.capturePage()
-  require('fs').writeFileSync(out, image.toPNG())
+  const fs = require('fs')
+  fs.writeFileSync(out, (await win.webContents.capturePage()).toPNG())
+  await win.webContents.executeJavaScript('document.querySelector(".closing").scrollIntoView({ block: "center", behavior: "instant" })')
+  await new Promise((r) => setTimeout(r, 500))
+  fs.writeFileSync(out.replace('.png', '-end.png'), (await win.webContents.capturePage()).toPNG())
   app.quit()
 })
 EOF
   echo '{"name":"shot","main":"main.js"}' >"$shot/package.json"
   electron="$root/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
-  for spec in "1440 900 light" "1440 900 dark" "1100 800 light" "820 1000 dark"; do
+  for spec in "1440 900 light" "1440 900 dark" "1100 800 light" "820 1000 dark" "390 844 light" "360 780 dark"; do
     set -- $spec
-    bounded 120 env -u ELECTRON_RUN_AS_NODE "$electron" "$shot" "http://127.0.0.1:8766/" "$work/page-$1-$3.png" "$1" "$2" "$3" >/dev/null 2>&1
+    bounded 300 env -u ELECTRON_RUN_AS_NODE "$electron" "$shot" "http://127.0.0.1:8766/" "$work/page-$1-$3.png" "$1" "$2" "$3" >/dev/null 2>&1
     check "page shot $1 $3" test -s "$work/page-$1-$3.png"
+    check "page shot $1 $3, closing section" test -s "$work/page-$1-$3-end.png"
   done
   return $failed
 }
