@@ -2,7 +2,7 @@ import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useApp } from '@/stores/app'
-import { closesSheet } from '@/lib/keys'
+import { canTab, closesSheet, TAB_STOPS } from '@/lib/keys'
 import { noop, useExit, useReturnFocus, type Exit } from '@/lib/motion'
 
 export function Button({
@@ -105,7 +105,7 @@ export function Modal({
       }
       // Tab stays inside the dialog.
       if (e.key === 'Tab' && panelRef.current) {
-        const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])'))
+        const items = Array.from(panelRef.current.querySelectorAll<HTMLElement & { disabled?: boolean }>(TAB_STOPS)).filter(canTab)
         if (items.length === 0) return
         const first = items[0]
         const last = items[items.length - 1]

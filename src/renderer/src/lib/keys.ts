@@ -85,6 +85,14 @@ export function ignoresShortcut(
   return !!el && (el.isContentEditable === true || TEXT_ENTRY.has(el.tagName ?? ''))
 }
 
+/** Every element that might take focus from Tab; `canTab` says which really do. */
+export const TAB_STOPS = 'a[href], button, input, select, textarea, [tabindex]'
+
+/** Whether Tab reaches the element: in the order, not disabled, not inside something inert. */
+export function canTab(el: { tabIndex: number; disabled?: boolean; closest: (selector: string) => unknown }): boolean {
+  return el.tabIndex >= 0 && !el.disabled && !el.closest('[inert]')
+}
+
 /**
  * Enter and Space on a focused `role="button"` element, the way a real button behaves. Keys
  * that start on a control nested inside it are left to that control.
