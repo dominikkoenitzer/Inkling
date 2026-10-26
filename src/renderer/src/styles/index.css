@@ -295,6 +295,16 @@ textarea:focus {
   }
 }
 
+/* A bar that fills as work gets done; with reduced motion it just jumps. */
+.motion-fill {
+  transition: width var(--motion-sheet) var(--ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  .motion-fill {
+    transition: none;
+  }
+}
+
 /* Compact controls give a little under the pointer; wide rows only change colour. */
 .press {
   transition-property: color, background-color, border-color, text-decoration-color, opacity, filter, transform;
