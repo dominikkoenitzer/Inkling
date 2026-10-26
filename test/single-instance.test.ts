@@ -36,12 +36,19 @@ const electron = vi.hoisted(() => {
   return { app, BrowserWindow, dialog, handlers, windows, openDb: vi.fn(), spawn }
 })
 
-vi.mock('electron', () => ({ app: electron.app, BrowserWindow: electron.BrowserWindow, dialog: electron.dialog, shell: { openExternal: vi.fn() } }))
+vi.mock('electron', () => ({
+  app: electron.app,
+  BrowserWindow: electron.BrowserWindow,
+  dialog: electron.dialog,
+  ipcMain: { on: vi.fn() },
+  nativeTheme: {},
+  shell: { openExternal: vi.fn() }
+}))
 vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn() } }))
 vi.mock('../src/main/db', () => ({ openDb: electron.openDb, getDb: vi.fn() }))
 vi.mock('../src/main/ipc', () => ({ registerIpc: vi.fn() }))
 vi.mock('child_process', () => ({ spawn: electron.spawn }))
-vi.mock('../src/main/repos', () => ({ purgeExpiredNotes: vi.fn(), adoptLooseTasks: vi.fn(), dropBlankTasks: vi.fn(), bootstrapFirstRun: vi.fn(), getSetting: vi.fn(() => null) }))
+vi.mock('../src/main/repos', () => ({ purgeExpiredNotes: vi.fn(), adoptLooseTasks: vi.fn(), dropBlankTasks: vi.fn(), dropEmptyNotes: vi.fn(), bootstrapFirstRun: vi.fn(), getSetting: vi.fn(() => null) }))
 
 type FakeWindow = InstanceType<typeof electron.BrowserWindow>
 

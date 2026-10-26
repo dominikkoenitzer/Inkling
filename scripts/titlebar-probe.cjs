@@ -258,14 +258,68 @@ async function run(win) {
     ok('the app menu opens settings with Command+,', has('Settings…', 'Command+,'))
     ok('the File menu makes a new note with Command+N', has('New Note', 'Command+N'))
     ok('the Help menu shows the keyboard shortcuts', has('Keyboard Shortcuts'))
+    await reopen(win)
+  }
+}
+
+/** A Mac keeps the app open with its window closed: the Dock and the menu bring a window back. */
+async function reopen(win) {
+  const until = async (cond) => {
+    for (let i = 0; i < 100 && !(await cond()); i++) await wait(100)
+    return cond()
+  }
+  const item = (label) => {
+    const find = (menu) => {
+      for (const i of menu.items) {
+        if (i.label === label) return i
+        const inner = i.submenu && find(i.submenu)
+        if (inner) return inner
+      }
+    }
+    return find(Menu.getApplicationMenu())
+  }
+  const current = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
+  const notes = (w) => w.webContents.executeJavaScript('window.inkling.notes.list().then((n) => n.length)')
+
+  win.minimize()
+  await until(() => win.isMinimized())
+  app.emit('activate', {}, false)
+  ok('the Dock icon brings a minimised window back', await until(() => !win.isMinimized()))
+
+  const before = await notes(win)
+  const close = (w) => {
+    const closed = new Promise((res) => w.once('closed', res))
+    w.close()
+    return Promise.race([closed, wait(5000)])
+  }
+  await close(win)
+  ok('closing the window leaves the app running', !current())
+  item('New Note').click()
+  const made = await until(() => !!current())
+  const ready = made && (await until(async () => (await notes(current())) === before + 1))
+  ok('New Note with the window closed opens a window with a new note', made && ready)
+
+  if (current()) await close(current())
+  item('Main Window').click()
+  ok('the Window menu brings the closed window back', await until(() => !!current()))
+
+  // The native parts (buttons, menus, sheets) wear the app's theme, not the system's.
+  const w = current()
+  if (w) {
+    await until(() => w.webContents.executeJavaScript('!!(window.__app && window.__app.getState().ready)'))
+    for (const theme of ['dark', 'light']) {
+      await w.webContents.executeJavaScript(`window.__app.getState().setTheme('${theme}')`)
+      ok('the native parts follow the ' + theme + ' theme', await until(() => nativeTheme.shouldUseDarkColors === (theme === 'dark')))
+    }
   }
 }
 
 // Preloaded before Electron sets up its own modules, so `electron` is asked for once it has.
-let app, Menu, nativeImage, screen
+let app, BrowserWindow, Menu, nativeImage, nativeTheme, screen
 setImmediate(() => {
-  ;({ app, Menu, nativeImage, screen } = require('electron'))
-  app.on('browser-window-created', (_event, win) => watch(win))
+  ;({ app, BrowserWindow, Menu, nativeImage, nativeTheme, screen } = require('electron'))
+  // The first window runs the checks; windows the checks open again are theirs.
+  app.once('browser-window-created', (_event, win) => watch(win))
 })
 
 function watch(win) {
