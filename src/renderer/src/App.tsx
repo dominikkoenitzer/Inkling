@@ -9,6 +9,7 @@ import { ShortcutsModal } from '@/components/shell/ShortcutsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 import { setTitlebar } from '@/lib/calls'
+import { isCommandKey, keyLabel } from '@/lib/keys'
 
 const api = window.inkling
 
@@ -52,7 +53,7 @@ export default function App(): React.JSX.Element {
     void setTitlebar(theme)
   }, [ready, failed, theme])
 
-  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts.
+  // Ctrl+K search, Ctrl+N new note, Ctrl+1 Today, Ctrl+2 Flashcards, Ctrl+, settings, F1 shortcuts; Command on a Mac.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'F1' && !e.repeat) {
@@ -60,7 +61,7 @@ export default function App(): React.JSX.Element {
         useApp.getState().setShortcutsOpen(!useApp.getState().shortcutsOpen)
         return
       }
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.repeat) return
+      if (!isCommandKey(e) || e.altKey || e.repeat) return
       const key = e.key.toLowerCase()
       const app = useApp.getState()
       if (key === 'k') {
@@ -117,7 +118,7 @@ export default function App(): React.JSX.Element {
         >
           <Search size={15} />
           Search
-          <span className="ml-auto text-xs">Ctrl+K</span>
+          <span className="ml-auto text-xs">{keyLabel('Ctrl+K')}</span>
         </button>
       </header>
 

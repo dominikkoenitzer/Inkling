@@ -3,6 +3,28 @@ import { NodeSelection, type Transaction } from '@tiptap/pm/state'
 
 const TEXT_ENTRY = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
 
+/** On a Mac the app's shortcuts sit on Command and read as the system's glyphs. */
+export const isMac = typeof navigator !== 'undefined' && /^Mac/.test(navigator.platform)
+
+// Control, Option, Shift and Command, in the order the system writes them; Ctrl in a label means Command there.
+const MAC_MODIFIERS: Record<string, string> = { Ctrl: '⌘', Alt: '⌥', Shift: '⇧' }
+const MAC_ORDER = ['⌃', '⌥', '⇧', '⌘']
+const MAC_KEYS: Record<string, string> = { Enter: '↩' }
+
+/** A shortcut written as "Ctrl+Shift+8", as this keyboard labels it: unchanged, or "⇧⌘8" on a Mac. */
+export function keyLabel(combo: string, mac = isMac): string {
+  if (!mac || !combo.includes('+')) return combo
+  const parts = combo.split('+')
+  const key = parts.pop() as string
+  const mods = parts.map((m) => MAC_MODIFIERS[m] ?? m).sort((a, b) => MAC_ORDER.indexOf(a) - MAC_ORDER.indexOf(b))
+  return mods.join('') + (MAC_KEYS[key] ?? key)
+}
+
+/** The modifier of the app's own shortcuts: Command on a Mac, where Control edits text, and Ctrl elsewhere. */
+export function isCommandKey(e: { ctrlKey: boolean; metaKey: boolean }, mac = isMac): boolean {
+  return mac ? e.metaKey && !e.ctrlKey : e.ctrlKey || e.metaKey
+}
+
 /**
  * Whether a window-level single-key shortcut should leave this keystroke alone: it is
  * going into a field, an open overlay owns the keyboard, or a handler already took it.

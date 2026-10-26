@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Keyboard, Layers, Plus, Settings, Sun } from 'lucide-react'
 import { useApp, useVersion, type View } from '@/stores/app'
 import { loadNotes, peekDecks } from '@/lib/calls'
+import { keyLabel } from '@/lib/keys'
 import type { Note } from '@shared/types'
 
 /** One quiet column: the main action, two places to go, every note, then help and settings. */
@@ -24,19 +25,19 @@ export function Sidebar(): React.JSX.Element {
       <div className="px-2 pt-3">
         <button
           type="button"
-          title="New note (Ctrl+N)"
+          title={`New note (${keyLabel('Ctrl+N')})`}
           onClick={() => void useApp.getState().newNote()}
           className="flex h-8 w-full items-center gap-2.5 rounded-md border border-edge bg-raised px-2.5 text-sm font-medium text-ink transition-colors hover:bg-hover"
         >
           <Plus size={16} className="text-accent-text" />
           New note
-          <span className="ml-auto text-xs font-normal text-faint">Ctrl+N</span>
+          <span className="ml-auto text-xs font-normal text-faint">{keyLabel('Ctrl+N')}</span>
         </button>
       </div>
 
       <nav className="space-y-px px-2 pt-3">
-        <NavRow view="today" current={view} icon={<Sun size={16} />} label="Today" hint="Ctrl+1" />
-        <NavRow view="study" current={view} icon={<Layers size={16} />} label="Flashcards" hint="Ctrl+2" count={due} />
+        <NavRow view="today" current={view} icon={<Sun size={16} />} label="Today" hint={keyLabel('Ctrl+1')} />
+        <NavRow view="study" current={view} icon={<Layers size={16} />} label="Flashcards" hint={keyLabel('Ctrl+2')} count={due} />
       </nav>
 
       <div className="mx-4 mb-2 mt-3 border-t border-edge" />
@@ -49,7 +50,7 @@ export function Sidebar(): React.JSX.Element {
 
       <div className="space-y-px border-t border-edge px-2 py-2">
         <FooterRow icon={<Keyboard size={16} />} label="Shortcuts" title="Keyboard shortcuts (F1)" onClick={() => useApp.getState().setShortcutsOpen(true)} />
-        <FooterRow icon={<Settings size={16} />} label="Settings" title="Settings (Ctrl+,)" onClick={() => useApp.getState().setSettingsOpen(true)} />
+        <FooterRow icon={<Settings size={16} />} label="Settings" title={`Settings (${keyLabel('Ctrl+,')})`} onClick={() => useApp.getState().setSettingsOpen(true)} />
       </div>
     </aside>
   )

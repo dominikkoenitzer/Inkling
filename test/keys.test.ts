@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { editKey, ignoresShortcut, onActivateKey, tickTodo } from '../src/renderer/src/lib/keys'
+import { editKey, ignoresShortcut, isCommandKey, keyLabel, onActivateKey, tickTodo } from '../src/renderer/src/lib/keys'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */
 const key = (target: object | null, defaultPrevented = false): { target: EventTarget | null; defaultPrevented: boolean } => ({
@@ -150,5 +150,40 @@ describe('tickTodo', () => {
     const doc = docOf({ type: 'codeBlock', content: [{ type: 'text', text: 'let a' }] }, para('Plain'))
     expect(press(doc, (d) => TextSelection.create(d, find(d, 'let a', 'codeBlock').text + 1))).toBeNull()
     expect(press(doc, (d) => TextSelection.create(d, find(d, 'Plain', 'paragraph').text + 1))).toBeNull()
+  })
+})
+
+describe('keyLabel', () => {
+  it('keeps the written form off a Mac', () => {
+    expect(keyLabel('Ctrl+Shift+8', false)).toBe('Ctrl+Shift+8')
+    expect(keyLabel('F1', false)).toBe('F1')
+  })
+
+  it('writes Mac glyphs in the system order, without plus signs', () => {
+    const [ctrl, opt, shift, cmd, ret] = [0x2303, 0x2325, 0x21e7, 0x2318, 0x21a9].map((c) => String.fromCodePoint(c))
+    expect(keyLabel('Ctrl+K', true)).toBe(cmd + 'K')
+    expect(keyLabel('Ctrl+,', true)).toBe(cmd + ',')
+    expect(keyLabel('Ctrl+Shift+8', true)).toBe(shift + cmd + '8')
+    expect(keyLabel('Ctrl+Alt+1', true)).toBe(opt + cmd + '1')
+    expect(keyLabel('Ctrl+Enter', true)).toBe(cmd + ret)
+    expect(keyLabel('Shift+Alt+Ctrl+K', true)).toBe(opt + shift + cmd + 'K')
+    expect(keyLabel('F1', true)).toBe('F1')
+    expect(ctrl).not.toBe(cmd)
+  })
+})
+
+describe('isCommandKey', () => {
+  const press = (ctrlKey: boolean, metaKey: boolean): { ctrlKey: boolean; metaKey: boolean } => ({ ctrlKey, metaKey })
+
+  it('takes Ctrl off a Mac, as before', () => {
+    expect(isCommandKey(press(true, false), false)).toBe(true)
+    expect(isCommandKey(press(false, true), false)).toBe(true)
+    expect(isCommandKey(press(false, false), false)).toBe(false)
+  })
+
+  it('takes only Command on a Mac, where Control moves the cursor in text', () => {
+    expect(isCommandKey(press(false, true), true)).toBe(true)
+    expect(isCommandKey(press(true, false), true)).toBe(false)
+    expect(isCommandKey(press(true, true), true)).toBe(false)
   })
 })
