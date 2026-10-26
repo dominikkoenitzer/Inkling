@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { InklingApi } from '@shared/api'
+import type { AppCommand, InklingApi } from '@shared/api'
 
 const invoke =
   (channel: string) =>
@@ -55,6 +55,11 @@ const api: InklingApi = {
       const listener = (): void => fn()
       ipcRenderer.on('data.changed', listener)
       return () => void ipcRenderer.removeListener('data.changed', listener)
+    },
+    onCommand: (fn) => {
+      const listener = (_event: unknown, command: AppCommand): void => fn(command)
+      ipcRenderer.on('app.command', listener)
+      return () => void ipcRenderer.removeListener('app.command', listener)
     }
   },
   app: {

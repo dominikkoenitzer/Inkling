@@ -129,25 +129,26 @@ body {
   -webkit-app-region: no-drag;
 }
 
-*::-webkit-scrollbar {
+/* A Mac keeps its own scroll bars, which follow the system setting and take no room. */
+html:not([data-platform='mac']) *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-*::-webkit-scrollbar-thumb {
+html:not([data-platform='mac']) *::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 6px;
   background-clip: padding-box;
   border: 3px solid transparent;
 }
-*:hover::-webkit-scrollbar-thumb {
+html:not([data-platform='mac']) *:hover::-webkit-scrollbar-thumb {
   background: var(--border);
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-thumb:hover {
+html:not([data-platform='mac']) *::-webkit-scrollbar-thumb:hover {
   background: var(--text-faint);
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-corner {
+html:not([data-platform='mac']) *::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -225,7 +226,7 @@ textarea:focus {
   border-radius: 4px;
   padding: 0.12em 0.35em;
   font-size: 0.88em;
-  font-family: 'Cascadia Code', Consolas, monospace;
+  font-family: 'Cascadia Code', Consolas, ui-monospace, Menlo, monospace;
 }
 .tiptap pre {
   background: var(--bg-panel);

@@ -82,12 +82,9 @@ export function registerIpc(): void {
 
   ipcMain.handle('app.setTitlebar', (event, theme: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    try {
-      win?.setTitleBarOverlay({ ...CHROME[themeOf(theme)], height: TITLEBAR_HEIGHT })
-      win?.setBackgroundColor(CHROME[themeOf(theme)].color)
-    } catch {
-      /* not supported on this platform */
-    }
+    win?.setBackgroundColor(CHROME[themeOf(theme)].color)
+    // The system draws the Mac buttons in its own colours.
+    if (process.platform !== 'darwin') win?.setTitleBarOverlay({ ...CHROME[themeOf(theme)], height: TITLEBAR_HEIGHT })
   })
 
   // Native "save as" for exporting text (e.g. a note as Markdown).
