@@ -11,7 +11,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 work="${RUNNER_TEMP:-/tmp}/mac-install"
 mkdir -p "$work"
 port=8765
-latest="https://github.com/dominikkoenitzer/Inkling/releases/latest/download"
+latest="${INKLING_RELEASE_URL:-https://github.com/dominikkoenitzer/Inkling/releases/latest/download}"
 failed=0
 
 line() { printf '\n== %s\n' "$1"; }
