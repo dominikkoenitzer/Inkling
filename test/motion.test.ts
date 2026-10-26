@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextRows, settleRow, type Row } from '../src/renderer/src/lib/motion'
+import { animationTime, nextRows, settleRow, type Row } from '../src/renderer/src/lib/motion'
 
 const id = (n: number): number => n
 const view = (rows: Row<number>[] | null): string[] | null => rows && rows.map((r) => `${r.key}:${r.state}`)
@@ -59,5 +59,22 @@ describe('settleRow', () => {
   it('leaves settled and unknown rows alone', () => {
     expect(settleRow(rows, 1)).toBe(rows)
     expect(settleRow(rows, 9)).toBe(rows)
+  })
+})
+
+describe('animationTime', () => {
+  it('reads seconds and milliseconds', () => {
+    expect(animationTime('0.16s', '0s')).toBe(160)
+    expect(animationTime('200ms', '0ms')).toBe(200)
+  })
+
+  it('takes the longest of a list, delay included', () => {
+    expect(animationTime('0.12s, 0.2s', '0.05s, 0s')).toBe(200)
+    expect(animationTime('0.12s, 0.1s', '0.1s')).toBe(220)
+  })
+
+  it('never goes below zero', () => {
+    expect(animationTime('0s', '-1s')).toBe(0)
+    expect(animationTime('', '')).toBe(0)
   })
 })

@@ -3,6 +3,34 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 /** For an overlay that has no exit to report. */
 export const noop = (): void => {}
 
+/** How long the animations of a computed style take in ms: the longest delay plus duration. */
+export function animationTime(duration: string, delay: string): number {
+  const ms = (t: string): number => {
+    const n = parseFloat(t)
+    return Number.isFinite(n) ? (t.trim().endsWith('ms') ? n : n * 1000) : 0
+  }
+  const delays = delay.split(',')
+  return Math.max(0, ...duration.split(',').map((d, i) => ms(d) + ms(delays[i % delays.length])))
+}
+
+// Slack past an animation's own time before a timer ends it in its place.
+const MARGIN = 31
+
+/**
+ * Calls `done` once the animations on `el` should be over, for a window that never draws them or
+ * never reports their end. One held on purpose (paused) is waited out. Returns what cancels it.
+ */
+function afterMotion(el: HTMLElement, done: () => void): () => void {
+  const style = getComputedStyle(el)
+  const time = animationTime(style.animationDuration, style.animationDelay) + MARGIN
+  let t = 0
+  const arm = (): void => {
+    t = window.setTimeout(() => (el.getAnimations().some((a) => a.playState === 'paused') ? arm() : done()), time)
+  }
+  arm()
+  return () => window.clearTimeout(t)
+}
+
 /**
  * Keeps an overlay on screen for its exit after `open` turns false. `closing` is true for
  * that stretch; `gone` ends it. Each opening gets a new `generation`, so reopening during an
@@ -22,12 +50,24 @@ export interface Exit {
 }
 
 /**
- * Calls `gone` when the exit animation of the element in `ref` ends, or at once when it runs
- * none. Returns the element's onAnimationEnd.
+ * Calls `gone` when the exit animation of the element in `ref` ends, at once when it runs none
+ * or the page is hidden, and when its time is up if the end never comes. Returns the element's
+ * onAnimationEnd.
  */
 export function useExit(ref: React.RefObject<HTMLElement | null>, closing: boolean, gone: () => void): (e: React.AnimationEvent) => void {
   useLayoutEffect(() => {
-    if (closing && ref.current && ref.current.getAnimations().length === 0) gone()
+    const el = ref.current
+    if (!closing || !el) return
+    if (document.hidden || el.getAnimations().length === 0) return gone()
+    const cancel = afterMotion(el, gone)
+    const onHide = (): void => {
+      if (document.hidden) gone()
+    }
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      cancel()
+      document.removeEventListener('visibilitychange', onHide)
+    }
   }, [ref, closing, gone])
   return (e) => {
     if (closing && e.target === e.currentTarget) gone()
@@ -110,6 +150,30 @@ export function settleRow<T>(rows: Row<T>[], key: RowKey): Row<T>[] {
 }
 
 /**
+ * Settles each moving row in `root` at once when it runs no animation or the page is hidden, and
+ * otherwise gives it a timer per motion in case its end never comes. Timers of settled rows go.
+ */
+function sweepRows(root: HTMLElement | null, timers: Map<string, () => void>, settle: (key: RowKey) => void): void {
+  const live = new Set<string>()
+  for (const el of root?.querySelectorAll<HTMLElement>('[data-motion]') ?? []) {
+    const key = el.dataset.row
+    if (key === undefined) continue
+    if (document.hidden || el.getAnimations().length === 0) {
+      settle(key)
+      continue
+    }
+    const id = `${key}:${el.dataset.motion}`
+    live.add(id)
+    if (!timers.has(id)) timers.set(id, afterMotion(el, () => settle(key)))
+  }
+  for (const [id, cancel] of timers) {
+    if (live.has(id)) continue
+    cancel()
+    timers.delete(id)
+  }
+}
+
+/**
  * Rows for a list that animates what joins and leaves it. `list` is the element around the
  * rows; give it `onAnimationEnd`, and spread `row(r)` on each row, which carries motion-row.
  */
@@ -126,13 +190,18 @@ export function useRows<T>(
   if (state.items !== items) setState({ items, rows: nextRows(state.rows, items, keyOf) })
   const settle = useCallback((key: RowKey) => setState((s) => (s.rows ? { ...s, rows: settleRow(s.rows, key) } : s)), [])
 
-  // A row whose animation never started (say, hidden) settles at once.
-  useLayoutEffect(() => {
-    for (const el of list.current?.querySelectorAll<HTMLElement>('[data-motion]') ?? []) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- only rows no animation will ever settle
-      if (el.getAnimations().length === 0 && el.dataset.row !== undefined) settle(el.dataset.row)
+  const timers = useRef(new Map<string, () => void>())
+  useLayoutEffect(() => sweepRows(list.current, timers.current, settle))
+  useEffect(() => {
+    const all = timers.current
+    const onHide = (): void => sweepRows(list.current, all, settle)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      for (const cancel of all.values()) cancel()
+      all.clear()
     }
-  })
+  }, [list, settle])
   const onAnimationEnd = (e: React.AnimationEvent): void => {
     const el = e.target as HTMLElement
     if (el.dataset.motion && el.dataset.row !== undefined) settle(el.dataset.row)
