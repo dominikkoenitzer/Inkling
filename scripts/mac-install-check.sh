@@ -309,7 +309,7 @@ stage_browser() {
   quarantine "$d/Inkling-mac.zip"
   dmg_route "$d/Inkling-mac.dmg" built-dmg "This build, disk image from a browser"
   line "Privacy & Security after the blocked launch"
-  bounded 20 open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
+  bounded 20 open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Security"
   sleep 8
   screencapture -x "$work/screen-settings.png" 2>/dev/null || echo "no screen capture"
   bounded 20 osascript -e 'quit app "System Settings"' >/dev/null 2>&1
@@ -345,7 +345,12 @@ EOF
   electron="$root/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
   for spec in "1440 900 light" "1440 900 dark" "1100 800 light" "820 1000 dark" "390 844 light" "360 780 dark"; do
     set -- $spec
-    bounded 300 env -u ELECTRON_RUN_AS_NODE "$electron" "$shot" "http://127.0.0.1:8766/" "$work/page-$1-$3.png" "$1" "$2" "$3" >/dev/null 2>&1
+    if ! bounded 120 env -u ELECTRON_RUN_AS_NODE "$electron" "$shot" "http://127.0.0.1:8766/" "$work/page-$1-$3.png" "$1" "$2" "$3" >/dev/null 2>&1; then
+      # The first launch on a fresh runner can stall once; keep a picture of the screen, then try again.
+      screencapture -x "$work/screen-stall-$1-$3.png" 2>/dev/null
+      pkill -f "$shot" 2>/dev/null
+      bounded 300 env -u ELECTRON_RUN_AS_NODE "$electron" "$shot" "http://127.0.0.1:8766/" "$work/page-$1-$3.png" "$1" "$2" "$3" >/dev/null 2>&1
+    fi
     check "page shot $1 $3" test -s "$work/page-$1-$3.png"
     check "page shot $1 $3, closing section" test -s "$work/page-$1-$3-end.png"
   done
