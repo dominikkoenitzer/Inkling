@@ -35,7 +35,8 @@ const MEASURE = `(() => {
   }
   const o = navigator.windowControlsOverlay
   const area = o && o.visible ? r(o.getTitlebarAreaRect()) : null
-  return JSON.stringify({ items, area, header: r(h.getBoundingClientRect()), vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio })
+  const pad = parseFloat(getComputedStyle(h.firstElementChild).paddingLeft)
+  return JSON.stringify({ items, area, pad, header: r(h.getBoundingClientRect()), vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio })
 })()`
 
 // The three lights as the system paints them on an active window, in red, yellow and green.
@@ -198,6 +199,25 @@ async function run(win) {
     }
   }
 
+  // Zoomed text scales the page but not the window buttons: the bar keeps their height.
+  win.setSize(1100, 860)
+  for (const level of [-2.5, 1.5]) {
+    win.webContents.setZoomLevel(level)
+    await wait(800)
+    const name = 'zoom' + level
+    const z = await measure(win, name, gap)
+    if (!z || !z.page) continue
+    const bar = z.page.header.y + z.page.header.h / 2
+    if (mac && z.buttons.length) {
+      const mid = z.buttons.reduce((m, b) => m + b.y + b.h / 2, 0) / z.buttons.length
+      ok(name + ': the window buttons stay centred in the title bar', Math.abs(mid - bar) <= 1.5, 'button middle ' + mid.toFixed(1) + ', bar middle ' + bar.toFixed(1))
+    } else if (z.page.area) {
+      ok(name + ': the title bar keeps the height of the window controls', Math.abs(z.page.header.h - z.page.area.h) <= 1, 'bar ' + z.page.header.h.toFixed(1) + ', controls ' + z.page.area.h.toFixed(1))
+    }
+  }
+  win.webContents.setZoomLevel(0)
+  await wait(500)
+
   if (onScreen) {
     for (const theme of ['light', 'dark']) {
       await state(`setTheme('${theme}')`)
@@ -205,7 +225,9 @@ async function run(win) {
       win.setFullScreen(true)
       await Promise.race([entered, wait(5000)])
       await wait(1500)
-      await measure(win, theme + '-fullscreen', gap)
+      const full = await measure(win, theme + '-fullscreen', gap)
+      // With the buttons gone the bar starts at the edge again.
+      if (full && full.page) ok(theme + '-fullscreen: the title bar starts at the edge', full.page.pad === 16, 'inset ' + full.page.pad)
       const left = new Promise((res) => win.once('leave-full-screen', res))
       win.setFullScreen(false)
       await Promise.race([left, wait(5000)])
@@ -247,6 +269,34 @@ async function run(win) {
     await state(code)
     await wait(500)
     await shoot(win, 'light-' + name)
+    const sheet = JSON.parse(
+      await js(`(() => {
+        const d = document.querySelector('[role=dialog]')
+        if (!d) return 'null'
+        const b = d.getBoundingClientRect()
+        const style = getComputedStyle(d.parentElement)
+        return JSON.stringify({ x: b.left, y: b.top, w: b.width, h: b.height, region: style.getPropertyValue('-webkit-app-region') || style.getPropertyValue('app-region') })
+      })()`)
+    )
+    if (!sheet) {
+      ok(name + ': the sheet opens', false)
+      continue
+    }
+    // Electron reads drag areas from the page's styles alone, so the shade over the bar must say no-drag itself.
+    ok(name + ': a click beside the sheet closes it instead of dragging the window', sheet.region === 'no-drag', 'region ' + (sheet.region || 'none'))
+    const home = data.states.find((x) => x.name === 'light-1100')
+    if (mac && home) ok(name + ': the sheet stays clear of the window buttons', !home.buttons.some((b) => hits(sheet, b, 0)))
+  }
+  if (mac) {
+    // Command+W closes the sheet in front, the way it closes a panel, and leaves the window open.
+    await js('window.__app.setState({ paletteOpen: false, settingsOpen: false, shortcutsOpen: false })')
+    await state('setSettingsOpen(true)')
+    await wait(300)
+    win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'W', modifiers: ['meta'] })
+    win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'W', modifiers: ['meta'] })
+    await wait(300)
+    ok('Command+W closes the settings and leaves the window open', (await js('window.__app.getState().settingsOpen')) === false && win.isVisible())
+    await js('window.__app.setState({ settingsOpen: false })')
   }
   data.menu = menuOf(Menu.getApplicationMenu())
   if (mac) {
@@ -278,7 +328,7 @@ async function reopen(win) {
     }
     return find(Menu.getApplicationMenu())
   }
-  const current = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
+  const current = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.isVisible())
   const notes = (w) => w.webContents.executeJavaScript('window.inkling.notes.list().then((n) => n.length)')
 
   win.minimize()
@@ -288,7 +338,7 @@ async function reopen(win) {
 
   const before = await notes(win)
   const close = (w) => {
-    const closed = new Promise((res) => w.once('closed', res))
+    const closed = new Promise((res) => (w.once('closed', res), w.once('hide', res)))
     w.close()
     return Promise.race([closed, wait(5000)])
   }
@@ -299,9 +349,14 @@ async function reopen(win) {
   const ready = made && (await until(async () => (await notes(current())) === before + 1))
   ok('New Note with the window closed opens a window with a new note', made && ready)
 
+  // Where the window was, so it can come back there.
+  const place = 'JSON.stringify([window.__app.getState().view, window.__app.getState().selectedNoteId])'
+  const left = current() ? await current().webContents.executeJavaScript(place) : null
   if (current()) await close(current())
   item('Main Window').click()
   ok('the Window menu brings the closed window back', await until(() => !!current()))
+  const back = current() ? await current().webContents.executeJavaScript(place) : null
+  ok('the window comes back with the note that was open', !!left && left.includes(',') && !left.endsWith('null]') && back === left, left + ' then ' + back)
 
   // The native parts (buttons, menus, sheets) wear the app's theme, not the system's.
   const w = current()
