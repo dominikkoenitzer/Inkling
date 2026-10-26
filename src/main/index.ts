@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, screen, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
@@ -11,8 +11,9 @@ import { startMcpHost } from './mcp/host'
 import { watchOutsideWrites } from './watch'
 import { macMenu } from './menu'
 import { commandRelay } from './commands'
+import { contextMenu } from './context-menu'
 import type { AppCommand } from '@shared/api'
-import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, themeOf } from './window'
+import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, firstSize, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
 if (process.env['INKLING_USERDATA']) {
@@ -87,8 +88,7 @@ function createMainWindow(): void {
   commands.reset()
   const shotPath = devHooks ? process.env['INKLING_SCREENSHOT'] : undefined
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 860,
+    ...firstSize(screen.getPrimaryDisplay().workAreaSize),
     minWidth: 860,
     minHeight: 560,
     show: false,
@@ -112,6 +112,23 @@ function createMainWindow(): void {
     return { action: 'deny' }
   })
   blockOffAppNavigation(mainWindow.webContents)
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    const template = contextMenu(params, (word) => mainWindow?.webContents.replaceMisspelling(word))
+    if (template.length) Menu.buildFromTemplate(template).popup({ window: mainWindow ?? undefined })
+  })
+  // On a Mac closing the window only hides it, so it comes back as it was; quitting still closes it.
+  if (process.platform === 'darwin') {
+    mainWindow.on('close', (event) => {
+      if (quitting || !mainWindow) return
+      event.preventDefault()
+      const win = mainWindow
+      // A full-screen window leaves its space first, or the space stays behind empty.
+      if (win.isFullScreen()) {
+        win.once('leave-full-screen', () => win.hide())
+        win.setFullScreen(false)
+      } else win.hide()
+    })
+  }
 
   if (isDev) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] as string)
@@ -159,7 +176,12 @@ function createMainWindow(): void {
   })
 }
 
-/** Brings the window to the front: restored when minimised, and made again when a Mac closed it. */
+let quitting = false
+app.on('before-quit', () => {
+  quitting = true
+})
+
+/** Brings the window to the front: restored when minimised, shown again after a close on a Mac. */
 function showMainWindow(): void {
   if (!mainWindow) return createMainWindow()
   if (mainWindow.isMinimized()) mainWindow.restore()
@@ -234,11 +256,8 @@ app.whenReady().then(() => {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
   }
 
-  // The Dock icon: a window again after a close, and back from the Dock when minimised.
-  app.on('activate', () => {
-    if (!mainWindow) createMainWindow()
-    else if (mainWindow.isMinimized()) mainWindow.restore()
-  })
+  // The Dock icon: the window again after a close, and back from the Dock when minimised.
+  app.on('activate', showMainWindow)
 })
 
 

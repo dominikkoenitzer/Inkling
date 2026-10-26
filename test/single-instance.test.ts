@@ -42,6 +42,7 @@ vi.mock('electron', () => ({
   dialog: electron.dialog,
   ipcMain: { on: vi.fn() },
   nativeTheme: {},
+  screen: { getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1040 } }) },
   shell: { openExternal: vi.fn() }
 }))
 vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn() } }))
