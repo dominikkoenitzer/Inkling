@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
-import { ignoresShortcut } from '@/lib/keys'
+import { endsReview, ignoresShortcut } from '@/lib/keys'
 import { loadDueCards, reviewCard } from '@/lib/calls'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
@@ -75,8 +75,11 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
       const overlayOpen = app.paletteOpen || app.settingsOpen || document.querySelector('[aria-modal="true"]') !== null
       if (ignoresShortcut(e, overlayOpen) || e.repeat) return
       if (!queue[index]) {
-        // completion / empty screen: only Esc is live; ignore Space/number grades
-        if (e.key === 'Escape') finish()
+        // The last screen: Esc or Enter ends it; Space and the grades do nothing here.
+        if (endsReview(e)) {
+          e.preventDefault()
+          finish()
+        }
         return
       }
       if (e.key === ' ') {

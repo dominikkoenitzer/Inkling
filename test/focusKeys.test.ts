@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canTab, nextRow } from '../src/renderer/src/lib/keys'
+import { canTab, endsReview, nextRow } from '../src/renderer/src/lib/keys'
 
 const el = (tabIndex: number, extra: { disabled?: boolean; inert?: boolean } = {}): Parameters<typeof canTab>[0] => ({
   tabIndex,
@@ -30,5 +30,20 @@ describe('nextRow', () => {
   it('leaves other keys and focus outside the rows alone', () => {
     expect(nextRow(1, 3, 'Enter')).toBeNull()
     expect(nextRow(-1, 3, 'ArrowDown')).toBeNull()
+  })
+})
+
+describe('endsReview', () => {
+  const on = (key: string, tagName = 'BODY'): Parameters<typeof endsReview>[0] => ({ key, target: { tagName } as unknown as EventTarget })
+
+  it('takes Escape and Enter on the last screen', () => {
+    expect(endsReview(on('Escape'))).toBe(true)
+    expect(endsReview(on('Enter'))).toBe(true)
+  })
+
+  it('leaves Enter on a button to that button, and other keys alone', () => {
+    expect(endsReview(on('Enter', 'BUTTON'))).toBe(false)
+    expect(endsReview(on(' '))).toBe(false)
+    expect(endsReview(on('1'))).toBe(false)
   })
 })
