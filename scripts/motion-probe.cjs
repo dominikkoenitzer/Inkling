@@ -234,6 +234,7 @@ async function run(win) {
     win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers })
     win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers })
   }
+  const focused = `(() => { const a = document.activeElement; return !a || a === document.body ? 'body' : (a.getAttribute('aria-label') || a.getAttribute('placeholder') || a.textContent.trim()).slice(0, 32) })()`
 
   // Enter waiting on a search, then Escape: the result never runs once the search is dismissed.
   await js(shut)
@@ -254,6 +255,18 @@ async function run(win) {
   const placeAfter = await js(place)
   await js('window.__motion.release()')
   ok('Enter then Escape in the search runs nothing', placeAfter === placeBefore, placeBefore + ' then ' + placeAfter)
+  await js(shut)
+  await wait(300)
+
+  // A click beside a sheet closes it and leaves focus on what opened it.
+  await js(`(() => { const b = [...document.querySelectorAll('aside button')].find((x) => x.textContent.trim() === 'Settings'); b.focus(); b.click() })()`)
+  await wait(400)
+  win.webContents.sendInputEvent({ type: 'mouseDown', x: 20, y: 500, button: 'left', clickCount: 1 })
+  win.webContents.sendInputEvent({ type: 'mouseUp', x: 20, y: 500, button: 'left', clickCount: 1 })
+  await wait(100)
+  const beside = JSON.parse(await js(`JSON.stringify({ open: window.__app.getState().settingsOpen, focus: ${focused} })`))
+  ok('a click beside the settings closes them', beside.open === false)
+  ok('focus is back on the Settings button after that click', beside.focus === 'Settings', 'focus on ' + beside.focus)
   await js(shut)
   await wait(300)
 }
