@@ -125,7 +125,7 @@ export function StudyView(): React.JSX.Element {
                   <button
                     type="button"
                     onClick={() => useApp.getState().reviewDeck(d.id)}
-                    className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-accent-soft"
+                    className="press shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text hover:bg-accent-soft"
                   >
                     Review
                   </button>

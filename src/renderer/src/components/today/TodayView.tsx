@@ -144,7 +144,7 @@ export function TodayView(): React.JSX.Element {
                 <span className="shrink-0 text-xs text-faint">
                   {d.due_count} card{d.due_count === 1 ? '' : 's'} due
                 </span>
-                <button type="button" onClick={() => useApp.getState().reviewDeck(d.id)} className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text transition-colors hover:bg-accent-soft">
+                <button type="button" onClick={() => useApp.getState().reviewDeck(d.id)} className="press shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-accent-text hover:bg-accent-soft">
                   Review
                 </button>
               </li>
