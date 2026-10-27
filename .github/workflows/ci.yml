@@ -12,6 +12,12 @@ on:
   schedule:
     - cron: '10 */6 * * *'
   workflow_dispatch:
+    inputs:
+      release_url:
+        # Points the release check at a pre-release before it becomes the latest one.
+        description: Release download folder for the Mac install check
+        required: false
+        default: ''
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -165,6 +171,8 @@ jobs:
 
       - name: The current release, before
         run: sh scripts/mac-install-check.sh release
+        env:
+          INKLING_RELEASE_URL: ${{ inputs.release_url }}
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
