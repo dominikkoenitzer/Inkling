@@ -372,6 +372,7 @@ stage_mcp() {
   (sleep 300 | env -u ELECTRON_RUN_AS_NODE INKLING_USERDATA="$prof" "$bin" --mcp >"$work/mcp-out.txt" 2>"$work/mcp-err.txt") &
   sleep 8
   check "the MCP server runs" test -n "$(pgrep -f 'MacOS/Inkling --mcp')"
+  check "no app opens with the server alone" test "$(apps)" = 0
   open --env INKLING_USERDATA="$prof" "$app"
   sleep 12
   pgrep -fl 'Contents/MacOS/Inkling' | cut -c1-120
