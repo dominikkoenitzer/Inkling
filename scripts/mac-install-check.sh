@@ -1,10 +1,11 @@
 #!/bin/sh
-# Checks the Mac install routes on a macOS CI runner: sh scripts/mac-install-check.sh <release|built|install|browser|shots>
+# Checks the Mac install routes on a macOS CI runner: sh scripts/mac-install-check.sh <release|built|install|browser|shots|mcp>
 # release: the current public release, fetched the way a browser and the install command fetch it.
 # built: the signature of the app electron-builder just made in release/.
 # install: site/install against the built zip, served locally, from a clean state.
 # browser: the built disk image and zip with a browser's quarantine flag.
 # shots: the download page as a Mac sees it, light and dark.
+# mcp: the built app opened from Finder while an assistant runs its MCP server.
 set -u
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -357,11 +358,45 @@ EOF
   return $failed
 }
 
+# An assistant starts `Inkling --mcp` from the app bundle, so the system counts the app as running.
+stage_mcp() {
+  app="$(find "$root/release" -maxdepth 2 -name Inkling.app -type d | head -1)"
+  bin="$app/Contents/MacOS/Inkling"
+  prof="$work/profile-mcp"
+  rm -rf "$prof"
+  mkdir -p "$prof"
+  apps() { pgrep -f 'MacOS/Inkling$' | wc -l | tr -d ' '; }
+  stop_all
+
+  line "Opened from Finder while an assistant runs the MCP server"
+  (sleep 300 | env -u ELECTRON_RUN_AS_NODE INKLING_USERDATA="$prof" "$bin" --mcp >"$work/mcp-out.txt" 2>"$work/mcp-err.txt") &
+  sleep 8
+  check "the MCP server runs" test -n "$(pgrep -f 'MacOS/Inkling --mcp')"
+  open --env INKLING_USERDATA="$prof" "$app"
+  sleep 12
+  pgrep -fl 'Contents/MacOS/Inkling' | cut -c1-120
+  lsappinfo list | grep -A5 '"Inkling"' | grep -E 'Inkling|pid'
+  check "the app starts beside it" test "$(apps)" = 1
+  check "the MCP server keeps running" test -n "$(pgrep -f 'MacOS/Inkling --mcp')"
+  screencapture -x "$work/mcp-open.png" 2>/dev/null
+
+  line "Opened again while both run"
+  open --env INKLING_USERDATA="$prof" "$app"
+  sleep 8
+  check "there is still one app" test "$(apps)" = 1
+  check "the MCP server keeps running" test -n "$(pgrep -f 'MacOS/Inkling --mcp')"
+  echo "-- MCP server errors"
+  tail -20 "$work/mcp-err.txt"
+  stop_all
+  return $failed
+}
+
 case "${1:-}" in
   release) stage_release ;;
   built) stage_built ;;
   install) stage_install ;;
   browser) stage_browser ;;
   shots) stage_shots ;;
-  *) echo "usage: mac-install-check.sh release|built|install|browser|shots" >&2; exit 2 ;;
+  mcp) stage_mcp ;;
+  *) echo "usage: mac-install-check.sh release|built|install|browser|shots|mcp" >&2; exit 2 ;;
 esac
