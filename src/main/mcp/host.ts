@@ -41,7 +41,9 @@ export function startMcpHost(): void {
     app.on('activate', () => {
       const profile = process.env['INKLING_USERDATA']
       const env = profile ? ['--env', `INKLING_USERDATA=${profile}`] : []
-      spawn('open', ['-n', ...env, resolve(process.execPath, '../../..')], { stdio: 'ignore', detached: true }).unref()
+      const opener = spawn('open', ['-n', ...env, resolve(process.execPath, '../../..')], { stdio: 'ignore', detached: true })
+      opener.on('error', (err) => console.error('Inkling could not open the app:', err))
+      opener.unref()
       app.dock?.hide()
     })
   }
