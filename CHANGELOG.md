@@ -4,6 +4,12 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.3] - 2026-10-27
+
+### Fixed
+- On a Mac, opening Inkling while an AI assistant had its MCP server running started nothing.
+  The app opens now, and the assistant keeps its connection.
+
 ## [0.9.2] - 2026-10-27
 
 ### Added
@@ -486,6 +492,7 @@ Final QA pass: 15 defects found by an adversarially-verified review and fixed:
 - Nested subtask text no longer folds into the parent task’s title.
 - A quick-add of only a date (e.g. `friday`) gets a neutral title instead of the raw date word.
 
+[0.9.3]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.3
 [0.9.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.2
 [0.9.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.1
 [0.9.0]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.0
