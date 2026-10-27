@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { spawn } from 'child_process'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import os from 'os'
 
 /**
@@ -34,4 +34,15 @@ export function startMcpHost(): void {
     app.exit(1)
   })
   child.on('exit', (code) => app.exit(code ?? 1))
+
+  // A Mac counts this process as the running app, so opening Inkling from Finder lands here.
+  // Start the app itself; when it is already open, its own instance lock hands it the window.
+  if (process.platform === 'darwin' && app.isPackaged) {
+    app.on('activate', () => {
+      const profile = process.env['INKLING_USERDATA']
+      const env = profile ? ['--env', `INKLING_USERDATA=${profile}`] : []
+      spawn('open', ['-n', ...env, resolve(process.execPath, '../../..')], { stdio: 'ignore', detached: true }).unref()
+      app.dock?.hide()
+    })
+  }
 }
