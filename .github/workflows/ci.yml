@@ -186,6 +186,9 @@ jobs:
       - name: Check the signature
         run: sh scripts/mac-install-check.sh built
 
+      - name: Opened from Finder beside the MCP server
+        run: sh scripts/mac-install-check.sh mcp
+
       - name: Install command
         run: sh scripts/mac-install-check.sh install
 
