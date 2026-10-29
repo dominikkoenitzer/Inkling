@@ -97,8 +97,11 @@ function renderBlock(node: PMNode, indent = ''): string {
     }
     case 'bulletList':
       return renderList(node, indent, () => '- ')
-    case 'orderedList':
-      return renderList(node, indent, (i) => `${i + 1}. `)
+    case 'orderedList': {
+      const start = Number(node.attrs?.start ?? 1)
+      const first = Number.isInteger(start) && start >= 0 ? start : 1
+      return renderList(node, indent, (i) => `${first + i}. `)
+    }
     case 'taskList':
       return renderList(node, indent, (_i, item) => (item.attrs?.checked ? '- [x] ' : '- [ ] '))
     case 'blockquote':
