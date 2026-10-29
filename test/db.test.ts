@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DatabaseSync, type StatementSync } from 'node:sqlite'
-import fs, { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import fs, { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openSqlite } from './sqlite'
@@ -17,7 +17,7 @@ vi.mock('better-sqlite3', () => ({
   }
 }))
 
-const { migrate, openDb, settleTheme } = await import('../src/main/db')
+const { migrate, openDb, settleTheme, startFailure } = await import('../src/main/db')
 
 const open = openSqlite
 
@@ -702,5 +702,47 @@ describe('the startup backup', () => {
       raw.close()
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe('data from a newer Inkling', () => {
+  const NEWER = 'Your Inkling data is newer than this copy of Inkling. Update Inkling, then try again.'
+
+  it('is left untouched and refused with the sentence the assistant path uses', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inkling-newer-'))
+    const file = join(dir, 'inkling.db')
+    const made = open(file)
+    migrate(made.db)
+    // Without a stored theme the start would write one, and five backups would lose the oldest.
+    made.raw.exec(`DELETE FROM settings WHERE key = 'theme'`)
+    made.raw.exec(`PRAGMA user_version = ${version(made.raw) + 1}`)
+    made.raw.close()
+    mkdirSync(join(dir, 'backups'))
+    const earlier = [1, 2, 3, 4, 5].map((day) => `inkling-2026-10-0${day}T08-00-00.db`)
+    for (const f of earlier) writeFileSync(join(dir, 'backups', f), 'earlier')
+    const before = readFileSync(file)
+    const { raw, db } = open(file)
+    opening.db = db
+    try {
+      let thrown: unknown
+      try {
+        openDb(dir)
+      } catch (err) {
+        thrown = err
+      }
+      expect.soft(thrown).toBeInstanceOf(Error)
+      expect.soft(startFailure(thrown)).toBe(NEWER)
+      expect.soft(readFileSync(file).equals(before)).toBe(true)
+      expect.soft(readdirSync(dir).sort()).toEqual(['backups', 'inkling.db'])
+      expect.soft(readdirSync(join(dir, 'backups')).sort()).toEqual(earlier)
+    } finally {
+      if (raw.isOpen) raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('leaves every other start failure to the general sentence', () => {
+    expect(startFailure(new Error('SQLITE_CORRUPT: database disk image is malformed'))).toBe('Inkling could not open its data.')
+    expect(startFailure('not an error')).toBe('Inkling could not open its data.')
   })
 })

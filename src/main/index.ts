@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
 import { pathToFileURL } from 'url'
-import { openDb } from './db'
+import { openDb, startFailure } from './db'
 import { registerIpc } from './ipc'
 import * as repos from './repos'
 import { seedDemo } from './seed'
@@ -206,7 +206,7 @@ app.whenReady().then(() => {
   } catch (err) {
     // Without its data the app cannot run: say so and quit, which frees the lock too. The details go to the log.
     console.error('opening the database failed', join(dataDir, 'inkling.db'), err)
-    dialog.showErrorBox('Inkling could not start', 'Inkling could not open its data.')
+    dialog.showErrorBox('Inkling could not start', startFailure(err))
     return app.quit()
   }
   // Clear anything that has sat in the trash past the retention window.

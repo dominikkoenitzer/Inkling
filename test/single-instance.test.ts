@@ -33,7 +33,9 @@ const electron = vi.hoisted(() => {
   }
   const spawn = vi.fn(() => ({ on: vi.fn() }))
   const dialog = { showErrorBox: vi.fn() }
-  return { app, BrowserWindow, dialog, handlers, windows, openDb: vi.fn(), spawn }
+  // The db module as the app last loaded it, so errors raised from it match its own classes.
+  const realDb: Partial<typeof import('../src/main/db')> = {}
+  return { app, BrowserWindow, dialog, handlers, windows, openDb: vi.fn(), realDb, spawn }
 })
 
 vi.mock('electron', () => ({
@@ -46,7 +48,10 @@ vi.mock('electron', () => ({
   shell: { openExternal: vi.fn() }
 }))
 vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn() } }))
-vi.mock('../src/main/db', () => ({ openDb: electron.openDb, getDb: vi.fn() }))
+vi.mock('../src/main/db', async (importOriginal) => {
+  Object.assign(electron.realDb, await importOriginal<typeof import('../src/main/db')>())
+  return { openDb: electron.openDb, getDb: vi.fn(), startFailure: electron.realDb.startFailure }
+})
 vi.mock('../src/main/ipc', () => ({ registerIpc: vi.fn() }))
 vi.mock('child_process', () => ({ spawn: electron.spawn }))
 vi.mock('../src/main/repos', () => ({ purgeExpiredNotes: vi.fn(), adoptLooseTasks: vi.fn(), dropBlankTasks: vi.fn(), dropEmptyNotes: vi.fn(), bootstrapFirstRun: vi.fn(), getSetting: vi.fn(() => null) }))
@@ -111,6 +116,17 @@ describe('a database that cannot be opened', () => {
     expect(electron.dialog.showErrorBox).toHaveBeenCalledTimes(1)
     const [, message] = electron.dialog.showErrorBox.mock.calls[0] as unknown as [string, string]
     expect(message).toBe('Inkling could not open its data.')
+    expect(electron.app.quit).toHaveBeenCalled()
+    expect(electron.windows).toHaveLength(0)
+  })
+
+  it('tells the user to update when the data comes from a newer Inkling', async () => {
+    electron.openDb.mockImplementationOnce(() => electron.realDb.checkVersion!({ pragma: () => 1000 } as never))
+    await launch(true)
+
+    expect(electron.dialog.showErrorBox).toHaveBeenCalledTimes(1)
+    const [, message] = electron.dialog.showErrorBox.mock.calls[0] as unknown as [string, string]
+    expect(message).toBe('Your Inkling data is newer than this copy of Inkling. Update Inkling, then try again.')
     expect(electron.app.quit).toHaveBeenCalled()
     expect(electron.windows).toHaveLength(0)
   })
