@@ -198,4 +198,16 @@ describe('round trip with tiptapDocToMarkdown', () => {
       expect(markdownToDoc(tiptapDocToMarkdown(d))).toEqual(d)
     })
   }
+
+  // Markdown cannot mark a space at a mark's edge, so the spaces come back plain around the marked text.
+  for (const mark of [bold, italic, strike, highlight]) {
+    it(`keeps the text and the ${mark.type} of a run with spaces at its edges`, () => {
+      const back = markdownToDoc(tiptapDocToMarkdown(doc(p(t('a'), t(' b ', mark), t('c'), t(' d e  ', mark), t('f')))))
+      expect(back).toEqual(doc(p(t('a '), t('b', mark), t(' c '), t('d e', mark), t('  f'))))
+    })
+  }
+  it('keeps the text and marks of a link with a bold run that ends in a space', () => {
+    const d = doc(p(t('see '), t('the docs ', bold, link('https://example.com')), t('now')))
+    expect(markdownToDoc(tiptapDocToMarkdown(d))).toEqual(doc(p(t('see '), t('the docs', link('https://example.com'), bold), t(' ', link('https://example.com')), t('now'))))
+  })
 })

@@ -120,4 +120,15 @@ describe('tiptapDocToMarkdown', () => {
     expect(code(' padded ')).toBe('`  padded  `\n')
     expect(code('plain')).toBe('`plain`\n')
   })
+
+  it('puts the spaces at the edges of a mark outside its delimiters', () => {
+    const marked = (t: string, marks: unknown[]): string => tiptapDocToMarkdown(doc([para([text('a'), text(t, marks), text('c')])]))
+    expect(marked(' b ', [{ type: 'bold' }])).toBe('a **b** c\n')
+    expect(marked('b ', [{ type: 'italic' }])).toBe('a*b* c\n')
+    expect(marked(' b', [{ type: 'strike' }])).toBe('a ~~b~~c\n')
+    expect(marked('  b c  ', [{ type: 'highlight' }])).toBe('a  ==b c==  c\n')
+    expect(marked(' b ', [{ type: 'bold' }, { type: 'italic' }])).toBe('a ***b*** c\n')
+    // a link label may hold spaces, so they stay inside it and only leave the bold
+    expect(marked('b ', [{ type: 'bold' }, { type: 'link', attrs: { href: 'https://x.dev' } }])).toBe('a[**b** ](https://x.dev)c\n')
+  })
 })
