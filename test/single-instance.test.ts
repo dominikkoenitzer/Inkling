@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { MenuItemConstructorOptions } from 'electron'
 
 /** Just enough of Electron for the main process to start up without a window on screen. */
 const electron = vi.hoisted(() => {
@@ -35,7 +36,8 @@ const electron = vi.hoisted(() => {
   const dialog = { showErrorBox: vi.fn() }
   // The db module as the app last loaded it, so errors raised from it match its own classes.
   const realDb: Partial<typeof import('../src/main/db')> = {}
-  return { app, BrowserWindow, dialog, handlers, windows, openDb: vi.fn(), realDb, spawn }
+  const Menu = { buildFromTemplate: vi.fn((template: unknown) => template), setApplicationMenu: vi.fn() }
+  return { app, BrowserWindow, dialog, handlers, windows, Menu, openDb: vi.fn(), realDb, spawn }
 })
 
 vi.mock('electron', () => ({
@@ -43,11 +45,12 @@ vi.mock('electron', () => ({
   BrowserWindow: electron.BrowserWindow,
   dialog: electron.dialog,
   ipcMain: { on: vi.fn() },
+  Menu: electron.Menu,
   nativeTheme: {},
   screen: { getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1040 } }) },
   shell: { openExternal: vi.fn() }
 }))
-vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn() } }))
+vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn(() => Promise.resolve(null)) } }))
 vi.mock('../src/main/db', async (importOriginal) => {
   Object.assign(electron.realDb, await importOriginal<typeof import('../src/main/db')>())
   return { openDb: electron.openDb, getDb: vi.fn(), startFailure: electron.realDb.startFailure }
@@ -69,9 +72,14 @@ async function launch(gotLock: boolean): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0)) // let whenReady() settle
 }
 
+const hostPlatform = process.platform
+const runOn = (platform: NodeJS.Platform): void => void Object.defineProperty(process, 'platform', { value: platform })
+
 afterEach(() => {
   delete process.env['INKLING_USERDATA']
   process.argv = process.argv.filter((a) => a !== '--mcp')
+  electron.app.isPackaged = false
+  runOn(hostPlatform)
 })
 
 describe('one running copy per profile', () => {
@@ -129,6 +137,33 @@ describe('a database that cannot be opened', () => {
     expect(message).toBe('Your Inkling data is newer than this copy of Inkling. Update Inkling, then try again.')
     expect(electron.app.quit).toHaveBeenCalled()
     expect(electron.windows).toHaveLength(0)
+  })
+})
+
+describe('the menu on Windows and Linux', () => {
+  /** Every role in the menu the app set, nested ones included. */
+  function roles(): unknown[] {
+    const walk = (menu: MenuItemConstructorOptions[]): unknown[] => menu.flatMap((i) => [i.role, ...(Array.isArray(i.submenu) ? walk(i.submenu) : [])])
+    expect(electron.Menu.setApplicationMenu).toHaveBeenCalledTimes(1)
+    return walk(electron.Menu.setApplicationMenu.mock.calls[0][0] as MenuItemConstructorOptions[])
+  }
+
+  it('gives a release no reload or developer tools keys but keeps editing and zoom', async () => {
+    runOn('win32')
+    electron.app.isPackaged = true
+    await launch(true)
+
+    expect(roles()).not.toContain('reload')
+    expect(roles()).not.toContain('forceReload')
+    expect(roles()).not.toContain('toggleDevTools')
+    expect(roles()).toEqual(expect.arrayContaining(['copy', 'paste', 'resetZoom', 'zoomIn', 'zoomOut']))
+  })
+
+  it('keeps reload and the developer tools in a dev build', async () => {
+    runOn('linux')
+    await launch(true)
+
+    expect(roles()).toEqual(expect.arrayContaining(['reload', 'toggleDevTools']))
   })
 })
 

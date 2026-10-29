@@ -9,7 +9,7 @@ import * as repos from './repos'
 import { seedDemo } from './seed'
 import { startMcpHost } from './mcp/host'
 import { watchOutsideWrites } from './watch'
-import { macMenu } from './menu'
+import { macMenu, plainMenu } from './menu'
 import { commandRelay } from './commands'
 import { contextMenu } from './context-menu'
 import { updatesItself } from './updates'
@@ -252,7 +252,7 @@ app.whenReady().then(() => {
       commands.run(command)
     }
     Menu.setApplicationMenu(Menu.buildFromTemplate(macMenu(run, showMainWindow, app.isPackaged)))
-  }
+  } else Menu.setApplicationMenu(Menu.buildFromTemplate(plainMenu(app.isPackaged)))
   createMainWindow()
   watchOutsideWrites()
 
