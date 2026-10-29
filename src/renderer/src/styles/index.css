@@ -16,6 +16,7 @@
   --color-muted: var(--text-muted);
   --color-faint: var(--text-faint);
   --color-edge: var(--border);
+  --color-edge-field: var(--border-field);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-text: var(--accent-text);
@@ -65,6 +66,7 @@
   --text-muted: #625d56;
   --text-faint: #6a645c;
   --border: #e8e4dd;
+  --border-field: #a08f73;
   --accent: #4155b9;
   --accent-soft: rgba(65, 85, 185, 0.1);
   --accent-text: #3a4daa;
@@ -87,6 +89,7 @@
   --text-muted: #aeaaa2;
   --text-faint: #a29d95;
   --border: #2c2a27;
+  --border-field: #726d65;
   --accent: #8b9bf0;
   --accent-soft: rgba(139, 155, 240, 0.14);
   --accent-text: #a5b2f5;
