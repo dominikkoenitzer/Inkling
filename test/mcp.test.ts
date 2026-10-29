@@ -664,6 +664,18 @@ describe('sections', () => {
     expect(tools.readNote({ id: note.id }).markdown.startsWith('## A\n\n## B')).toBe(true)
     expect(() => tools.replaceNoteSection({ id: note.id, heading: 'B', markdown: 'x' })).toThrow(/2 headings are called "B"/)
   })
+
+  it('keeps the underline on the start and end of a section that stay as they were', () => {
+    const note = tools.createNote({ title: 'Plan' })
+    const under = (text: string): Node => ({ type: 'text', text, marks: [{ type: 'underline' }] as never })
+    const para = (...content: Node[]): Node => ({ type: 'paragraph', content })
+    const heading: Node = { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'A' }] }
+    const doc = { type: 'doc', content: [heading, para(under('First')), para({ type: 'text', text: 'middle' }), para(under('Last'))] }
+    repos.updateNote(note.id, { content: JSON.stringify(doc) })
+
+    tools.replaceNoteSection({ id: note.id, heading: 'A', markdown: 'First\nmiddle, longer\nLast' })
+    expect(stored(note.id).content).toEqual([heading, para(under('First')), para({ type: 'text', text: 'middle, longer' }), para(under('Last'))])
+  })
 })
 
 describe('editNote', () => {
@@ -715,6 +727,26 @@ describe('editNote', () => {
     expect(tools.readNote({ id: note.id }).markdown).toBe('one\n\nfour words\n')
     tools.editNote({ id: note.id, oldText: 'one\n\n', newText: 'one ' })
     expect(tools.readNote({ id: note.id }).markdown).toBe('one four words\n')
+  })
+
+  it('keeps the underline on text the edit leaves as it was', () => {
+    const note = tools.createNote({ title: 'Lab' })
+    const text = (t: string, ...marks: string[]): Node =>
+      marks.length > 0 ? { type: 'text', text: t, marks: marks.map((type) => ({ type })) as never } : { type: 'text', text: t }
+    const doc = (...content: Node[]): string => JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content }] })
+    repos.updateNote(note.id, { content: doc(text('Hello '), text('world', 'underline'), text(' and '), text('more', 'bold', 'underline', 'highlight')) })
+
+    tools.editNote({ id: note.id, oldText: 'Hello', newText: 'Hi' })
+    expect(stored(note.id).content![0].content).toEqual([
+      text('Hi '),
+      text('world', 'underline'),
+      text(' and '),
+      text('more', 'bold', 'underline', 'highlight')
+    ])
+    tools.editNote({ id: note.id, oldText: 'world', newText: 'word' })
+    expect(stored(note.id).content![0].content!.slice(0, 2)).toEqual([text('Hi '), text('word', 'underline')])
+    tools.editNote({ id: note.id, oldText: 'word', newText: 'earth' })
+    expect(stored(note.id).content![0].content![0]).toEqual(text('Hi earth and '))
   })
 })
 
