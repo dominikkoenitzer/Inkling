@@ -196,6 +196,60 @@ describe('cloze cards from the card editor', () => {
     updateCard(card.id, 'Front 2', 'Back 2')
     expect(listCards(deckId)).toMatchObject([{ id: card.id, front: 'Front 2', back: 'Back 2', cloze: 0 }])
   })
+
+  /** Adds the same cloze text twice by hand and reviews every card of the second copy. */
+  const twins = (front: string): { deckId: number; first: Card[]; second: Card[] } => {
+    const deckId = sync([]).deckId
+    const before = new Set(listCards(deckId).map((c) => c.id))
+    addCard(deckId, front, 'Star')
+    const first = listCards(deckId).filter((c) => !before.has(c.id))
+    addCard(deckId, front, 'Star')
+    const second = listCards(deckId)
+      .filter((c) => !before.has(c.id) && !first.some((f) => f.id === c.id))
+      .map((c) => reviewCard(c.id, 'good'))
+    return { deckId, first, second }
+  }
+
+  for (const [label, front] of [
+    ['one cloze', 'The {{c1::sun}} is hot'],
+    ['two clozes', 'The {{c1::sun}} is {{c2::hot}}']
+  ] as const) {
+    for (const edited of ['first', 'second'] as const) {
+      it(`keeps the other copy of a card added twice when the ${edited} is edited (${label})`, () => {
+        const sets = twins(front)
+        const other = edited === 'first' ? sets.second : sets.first
+        const mine = sets[edited]
+        const newFront = front.replace('hot', 'very hot')
+        updateCard(mine[mine.length - 1].id, newFront, 'Our star')
+
+        const cards = listCards(sets.deckId)
+        expect(cards).toHaveLength(sets.first.length + sets.second.length)
+        expect(cards.filter((c) => mine.some((m) => m.id === c.id))).toMatchObject(
+          mine.map((m) => ({ id: m.id, cloze: m.cloze, front: newFront, back: 'Our star' }))
+        )
+        expect(cards.filter((c) => other.some((o) => o.id === c.id))).toEqual(other)
+        const logged = raw.prepare(`SELECT card_id FROM review_log ORDER BY id`).all() as Array<{ card_id: number | null }>
+        expect(logged.map((r) => r.card_id)).toEqual(sets.second.map((c) => c.id))
+      })
+    }
+  }
+
+  it('keeps two copies apart after one gains a cloze number and the other is edited to match', () => {
+    const { deckId, first, second } = twins('The {{c1::sun}} is {{c2::hot}}')
+    const three = 'The {{c1::sun}} is {{c2::hot}} and {{c3::bright}}'
+    updateCard(first[0].id, three, 'Star')
+    updateCard(second[0].id, three, 'Star')
+    updateCard(first[1].id, `${three}!`, 'Star')
+
+    const cards = listCards(deckId)
+    expect(cards).toHaveLength(6)
+    const firstSet = cards.filter((c) => c.front === `${three}!`)
+    const secondSet = cards.filter((c) => c.front === three)
+    expect(firstSet.map((c) => c.cloze)).toEqual([1, 2, 3])
+    expect(secondSet.map((c) => c.cloze)).toEqual([1, 2, 3])
+    expect(firstSet.slice(0, 2).map((c) => c.id)).toEqual(first.map((c) => c.id))
+    expect(secondSet.slice(0, 2)).toMatchObject(second.map((c) => ({ id: c.id, state: c.state, stability: c.stability })))
+  })
 })
 
 describe('reviewCard settings', () => {
