@@ -138,8 +138,9 @@ export function CommandPalette(): React.JSX.Element {
               className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm ${clamped === i ? 'bg-active text-ink' : 'text-ink'}`}
             >
               <span className="text-faint">{item.icon}</span>
-              <span className="shrink-0">{item.label}</span>
-              {item.detail && <span className={`ml-auto truncate pl-3 text-xs ${clamped === i ? 'text-muted' : 'text-faint'}`}>{item.detail}</span>}
+              {/* The detail gives way first; a name longer than the whole row ends in an ellipsis. */}
+              <span className="min-w-0 truncate">{item.label}</span>
+              {item.detail && <span className={`ml-auto shrink-[999] truncate pl-3 text-xs ${clamped === i ? 'text-muted' : 'text-faint'}`}>{item.detail}</span>}
             </button>
           ))}
         </div>
