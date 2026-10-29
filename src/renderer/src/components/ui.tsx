@@ -11,7 +11,8 @@ export function Button({
   disabled,
   title,
   ariaLabel,
-  type
+  type,
+  ref
 }: {
   children: ReactNode
   onClick?: () => void
@@ -22,6 +23,7 @@ export function Button({
   /** Needed when the children are only an icon. */
   ariaLabel?: string
   type?: 'button' | 'submit'
+  ref?: React.Ref<HTMLButtonElement>
 }): React.JSX.Element {
   const styles = {
     default: 'bg-raised border border-edge text-ink hover:bg-hover',
@@ -31,6 +33,7 @@ export function Button({
   }[variant]
   return (
     <button
+      ref={ref}
       type={type ?? 'button'}
       title={title}
       aria-label={ariaLabel}
