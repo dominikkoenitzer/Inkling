@@ -4,7 +4,8 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { editKey, ignoresShortcut, onActivateKey, tickTodo } from '../src/renderer/src/lib/keys'
+import { editKey, ignoresShortcut, onActivateKey } from '../src/renderer/src/lib/keys'
+import { tickTodo } from '../src/renderer/src/lib/editorKeys'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */
 const key = (target: object | null, defaultPrevented = false): { target: EventTarget | null; defaultPrevented: boolean } => ({

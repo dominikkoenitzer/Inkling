@@ -13,7 +13,7 @@ import { loadNote, peekNote, saveFile, saveNote, syncNoteCards } from '@/lib/cal
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
-import { tickTodo } from '@/lib/keys'
+import { tickTodo } from '@/lib/editorKeys'
 import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
 
