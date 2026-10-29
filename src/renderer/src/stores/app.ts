@@ -18,6 +18,25 @@ export interface Toast {
 let toastSeq = 0
 let creatingNote = false
 
+/** A page the main pane showed, for Back. A review session is not one: going back into it would start it over. */
+interface Place {
+  view: View
+  noteId: number | null
+  deckId: number | null
+}
+let past: Place[] = []
+const placeOf = (s: { view: View; selectedNoteId: number | null; selectedDeckId: number | null }): Place => ({
+  view: s.view,
+  noteId: s.view === 'notes' ? s.selectedNoteId : null,
+  deckId: s.view === 'study' ? s.selectedDeckId : null
+})
+const samePlace = (a: Place, b: Place): boolean => a.view === b.view && a.noteId === b.noteId && a.deckId === b.deckId
+
+/** A deleted note is no page to go back to. */
+export function forgetPlace(noteId: number): void {
+  past = past.filter((p) => p.noteId !== noteId)
+}
+
 /** Milliseconds from `now` to the next local midnight, by the calendar (23 or 25 h across DST). */
 export function msUntilNextLocalDay(now: Date = new Date()): number {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime()
@@ -66,11 +85,21 @@ interface AppState {
   restoreNote(noteId: number): Promise<void>
   openDeck(deckId: number | null): void
   reviewDeck(deckId: number | null): void
+  /** Back to the page shown before this one. */
+  back(): void
   setPaletteOpen(v: boolean): void
   setSettingsOpen(v: boolean): void
   setShortcutsOpen(v: boolean): void
   showToast(t: Omit<Toast, 'id'>): void
   dismissToast(): void
+}
+
+/** Moves the main pane and remembers the page it leaves. */
+function go(next: Partial<AppState>): void {
+  const before = useApp.getState()
+  useApp.setState({ ...next, paletteOpen: false })
+  const from = placeOf(before)
+  if (before.reviewingDeckId === null && !samePlace(from, placeOf(useApp.getState()))) past.push(from)
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -121,8 +150,8 @@ export const useApp = create<AppState>((set, get) => ({
     api.settings.set('theme', theme).catch((err: unknown) => sayFailed('Could not save the theme.', err))
   },
 
-  setView: (view) => set({ view, selectedDeckId: null, reviewingDeckId: null, paletteOpen: false }),
-  openNote: (noteId) => set({ view: 'notes', selectedNoteId: noteId, reviewingDeckId: null, paletteOpen: false }),
+  setView: (view) => go({ view, selectedDeckId: null, reviewingDeckId: null }),
+  openNote: (noteId) => go({ view: 'notes', selectedNoteId: noteId, reviewingDeckId: null }),
   newNote: async () => {
     // One at a time: a held Ctrl+N or a double Enter makes one note, not a pile.
     if (creatingNote) return
@@ -149,8 +178,16 @@ export const useApp = create<AppState>((set, get) => ({
     bumpData('notes')
     get().openNote(noteId)
   },
-  openDeck: (deckId) => set({ view: 'study', selectedDeckId: deckId, reviewingDeckId: null, paletteOpen: false }),
-  reviewDeck: (deckId) => set({ view: 'study', selectedDeckId: null, reviewingDeckId: deckId, paletteOpen: false }),
+  openDeck: (deckId) => go({ view: 'study', selectedDeckId: deckId, reviewingDeckId: null }),
+  reviewDeck: (deckId) => go({ view: 'study', selectedDeckId: null, reviewingDeckId: deckId }),
+  back: () => {
+    const s = get()
+    const now = s.reviewingDeckId === null ? placeOf(s) : null
+    let to = past.pop()
+    while (to && now && samePlace(to, now)) to = past.pop()
+    if (!to) return
+    set({ view: to.view, selectedNoteId: to.view === 'notes' ? to.noteId : s.selectedNoteId, selectedDeckId: to.deckId, reviewingDeckId: null, paletteOpen: false })
+  },
   // One overlay at a time.
   setPaletteOpen: (paletteOpen) => set(paletteOpen ? { paletteOpen, settingsOpen: false, shortcutsOpen: false } : { paletteOpen }),
   setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, paletteOpen: false, shortcutsOpen: false } : { settingsOpen }),
@@ -298,6 +335,7 @@ export async function deleteNote(noteId: number, title: string | null): Promise<
   }
   bumpData('notes')
   bumpData('tasks')
+  forgetPlace(noteId)
   // Opened again in the meantime: it is gone now, so close it.
   if (useApp.getState().selectedNoteId === noteId) useApp.setState({ selectedNoteId: null })
   // The list only grows while its own toast is still the one on screen.

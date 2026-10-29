@@ -15,7 +15,7 @@ const inkling = vi.hoisted(() => {
   return api
 })
 
-import { useApp, useData, watchFocus, trackSave, registerFlush, settleNote, deleteNote } from '../src/renderer/src/stores/app'
+import { useApp, useData, watchFocus, trackSave, registerFlush, settleNote, deleteNote, forgetPlace } from '../src/renderer/src/stores/app'
 
 beforeEach(() => {
   useApp.setState({ view: 'notes', selectedNoteId: null, reviewingDeckId: null, homeNotebookId: 3 })
@@ -294,5 +294,49 @@ describe('a note call that fails', () => {
     expect(inkling.settings.set).toHaveBeenLastCalledWith('theme', 'dark')
     await vi.waitFor(() => expect(toast()).toBe('Could not save the theme.'))
     expect(useApp.getState().theme).toBe('dark')
+  })
+})
+
+describe('back', () => {
+  const at = (): string => {
+    const s = useApp.getState()
+    return s.view === 'notes' ? `note ${s.selectedNoteId}` : s.view === 'study' ? `study ${s.selectedDeckId ?? s.reviewingDeckId}` : s.view
+  }
+
+  it('returns to the pages shown before, one at a time', () => {
+    useApp.setState({ view: 'today' })
+    useApp.getState().openNote(4)
+    useApp.getState().openDeck(2)
+    useApp.getState().openNote(5)
+    useApp.getState().back()
+    expect(at()).toBe('study 2')
+    useApp.getState().back()
+    expect(at()).toBe('note 4')
+    useApp.getState().back()
+    expect(at()).toBe('today')
+  })
+
+  it('leaves a review for the page before it, and never goes back into one', () => {
+    useApp.setState({ view: 'today' })
+    useApp.getState().openNote(4)
+    useApp.getState().setView('today')
+    useApp.getState().reviewDeck(9)
+    useApp.getState().back()
+    expect(at()).toBe('today')
+    expect(useApp.getState().reviewingDeckId).toBeNull()
+    useApp.getState().reviewDeck(9)
+    useApp.getState().setView('study')
+    useApp.getState().back()
+    expect(at()).toBe('today')
+  })
+
+  it('skips a deleted note', () => {
+    useApp.setState({ view: 'today' })
+    useApp.getState().openNote(6)
+    useApp.getState().openNote(7)
+    useApp.getState().setView('today')
+    forgetPlace(7)
+    useApp.getState().back()
+    expect(at()).toBe('note 6')
   })
 })
