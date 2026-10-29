@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '@/stores/app'
 import { Button, Modal, Segmented } from '@/components/ui'
+import { assistantRows } from '@/lib/assistants'
 import type { AssistantStatus } from '@shared/types'
 
 const api = window.inkling
@@ -75,16 +76,17 @@ function Assistants(): React.JSX.Element {
     }
   }
 
+  const rows = assistantRows(list)
+
+  // Hidden, not left out, until the list is in, so the "Another assistant" row never moves once seen.
   return (
-    <section className="mt-6 border-t border-edge pt-4" aria-labelledby="assistants-title">
+    <section className={`mt-6 border-t border-edge pt-4${rows ? '' : ' invisible'}`} aria-labelledby="assistants-title">
       <h3 id="assistants-title" className="text-sm font-medium">
         Connect an AI assistant
       </h3>
       <p className="mt-1 text-xs text-muted">Let an assistant on this computer work with your notes, to-dos and flashcards.</p>
       <ul className="mt-3">
-        {(list ?? [])
-          .filter((a) => a.state !== 'missing')
-          .map((a) => (
+        {(rows ?? []).map((a) => (
           <li key={a.id} className="flex items-center gap-3 border-b border-edge py-2.5">
             <div className="min-w-0 flex-1">
               <p className="text-sm">{a.name}</p>
