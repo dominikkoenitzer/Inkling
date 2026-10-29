@@ -131,7 +131,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center-safe gap-6 overflow-y-auto p-8">
         {done ? (
           <div className="flex flex-col items-center gap-2 text-center">
             <Inky size={44} className="mb-2" />
@@ -172,7 +172,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               )}
             </div>
             {showBack && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 {GRADES.map((g, i) => (
                   <button
                     key={g.grade}
