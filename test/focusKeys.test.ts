@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canTab, endsReview, nextRow } from '../src/renderer/src/lib/keys'
+import { canTab, endsReview, nextRow, reviewKey } from '../src/renderer/src/lib/keys'
 
 const el = (tabIndex: number, extra: { disabled?: boolean; inert?: boolean } = {}): Parameters<typeof canTab>[0] => ({
   tabIndex,
@@ -45,5 +45,28 @@ describe('endsReview', () => {
     expect(endsReview(on('Enter', 'BUTTON'))).toBe(false)
     expect(endsReview(on(' '))).toBe(false)
     expect(endsReview(on('1'))).toBe(false)
+  })
+})
+
+describe('reviewKey', () => {
+  const on = (key: string, tagName = 'BODY'): Parameters<typeof reviewKey>[0] => ({ key, target: { tagName } as unknown as EventTarget })
+
+  it('shows the answer on Space or Enter, and grades nothing before that', () => {
+    expect(reviewKey(on(' '), false)).toBe('reveal')
+    expect(reviewKey(on('Enter'), false)).toBe('reveal')
+    expect(reviewKey(on('3'), false)).toBe(null)
+  })
+
+  it('grades Good on Enter once the answer shows, and 1 to 4 pick a grade', () => {
+    expect(reviewKey(on('Enter'), true)).toBe('good')
+    expect(reviewKey(on('1'), true)).toBe('again')
+    expect(reviewKey(on('4'), true)).toBe('easy')
+    expect(reviewKey(on('5'), true)).toBe(null)
+  })
+
+  it('stops on Esc and leaves Enter on a button to that button', () => {
+    expect(reviewKey(on('Escape'), false)).toBe('finish')
+    expect(reviewKey(on('Enter', 'BUTTON'), false)).toBe(null)
+    expect(reviewKey(on('Enter', 'BUTTON'), true)).toBe(null)
   })
 })
