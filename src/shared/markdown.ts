@@ -114,7 +114,9 @@ function renderBlock(node: PMNode, indent = ''): string {
     case 'codeBlock': {
       const lang = typeof node.attrs?.language === 'string' ? node.attrs.language : ''
       const code = (node.content ?? []).map((c) => c.text ?? '').join('')
-      return '```' + lang + '\n' + code + '\n```\n\n'
+      // a line of three or more backticks inside closes a fence no longer than it
+      const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) ?? []).map((run) => run.length + 1)))
+      return fence + lang + '\n' + code + '\n' + fence + '\n\n'
     }
     case 'horizontalRule':
       return '---\n\n'

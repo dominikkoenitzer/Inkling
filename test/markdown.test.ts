@@ -64,6 +64,12 @@ describe('tiptapDocToMarkdown', () => {
     expect(tiptapDocToMarkdown(doc([{ type: 'horizontalRule' }]))).toBe('---\n')
   })
 
+  it('fences a code block one longer than the longest backtick run in it', () => {
+    expect(tiptapDocToMarkdown(doc([{ type: 'codeBlock', content: [text('a\n```\nb')] }]))).toBe('````\na\n```\nb\n````\n')
+    expect(
+      tiptapDocToMarkdown(doc([{ type: 'codeBlock', attrs: { language: 'md' }, content: [text('x\n````\ny')] }]))
+    ).toBe('`````md\nx\n````\ny\n`````\n')
+  })
   it('returns empty string for an empty or malformed doc', () => {
     expect(tiptapDocToMarkdown(doc([para([])]))).toBe('')
     expect(tiptapDocToMarkdown(null)).toBe('')

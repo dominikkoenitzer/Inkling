@@ -188,6 +188,8 @@ describe('round trip with tiptapDocToMarkdown', () => {
     ['nested lists', doc(ul(li(p(t('a')), ul(li(p(t('b'))), li(p(t('c'))))), li(p(t('d')))), ol(li(p(t('one'))), li(p(t('two')))))],
     ['task lists', doc(tasks(task(false, p(t('open'))), task(true, p(t('done')), tasks(task(false, p(t('sub')))))))],
     ['code block', doc({ type: 'codeBlock', attrs: { language: 'ts' }, content: [t('const a = 1\nconst b = 2')] }, p(t('after')))],
+    ['code block holding a fence line', doc({ type: 'codeBlock', attrs: { language: 'md' }, content: [t('a\n```\nb')] }, p(t('after')))],
+    ['code block holding a longer fence line', doc({ type: 'codeBlock', attrs: { language: null }, content: [t('```\nx\n````\ny')] })],
     ['characters that need escaping', doc(p(t('a*b_c [x] \\ back`tick')), p(t('# not a heading')), p(t('1. not a list')), p(t('- not a bullet')), p(t('> not a quote')))],
     ['hard breaks', doc(p(t('one'), br, t('- two')), ul(li(p(t('a'), br, t('b')))))],
     ['card lines', doc(p(t('Term ::')), p(t('  first part')), p(t('Cell :: '), t('Smallest', bold), t(' unit')))],
