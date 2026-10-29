@@ -22,6 +22,7 @@ export function StudyView(): React.JSX.Element {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const creating = useRef(false)
+  const newDeckRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     let stale = false
@@ -60,7 +61,7 @@ export function StudyView(): React.JSX.Element {
       <div className="mx-auto max-w-[680px] px-10 pb-20 pt-14">
         <div className="flex items-end justify-between gap-4">
           <h1 className="font-display text-[32px] font-semibold leading-tight tracking-tight">Flashcards</h1>
-          <Button onClick={() => setAdding(true)}>
+          <Button ref={newDeckRef} onClick={() => setAdding(true)}>
             <Plus size={15} /> New deck
           </Button>
         </div>
@@ -78,6 +79,8 @@ export function StudyView(): React.JSX.Element {
               if (e.key === 'Escape') {
                 setAdding(false)
                 setName('')
+                // The field goes away, so focus returns to the button that opened it.
+                newDeckRef.current?.focus()
               }
             }}
             onBlur={() => !name.trim() && setAdding(false)}
