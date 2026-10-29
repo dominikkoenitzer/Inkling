@@ -105,6 +105,81 @@ export function carryIds(oldBlocks: Block[], newBlocks: Block[], inOrder = false
   return stampCardLines(doc, perParagraph).content
 }
 
+type Mark = { type: string }
+
+const marksOf = (n: Block): Mark[] => (Array.isArray(n.marks) ? (n.marks as Mark[]) : [])
+const TEXTBLOCKS = new Set(['paragraph', 'heading', 'codeBlock'])
+
+/** The text of blocks, a line end after each paragraph, heading and code block, and which characters are underlined. */
+function underlined(blocks: Block[]): { text: string; flags: boolean[] } {
+  let text = ''
+  const flags: boolean[] = []
+  const walk = (n: Block): void => {
+    if (typeof n.text === 'string') {
+      const on = marksOf(n).some((m) => m.type === 'underline')
+      text += n.text
+      for (let i = 0; i < n.text.length; i++) flags.push(on)
+      return
+    }
+    if (Array.isArray(n.content)) (n.content as Block[]).forEach(walk)
+    if (n.type === 'hardBreak' || TEXTBLOCKS.has(n.type as string)) {
+      text += '\n'
+      flags.push(false)
+    }
+  }
+  blocks.forEach(walk)
+  return { text, flags }
+}
+
+/** A text node with `text` and the underline set as given, its marks kept in the editor's order. */
+function withUnderline(n: Block, text: string, on: boolean): Block {
+  const marks = marksOf(n).filter((m) => m.type !== 'underline')
+  if (on) {
+    const at = marks.findIndex((m) => m.type === 'highlight')
+    marks.splice(at === -1 ? marks.length : at, 0, { type: 'underline' })
+  }
+  const out: Block = { ...n, text, marks }
+  if (marks.length === 0) delete out.marks
+  return out
+}
+
+/**
+ * Underline has no Markdown form, so blocks rebuilt from Markdown lose it. Gives it back to
+ * the text an edit left as it was: the same characters before and after the changed part.
+ */
+function carryUnderline(oldBlocks: Block[], newBlocks: Block[]): Block[] {
+  const was = underlined(oldBlocks)
+  if (!was.flags.includes(true)) return newBlocks
+  const now = underlined(newBlocks).text
+  let head = 0
+  while (head < Math.min(was.text.length, now.length) && was.text[head] === now[head]) head++
+  let tail = 0
+  while (tail < Math.min(was.text.length, now.length) - head && was.text[was.text.length - 1 - tail] === now[now.length - 1 - tail]) tail++
+  const flag = (i: number): boolean => (i < head ? was.flags[i] : i >= now.length - tail ? was.flags[i - now.length + was.text.length] : false)
+
+  let at = 0
+  const visit = (n: Block, inCode: boolean): Block[] => {
+    if (typeof n.text === 'string') {
+      const start = at
+      at += n.text.length
+      // Code takes no other marks in the editor.
+      if (inCode || marksOf(n).some((m) => m.type === 'code')) return [n]
+      const out: Block[] = []
+      let from = 0
+      for (let i = 1; i <= n.text.length; i++) {
+        if (i < n.text.length && flag(start + i) === flag(start + from)) continue
+        out.push(withUnderline(n, n.text.slice(from, i), flag(start + from)))
+        from = i
+      }
+      return out
+    }
+    const copy = Array.isArray(n.content) ? { ...n, content: (n.content as Block[]).flatMap((c) => visit(c, inCode || n.type === 'codeBlock')) } : n
+    if (n.type === 'hardBreak' || TEXTBLOCKS.has(n.type as string)) at++
+    return [copy]
+  }
+  return newBlocks.flatMap((b) => visit(b, false))
+}
+
 /** Drops blank lines at the end of a run of blocks. */
 export function trimBlankEnd(blocks: Block[]): Block[] {
   const out = [...blocks]
@@ -125,7 +200,7 @@ export function appendBlocks(blocks: Block[], md: string, heading?: string): Blo
 export function replaceSection(blocks: Block[], heading: string, md: string): { blocks: Block[]; previous: string } {
   const s = findSection(blocks, heading)
   const old = blocks.slice(s.heading + 1, s.end)
-  const next = carryIds(old, parseBlocks(md))
+  const next = carryUnderline(old, carryIds(old, parseBlocks(md)))
   return { blocks: [...blocks.slice(0, s.heading + 1), ...next, ...blocks.slice(s.end)], previous: docMarkdown(old) }
 }
 
@@ -184,8 +259,41 @@ export function replaceText(blocks: Block[], oldText: string, newText: string, a
       const at = m - from.start
       text = text.slice(0, at) + newText + text.slice(at + oldText.length)
     }
-    const old = out.slice(from.index, to.index + 1)
-    out = [...out.slice(0, from.index), ...carryIds(old, parseBlocks(text), true), ...out.slice(to.index + 1)]
+    out = [...out.slice(0, from.index), ...rebuildRun(out.slice(from.index, to.index + 1), parseBlocks(text)), ...out.slice(to.index + 1)]
   }
   return { blocks: out, count: matches.length }
+}
+
+/**
+ * A run of stored blocks rebuilt from its edited Markdown. The blocks at either end whose
+ * Markdown did not change stay as stored, and so do the blank lines read_note does not show.
+ */
+function rebuildRun(old: Block[], fresh: Block[]): Block[] {
+  const solid = old.flatMap((b, i) => (isBlank(b) ? [] : [i]))
+  const most = Math.min(solid.length, fresh.length)
+  const same = (i: number, j: number): boolean => blockMarkdown(old[solid[i]]) === blockMarkdown(fresh[j])
+  let head = 0
+  while (head < most && same(head, head)) head++
+  let tail = 0
+  while (tail < most - head && same(solid.length - 1 - tail, fresh.length - 1 - tail)) tail++
+
+  const start = head > 0 ? solid[head - 1] + 1 : 0
+  const end = tail > 0 ? solid[solid.length - tail] : old.length
+  const gap = old.slice(start, end)
+  const changed = carryUnderline(gap, carryIds(gap, fresh.slice(head, fresh.length - tail), true))
+  const firstSolid = gap.findIndex((b) => !isBlank(b))
+  const lead = firstSolid === -1 ? gap : gap.slice(0, firstSolid)
+  let middle: Block[]
+  if (changed.length === gap.length - gap.filter(isBlank).length) {
+    // As many blocks as before: each takes the place of the one it replaced.
+    let k = 0
+    middle = gap.map((b) => (isBlank(b) ? b : changed[k++]))
+  } else if (changed.length === 0) {
+    // Blocks removed: the blank lines before them stay only between two kept blocks.
+    middle = tail > 0 ? lead : []
+  } else {
+    const trail = firstSolid === -1 ? [] : gap.slice(gap.length - [...gap].reverse().findIndex((b) => !isBlank(b)))
+    middle = [...lead, ...changed, ...trail]
+  }
+  return [...old.slice(0, start), ...middle, ...old.slice(end)]
 }
