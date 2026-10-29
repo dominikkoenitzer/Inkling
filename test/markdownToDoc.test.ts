@@ -107,6 +107,16 @@ describe('markdownToDoc blocks', () => {
     expect(markdownToDoc('```\nopen')).toEqual(doc({ type: 'codeBlock', attrs: { language: null }, content: [t('open')] }))
   })
 
+  it('keeps the spaces of a code line past the indent of its list item', () => {
+    const block = (text: string): Node => ({ type: 'codeBlock', attrs: { language: null }, content: [t(text)] })
+    expect(markdownToDoc('- a\n  ```\n  x\n      \n  y\n  ```')).toEqual(doc(ul(li(p(t('a')), block('x\n    \ny')))))
+    expect(markdownToDoc('1. a\n   ```\n   x\n     \n   y\n   ```')).toEqual(doc(ol(li(p(t('a')), block('x\n  \ny')))))
+    expect(markdownToDoc('- [ ] a\n  ```\n  x\n     \n  y\n  ```')).toEqual(doc(tasks(task(false, p(t('a')), block('x\n   \ny')))))
+    expect(markdownToDoc('- a\n  - b\n    ```\n    x\n       \n    y\n    ```')).toEqual(doc(ul(li(p(t('a')), ul(li(p(t('b')), block('x\n   \ny')))))))
+    // A line no longer than the indent has nothing past it.
+    expect(markdownToDoc('- a\n  ```\n  x\n \n  y\n  ```')).toEqual(doc(ul(li(p(t('a')), block('x\n\ny')))))
+  })
+
   it('reads quotes and rules', () => {
     expect(markdownToDoc('> a\n>\n> - b')).toEqual(doc({ type: 'blockquote', content: [p(t('a')), ul(li(p(t('b'))))] }))
     expect(markdownToDoc('---\n***\n___\n- - -')).toEqual(doc(...Array(4).fill({ type: 'horizontalRule' })))
