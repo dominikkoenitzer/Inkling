@@ -748,6 +748,19 @@ describe('editNote', () => {
     tools.editNote({ id: note.id, oldText: 'word', newText: 'earth' })
     expect(stored(note.id).content![0].content![0]).toEqual(text('Hi earth and '))
   })
+
+  it('keeps the blank lines and the blocks an edit across blocks leaves as they were', () => {
+    const note = tools.createNote({ title: 'Lab' })
+    const para = (text?: string): Node => (text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' })
+    const alpha: Node = { type: 'paragraph', content: [{ type: 'text', text: 'Alpha', marks: [{ type: 'underline' }] as never }] }
+    const doc = { type: 'doc', content: [alpha, para(), para('Beta'), para(), para(), para('Gamma'), para('Delta')] }
+    repos.updateNote(note.id, { content: JSON.stringify(doc) })
+
+    tools.editNote({ id: note.id, oldText: 'Alpha\n\nBeta\n\nGamma', newText: 'Alpha\n\nBeta, longer\n\nGamma' })
+    expect(stored(note.id).content).toEqual([alpha, para(), para('Beta, longer'), para(), para(), para('Gamma'), para('Delta')])
+    tools.editNote({ id: note.id, oldText: 'Beta, longer\n\nGamma', newText: 'Gamma' })
+    expect(stored(note.id).content).toEqual([alpha, para(), para('Gamma'), para('Delta')])
+  })
 })
 
 describe('undoEdit', () => {
