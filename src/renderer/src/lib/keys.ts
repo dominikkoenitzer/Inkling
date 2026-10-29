@@ -13,6 +13,11 @@ export function ignoresShortcut(e: { target: EventTarget | null; defaultPrevente
   return !!el && (el.isContentEditable === true || TEXT_ENTRY.has(el.tagName ?? ''))
 }
 
+/** Whether a key lands on a focused button, which Space and Enter press by themselves. */
+export function onButton(e: { target: EventTarget | null }): boolean {
+  return (e.target as { tagName?: string } | null)?.tagName === 'BUTTON'
+}
+
 /**
  * Enter and Space on a focused `role="button"` element, the way a real button behaves. Keys
  * that start on a control nested inside it are left to that control.
