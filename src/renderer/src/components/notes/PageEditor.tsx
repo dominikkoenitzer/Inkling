@@ -8,7 +8,7 @@ import { Placeholder } from '@tiptap/extensions'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered, ListChecks, Layers, FileDown, Trash2 } from 'lucide-react'
 import { useApp, bumpData, registerFlush, deleteNote } from '@/stores/app'
-import { extractNoteTaskItems, extractNoteCardLines, oneLine } from '@/lib/parse'
+import { extractNoteTaskItems, extractNoteCardLines, oneLine, safeParse } from '@/lib/parse'
 import { loadNote, peekNote, saveFile, saveNote, syncNoteCards } from '@/lib/calls'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
@@ -431,14 +431,6 @@ function assignNodeIds(
     syncingRef.current = true
     view.dispatch(tr)
     syncingRef.current = false
-  }
-}
-
-function safeParse(content: string): object {
-  try {
-    return JSON.parse(content)
-  } catch {
-    return { type: 'doc', content: [{ type: 'paragraph' }] }
   }
 }
 

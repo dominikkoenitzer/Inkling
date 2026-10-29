@@ -15,6 +15,7 @@ export function extractNoteTaskItems(doc: Record<string, unknown>): NoteTaskItem
       if (m.type === 'hardBreak') parts.push(' ')
       if (Array.isArray(m.content)) {
         m.content.forEach((c) => {
+          if (!c || typeof c !== 'object') return
           // A nested list is lines of its own; its text stays out of this item's title.
           const child = c as DocNode
           if (child.type && NESTED_LISTS.has(child.type)) return
@@ -28,6 +29,8 @@ export function extractNoteTaskItems(doc: Record<string, unknown>): NoteTaskItem
     return parts.join('').replace(/\s+/g, ' ').trim()
   }
   const walk = (n: DocNode): void => {
+    // Stored content is only JSON, so a doc or a child can be null or a bare value.
+    if (!n || typeof n !== 'object') return
     if (n.type === 'taskItem') {
       items.push({
         taskId: typeof n.attrs?.taskId === 'number' ? (n.attrs.taskId as number) : null,

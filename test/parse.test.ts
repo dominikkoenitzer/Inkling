@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractNoteCardLines, extractNoteTaskItems, parseCardLine } from '../src/renderer/src/lib/parse'
+import { extractNoteCardLines, extractNoteTaskItems, parseCardLine, safeParse } from '../src/renderer/src/lib/parse'
 
 const doc = (content: unknown[]): string => JSON.stringify({ type: 'doc', content })
 const para = (text: string): unknown => ({ type: 'paragraph', content: [{ type: 'text', text }] })
@@ -112,5 +112,25 @@ describe('extractNoteTaskItems', () => {
     const numbered = { type: 'orderedList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'shoes' }] }] }] }
     const d = JSON.parse(doc([{ type: 'taskList', content: [taskItem('Pack', false, [bullets, numbered])] }]))
     expect(extractNoteTaskItems(d).map((i) => i.title)).toEqual(['Pack'])
+  })
+
+  it('finds no lines in a doc that is null', () => {
+    expect(extractNoteTaskItems(JSON.parse('null'))).toEqual([])
+  })
+
+  it('steps over a null block, a null item and a null child of an item', () => {
+    const line = { type: 'taskItem', attrs: { checked: false, taskId: 3 }, content: [null, { type: 'paragraph', content: [{ type: 'text', text: 'Buy agar' }] }] }
+    const d = JSON.parse(doc([null, { type: 'taskList', content: [null, line] }]))
+    expect(extractNoteTaskItems(d)).toEqual([{ taskId: 3, checked: false, title: 'Buy agar' }])
+  })
+})
+
+describe('safeParse', () => {
+  it.each(['null', '5', '"text"', '[]'])('reads stored content %s as it reads broken text', (content) => {
+    expect(safeParse(content)).toEqual(safeParse('{'))
+  })
+
+  it('keeps a stored doc as it is', () => {
+    expect(safeParse(doc([para('Buy agar')]))).toEqual({ type: 'doc', content: [para('Buy agar')] })
   })
 })
