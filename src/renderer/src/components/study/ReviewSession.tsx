@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
-import { ignoresShortcut } from '@/lib/keys'
+import { ignoresShortcut, onButton } from '@/lib/keys'
 import { reviewCard } from '@/lib/calls'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
@@ -79,7 +79,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         if (e.key === 'Escape') finish()
         return
       }
-      if (e.key === ' ') {
+      // A focused button takes its own Space, so End session and the grades work from the keyboard.
+      if (e.key === ' ' && !onButton(e)) {
         e.preventDefault()
         setShowBack(true)
       }

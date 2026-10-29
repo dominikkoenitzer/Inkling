@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { editKey, ignoresShortcut, onActivateKey, tickTodo } from '../src/renderer/src/lib/keys'
+import { editKey, ignoresShortcut, onActivateKey, onButton, tickTodo } from '../src/renderer/src/lib/keys'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */
 const key = (target: object | null, defaultPrevented = false): { target: EventTarget | null; defaultPrevented: boolean } => ({
@@ -150,5 +150,14 @@ describe('tickTodo', () => {
     const doc = docOf({ type: 'codeBlock', content: [{ type: 'text', text: 'let a' }] }, para('Plain'))
     expect(press(doc, (d) => TextSelection.create(d, find(d, 'let a', 'codeBlock').text + 1))).toBeNull()
     expect(press(doc, (d) => TextSelection.create(d, find(d, 'Plain', 'paragraph').text + 1))).toBeNull()
+  })
+})
+
+describe('onButton', () => {
+  it('tells a key on a focused button, which presses it, from one on the page', () => {
+    expect(onButton(key({ tagName: 'BUTTON' }))).toBe(true)
+    expect(onButton(key({ tagName: 'BODY' }))).toBe(false)
+    expect(onButton(key({ tagName: 'DIV' }))).toBe(false)
+    expect(onButton(key(null))).toBe(false)
   })
 })
