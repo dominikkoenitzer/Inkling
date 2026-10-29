@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { editKey, ignoresShortcut, nextInList, onActivateKey, onButton, tickTodo } from '../src/renderer/src/lib/keys'
+import { editKey, focusAfterRemove, ignoresShortcut, nextInList, onActivateKey, onButton, tickTodo } from '../src/renderer/src/lib/keys'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */
 const key = (target: object | null, defaultPrevented = false): { target: EventTarget | null; defaultPrevented: boolean } => ({
@@ -189,5 +189,33 @@ describe('nextInList', () => {
   it('finds nothing in a list of one', () => {
     expect(nextInList(rows(true)[0], 'button')).toBeNull()
     expect(nextInList(null, 'button')).toBeNull()
+  })
+})
+
+describe('focusAfterRemove', () => {
+  /** A delete button in the first of two rows, focused from the keyboard or by a click. */
+  const bin = (byKey: boolean, rows: 1 | 2) => {
+    const after = {}
+    const next = { nextElementSibling: null, previousElementSibling: null, querySelector: () => after }
+    const row = { nextElementSibling: rows === 2 ? next : null, previousElementSibling: null, querySelector: () => null }
+    return { after, control: { matches: (s: string) => byKey && s === ':focus-visible', closest: () => row } }
+  }
+
+  it('moves focus on after a key, to the next row or else to the fallback', () => {
+    const two = bin(true, 2)
+    expect(focusAfterRemove(two.control, 'button', () => null)).toBe(two.after)
+    const field = {}
+    expect(focusAfterRemove(bin(true, 1).control, 'button', () => field)).toBe(field)
+  })
+
+  it('leaves focus alone after a click, so Space cannot press a button that shows no ring', () => {
+    let asked = false
+    const fallback = () => {
+      asked = true
+      return {}
+    }
+    expect(focusAfterRemove(bin(false, 2).control, 'button', fallback)).toBeNull()
+    expect(focusAfterRemove(bin(false, 1).control, 'button', fallback)).toBeNull()
+    expect(asked).toBe(false)
   })
 })

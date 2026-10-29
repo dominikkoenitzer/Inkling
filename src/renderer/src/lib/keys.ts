@@ -51,6 +51,19 @@ export function nextInList<T>(row: Row<T> | null, pick: string): T | null {
   return null
 }
 
+/**
+ * Where focus goes when the focused `control` takes its row out of a list: as `nextInList`, else
+ * `fallback`. Only after a key; after a click the next control would hold focus with no ring.
+ */
+export function focusAfterRemove<T>(
+  control: { matches(selector: string): boolean; closest(selector: string): Row<T> | null },
+  pick: string,
+  fallback: () => T | null
+): T | null {
+  if (!control.matches(':focus-visible')) return null
+  return nextInList(control.closest('li'), pick) ?? fallback()
+}
+
 /** A keydown in a text field: Enter commits it, and Escape cancels its edit when `cancel` is given. */
 export function editKey(
   e: KeyboardEvent<HTMLInputElement>,
