@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { tiptapDocToMarkdown } from '../src/shared/markdown'
+import { markdownToDoc } from '../src/shared/markdownToDoc'
 
 const doc = (content: unknown[]): unknown => ({ type: 'doc', content })
 const text = (t: string, marks?: unknown[]): unknown => ({ type: 'text', text: t, ...(marks ? { marks } : {}) })
@@ -69,6 +70,24 @@ describe('tiptapDocToMarkdown', () => {
     expect(
       tiptapDocToMarkdown(doc([{ type: 'codeBlock', attrs: { language: 'md' }, content: [text('x\n````\ny')] }]))
     ).toBe('`````md\nx\n````\ny\n`````\n')
+  })
+
+  it('keeps every blank line inside a code block', () => {
+    const block = (code: string): unknown => ({ type: 'codeBlock', attrs: { language: null }, content: [text(code)] })
+    expect(tiptapDocToMarkdown(doc([block('a\n\n\nb')]))).toBe('```\na\n\n\nb\n```\n')
+    expect(tiptapDocToMarkdown(doc([block('\n\n\na\n\n\n'), para([text('after')])]))).toBe('```\n\n\n\na\n\n\n\n```\n\nafter\n')
+    for (const code of ['a\n\n\nb', '\n\n\na\n\n\n', 'a\n\n\n\n\nb\n\nc']) {
+      const d = doc([block(code), para([text('after')])])
+      expect(markdownToDoc(tiptapDocToMarkdown(d))).toEqual(d)
+    }
+  })
+
+  it('leaves one blank line after a block that ends in a hard break', () => {
+    const br = { type: 'hardBreak' }
+    const heading = { type: 'heading', attrs: { level: 1 }, content: [text('a'), br] }
+    const list = { type: 'bulletList', content: [{ type: 'listItem', content: [para([text('a'), br])] }] }
+    expect(tiptapDocToMarkdown(doc([heading, para([text('b')])]))).toBe('# a  \n\nb\n')
+    expect(tiptapDocToMarkdown(doc([list, para([text('b')])]))).toBe('- a  \n\nb\n')
   })
 
   it('numbers an ordered list from its start', () => {

@@ -72,28 +72,38 @@ function renderInline(nodes: PMNode[] | undefined): string {
 function renderList(node: PMNode, indent: string, marker: (index: number, item: PMNode) => string): string {
   const items = node.content ?? []
   let out = ''
+  let loose = false
   items.forEach((item, i) => {
     const kids = item.content ?? []
     // the leading paragraph sits on the marker line; every OTHER block child (a second
     // paragraph, code block, blockquote, nested list) is emitted indented so nothing is lost
     const firstParaIdx = kids.findIndex((k) => k.type === 'paragraph')
     const firstText = escapeBlockLines(firstParaIdx >= 0 ? renderInline(kids[firstParaIdx].content) : renderInline(item.content))
-    out += `${indent}${marker(i, item)}${firstText}\n`
-    kids.forEach((k, ki) => {
-      if (ki === firstParaIdx) return
-      out += renderBlock(k, indent + '  ')
-    })
+    const blocks = renderBlocks(kids.filter((_k, ki) => ki !== firstParaIdx), indent + '  ')
+    // an item holding more blocks than its first line is set off from the next by a blank line
+    out += (i === 0 ? '' : loose ? '\n\n' : '\n') + `${indent}${marker(i, item)}${firstText}` + (blocks ? '\n' + blocks : '')
+    loose = blocks !== ''
   })
-  return out + '\n'
+  return out
+}
+
+// blocks are joined by one blank line, so none is added inside a block; a code block ends in its fence
+function renderBlocks(nodes: PMNode[] | undefined, indent = ''): string {
+  return (nodes ?? [])
+    .map((n) => renderBlock(n, indent).replace(/\n+$/, ''))
+    .filter((b) => b !== '')
+    .join('\n\n')
 }
 
 function renderBlock(node: PMNode, indent = ''): string {
   switch (node.type) {
-    case 'paragraph':
-      return `${indent}${escapeBlockLines(renderInline(node.content))}\n\n`
+    case 'paragraph': {
+      const text = escapeBlockLines(renderInline(node.content))
+      return text ? `${indent}${text}` : ''
+    }
     case 'heading': {
       const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 6)
-      return `${'#'.repeat(level)} ${renderInline(node.content)}\n\n`
+      return `${'#'.repeat(level)} ${renderInline(node.content)}`
     }
     case 'bulletList':
       return renderList(node, indent, () => '- ')
@@ -107,36 +117,28 @@ function renderBlock(node: PMNode, indent = ''): string {
     case 'taskList':
       return renderList(node, indent, (_i, item) => (item.attrs?.checked ? '- [x] ' : '- [ ] '))
     case 'blockquote':
-      return (
-        (node.content ?? [])
-          .map((c) => renderBlock(c, indent))
-          .join('')
-          .trimEnd()
-          .split('\n')
-          .map((l) => `> ${l}`.trimEnd())
-          .join('\n') + '\n\n'
-      )
+      return renderBlocks(node.content, indent)
+        .trimEnd()
+        .split('\n')
+        .map((l) => `> ${l}`.trimEnd())
+        .join('\n')
     case 'codeBlock': {
       const lang = typeof node.attrs?.language === 'string' ? node.attrs.language : ''
       const code = (node.content ?? []).map((c) => c.text ?? '').join('')
       // a line of three or more backticks inside closes a fence no longer than it
       const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) ?? []).map((run) => run.length + 1)))
-      return fence + lang + '\n' + code + '\n' + fence + '\n\n'
+      return fence + lang + '\n' + code + '\n' + fence
     }
     case 'horizontalRule':
-      return '---\n\n'
+      return '---'
     default:
-      return (node.content ?? []).map((c) => renderBlock(c, indent)).join('')
+      return renderBlocks(node.content, indent)
   }
 }
 
 export function tiptapDocToMarkdown(doc: unknown): string {
   const root = doc as PMNode
   if (!root || !Array.isArray(root.content)) return ''
-  const body = root.content
-    .map((n) => renderBlock(n))
-    .join('')
-    .replace(/\n{3,}/g, '\n\n')
-    .trimEnd()
+  const body = renderBlocks(root.content).trimEnd()
   return body ? body + '\n' : ''
 }
