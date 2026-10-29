@@ -313,6 +313,11 @@ describe('dueIn', () => {
     expect(dueIn(at(400 * DAY), NOW.getTime())).toBe('in 1.1y')
   })
 
+  it('counts whole days, as the hours are counted', () => {
+    expect(dueIn(at(DAY + 13 * HOUR), NOW.getTime())).toBe('in 1d')
+    expect(dueIn(at(29.6 * DAY), NOW.getTime())).toBe('in 29d')
+  })
+
   it('says nothing for an unreadable date', () => {
     expect(dueIn(Number.NaN, NOW.getTime())).toBe('')
   })

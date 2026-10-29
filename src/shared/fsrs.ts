@@ -324,5 +324,6 @@ export function dueIn(dueAt: number, now: number): string {
   // Minutes round up, so the last minute before the hour reads "in 1h", never "in 60m".
   if (ms <= 59 * 60_000) return `in ${Math.ceil(ms / 60_000)}m`
   if (ms < 86_400_000) return `in ${Math.max(1, Math.floor(ms / 3_600_000))}h`
-  return `in ${formatInterval(ms / 86_400_000)}`
+  // Whole days, as the rating buttons pass them, so a part day never rounds up to "30d".
+  return `in ${formatInterval(Math.floor(ms / 86_400_000))}`
 }
