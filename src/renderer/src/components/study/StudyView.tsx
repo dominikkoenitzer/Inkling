@@ -6,7 +6,7 @@ import { hasCloze } from '@shared/cloze'
 import { storedTime } from '@shared/day'
 import { Inky } from '@/components/Inky'
 import { Button, Code, IconBtn, inputCls, titleFieldCls } from '@/components/ui'
-import { editKey, ignoresShortcut } from '@/lib/keys'
+import { editKey, ignoresShortcut, nextInList } from '@/lib/keys'
 import { oneLine } from '@/lib/parse'
 import { ReviewSession } from './ReviewSession'
 import type { Deck, Card } from '@shared/types'
@@ -409,7 +409,14 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
           title="Delete card"
           aria-label="Delete card"
           className="flex h-7 w-7 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-hover hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-          onClick={() => void api.decks.removeCard(card.id).then(() => bumpData('decks'))}
+          onClick={(e) => {
+            // Focus moves to the next card's bin, else the one before, else the new card's Front field.
+            const next = nextInList<HTMLElement>(e.currentTarget.closest('li'), 'button[aria-label="Delete card"]') ?? document.querySelector<HTMLElement>('input[aria-label="Front"]')
+            void api.decks.removeCard(card.id).then(() => {
+              bumpData('decks')
+              next?.focus()
+            })
+          }}
         >
           <Trash2 size={14} />
         </button>

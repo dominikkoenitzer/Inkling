@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskList, TaskItem } from '@tiptap/extension-list'
 import { EditorState, NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { editKey, ignoresShortcut, onActivateKey, onButton, tickTodo } from '../src/renderer/src/lib/keys'
+import { editKey, ignoresShortcut, nextInList, onActivateKey, onButton, tickTodo } from '../src/renderer/src/lib/keys'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */
 const key = (target: object | null, defaultPrevented = false): { target: EventTarget | null; defaultPrevented: boolean } => ({
@@ -159,5 +159,35 @@ describe('onButton', () => {
     expect(onButton(key({ tagName: 'BODY' }))).toBe(false)
     expect(onButton(key({ tagName: 'DIV' }))).toBe(false)
     expect(onButton(key(null))).toBe(false)
+  })
+})
+
+describe('nextInList', () => {
+  /** Rows linked like siblings in a list, each holding a control or not. */
+  const rows = (...has: boolean[]) => {
+    type Row = { control: object | null; nextElementSibling: Row | null; previousElementSibling: Row | null; querySelector: () => object | null }
+    const list: Row[] = has.map((h) => ({ control: h ? {} : null, nextElementSibling: null, previousElementSibling: null, querySelector: () => null }))
+    list.forEach((r, i) => {
+      r.nextElementSibling = list[i + 1] ?? null
+      r.previousElementSibling = list[i - 1] ?? null
+      r.querySelector = () => r.control
+    })
+    return list
+  }
+
+  it('picks the control in the row after the one going', () => {
+    const list = rows(true, true, true)
+    expect(nextInList(list[1], 'button')).toBe(list[2].control)
+  })
+
+  it('skips rows without one, then falls back to the rows before', () => {
+    const list = rows(true, false, true, false)
+    expect(nextInList(list[0], 'button')).toBe(list[2].control)
+    expect(nextInList(list[2], 'button')).toBe(list[0].control)
+  })
+
+  it('finds nothing in a list of one', () => {
+    expect(nextInList(rows(true)[0], 'button')).toBeNull()
+    expect(nextInList(null, 'button')).toBeNull()
   })
 })
