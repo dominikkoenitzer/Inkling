@@ -16,6 +16,7 @@
   --color-muted: var(--text-muted);
   --color-faint: var(--text-faint);
   --color-edge: var(--border);
+  --color-edge-field: var(--border-field);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-text: var(--accent-text);
@@ -92,13 +93,14 @@
   --bg-active: rgba(40, 36, 30, 0.08);
   --text-primary: #1f1d1a;
   --text-muted: #625d56;
-  --text-faint: #736d65;
+  --text-faint: #6a645c;
   --border: #e8e4dd;
+  --border-field: #a08f73;
   --accent: #4155b9;
   --accent-soft: rgba(65, 85, 185, 0.1);
   --accent-text: #3a4daa;
   --accent-ink: #17204a;
-  --danger: #c2412f;
+  --danger: #b43b2c;
   --mark: #f8e9bc;
   --shadow: 0 12px 32px rgba(30, 26, 20, 0.1), 0 1px 3px rgba(30, 26, 20, 0.06);
   color-scheme: light;
@@ -114,13 +116,14 @@
   --bg-active: rgba(255, 250, 240, 0.08);
   --text-primary: #ece9e3;
   --text-muted: #aeaaa2;
-  --text-faint: #948f87;
+  --text-faint: #a29d95;
   --border: #2c2a27;
+  --border-field: #726d65;
   --accent: #8b9bf0;
   --accent-soft: rgba(139, 155, 240, 0.14);
   --accent-text: #a5b2f5;
   --accent-ink: #10163a;
-  --danger: #e2685a;
+  --danger: #e68174;
   --mark: #66572a;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   color-scheme: dark;
@@ -395,6 +398,11 @@ textarea:focus {
   color: inherit;
   border-radius: 3px;
   padding: 0 2px;
+}
+/* The dark highlight is too dark for muted, faint and link text, so text inside it takes the main colour. */
+:root[data-theme='dark'] .tiptap mark,
+:root[data-theme='dark'] .tiptap mark a {
+  color: var(--text-primary);
 }
 .tiptap a {
   color: var(--accent-text);
