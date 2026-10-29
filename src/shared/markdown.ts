@@ -69,7 +69,7 @@ function renderInline(nodes: PMNode[] | undefined): string {
     .join('')
 }
 
-function renderList(node: PMNode, indent: string, marker: (index: number, item: PMNode) => string): string {
+function renderList(node: PMNode, marker: (index: number, item: PMNode) => string): string {
   const items = node.content ?? []
   let out = ''
   let loose = false
@@ -79,45 +79,53 @@ function renderList(node: PMNode, indent: string, marker: (index: number, item: 
     // paragraph, code block, blockquote, nested list) is emitted indented so nothing is lost
     const firstParaIdx = kids.findIndex((k) => k.type === 'paragraph')
     const firstText = escapeBlockLines(firstParaIdx >= 0 ? renderInline(kids[firstParaIdx].content) : renderInline(item.content))
-    const blocks = renderBlocks(kids.filter((_k, ki) => ki !== firstParaIdx), indent + '  ')
+    const head = marker(i, item)
+    // every line of the other blocks moves in past the list marker, though not past a task's box
+    const pad = ' '.repeat(head.indexOf(' ') + 1)
+    const blocks = renderBlocks(kids.filter((_k, ki) => ki !== firstParaIdx))
+    // a rule right under the item's text would read as its heading underline; text dashes are escaped
+    const gap = blocks.startsWith('---') ? '\n\n' : '\n'
+    const indent = (text: string): string =>
+      text
+        .split('\n')
+        .map((l) => (l ? pad + l : l))
+        .join('\n')
     // an item holding more blocks than its first line is set off from the next by a blank line
-    out += (i === 0 ? '' : loose ? '\n\n' : '\n') + `${indent}${marker(i, item)}${firstText}` + (blocks ? '\n' + blocks : '')
+    out += (i === 0 ? '' : loose ? '\n\n' : '\n') + head + firstText.replace(/\n[\s\S]*/, indent) + (blocks ? gap + indent(blocks) : '')
     loose = blocks !== ''
   })
   return out
 }
 
 // blocks are joined by one blank line, so none is added inside a block; a code block ends in its fence
-function renderBlocks(nodes: PMNode[] | undefined, indent = ''): string {
+function renderBlocks(nodes: PMNode[] | undefined): string {
   return (nodes ?? [])
-    .map((n) => renderBlock(n, indent).replace(/\n+$/, ''))
+    .map((n) => renderBlock(n).replace(/\n+$/, ''))
     .filter((b) => b !== '')
     .join('\n\n')
 }
 
-function renderBlock(node: PMNode, indent = ''): string {
+function renderBlock(node: PMNode): string {
   switch (node.type) {
-    case 'paragraph': {
-      const text = escapeBlockLines(renderInline(node.content))
-      return text ? `${indent}${text}` : ''
-    }
+    case 'paragraph':
+      return escapeBlockLines(renderInline(node.content))
     case 'heading': {
       const level = Math.min(Math.max(Number(node.attrs?.level ?? 1), 1), 6)
       return `${'#'.repeat(level)} ${renderInline(node.content)}`
     }
     case 'bulletList':
-      return renderList(node, indent, () => '- ')
+      return renderList(node, () => '- ')
     case 'orderedList': {
       // a list number is read only up to nine digits, so a list that would pass that counts from 1
       const start = Number(node.attrs?.start ?? 1)
       const last = start + (node.content ?? []).length - 1
       const first = Number.isInteger(start) && start >= 0 && last <= 999999999 ? start : 1
-      return renderList(node, indent, (i) => `${first + i}. `)
+      return renderList(node, (i) => `${first + i}. `)
     }
     case 'taskList':
-      return renderList(node, indent, (_i, item) => (item.attrs?.checked ? '- [x] ' : '- [ ] '))
+      return renderList(node, (_i, item) => (item.attrs?.checked ? '- [x] ' : '- [ ] '))
     case 'blockquote':
-      return renderBlocks(node.content, indent)
+      return renderBlocks(node.content)
         .trimEnd()
         .split('\n')
         .map((l) => `> ${l}`.trimEnd())
@@ -132,7 +140,7 @@ function renderBlock(node: PMNode, indent = ''): string {
     case 'horizontalRule':
       return '---'
     default:
-      return renderBlocks(node.content, indent)
+      return renderBlocks(node.content)
   }
 }
 
