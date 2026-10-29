@@ -487,6 +487,11 @@ function backup(d: Database.Database, dir: string): void {
     .sort()
   while (files.length > 5) {
     const oldest = files.shift()!
-    fs.unlinkSync(join(backupsDir, oldest))
+    // One copy that cannot be removed must not stop the pruning, or every start would add one.
+    try {
+      fs.unlinkSync(join(backupsDir, oldest))
+    } catch (err) {
+      console.error('removing an old backup failed', err)
+    }
   }
 }

@@ -639,6 +639,26 @@ describe('the startup backup', () => {
     }
   })
 
+  it('keeps pruning past an old copy it cannot remove', () => {
+    const { dir, raw } = folder(true)
+    // Sorts first and cannot be unlinked, like a copy open in another program.
+    mkdirSync(join(dir, 'backups', 'inkling-0.db'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      openDb(dir)
+      expect(quiet).not.toHaveBeenCalledWith('backup failed', expect.anything())
+      expect(quiet).toHaveBeenCalledWith('removing an old backup failed', expect.any(Error))
+      const now = kept(dir)
+      expect(now.slice(0, 5)).toEqual(['inkling-0.db', ...earlier.slice(1)])
+      expect(now[5]).toMatch(/^inkling-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
+      expect(now).toHaveLength(6)
+    } finally {
+      quiet.mockRestore()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('has the copy on disk before it takes its place among the five', () => {
     const { dir, raw } = folder(false)
     const steps: string[] = []
