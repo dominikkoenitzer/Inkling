@@ -114,6 +114,8 @@ export default function App(): React.JSX.Element {
           type="button"
           onClick={() => useApp.getState().setPaletteOpen(true)}
           className="no-drag ml-4 flex h-8 w-80 items-center gap-2 rounded-md bg-hover px-3 text-sm text-muted transition-colors hover:text-ink"
+          // Zoomed in, the box shrinks to end where the window buttons start instead of running under them.
+          style={{ marginRight: 'calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))' }}
         >
           <Search size={15} />
           Search

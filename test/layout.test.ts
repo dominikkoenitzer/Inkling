@@ -20,6 +20,18 @@ describe('search palette', () => {
   })
 })
 
+describe('title bar', () => {
+  it('ends the search box before the window buttons, so it never runs under them when zoomed', async () => {
+    const { default: App } = await import('../src/renderer/src/App')
+    const { useApp } = await import('../src/renderer/src/stores/app')
+    // Rendering on the server reads the store's first state, so that is where the app is ready.
+    Object.assign(useApp.getInitialState(), { ready: true })
+    const html = renderToStaticMarkup(createElement(App))
+    const search = html.match(/<button[^>]*>(?:(?!<\/button>).)*Ctrl\+K/)?.[0] ?? ''
+    expect(search).toContain('margin-right:calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))')
+  })
+})
+
 describe('review session', () => {
   it('scrolls a card taller than a zoomed window instead of cutting off its top and the grades', () => {
     const deck = { id: 1, name: 'Throwaway' } as Deck
