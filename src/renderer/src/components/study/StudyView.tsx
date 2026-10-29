@@ -4,6 +4,7 @@ import { useApp, useVersion, bumpData } from '@/stores/app'
 import { peekNote } from '@/lib/calls'
 import { hasCloze } from '@shared/cloze'
 import { storedTime } from '@shared/day'
+import { dueIn } from '@shared/fsrs'
 import { Inky } from '@/components/Inky'
 import { Button, Code, IconBtn, inputCls, titleFieldCls } from '@/components/ui'
 import { editKey, ignoresShortcut } from '@/lib/keys'
@@ -318,7 +319,7 @@ function DeckDetail({ deck }: { deck: Deck }): React.JSX.Element {
 }
 
 function CardRow({ card }: { card: Card }): React.JSX.Element {
-  const due = storedTime(card.next_review_date) <= new Date().getTime()
+  const due = dueIn(storedTime(card.next_review_date), new Date().getTime())
   // A card made from a note line belongs to that line: an edit here would be undone by the
   // next Flashcards press, so it is shown as text and edited in the note.
   if (card.source_line !== null) {
@@ -326,14 +327,14 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
       <li className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
         <span className="min-w-0 truncate px-1.5 py-1 text-sm">{card.front}</span>
         <span className="min-w-0 truncate px-1.5 py-1 text-sm text-muted">{card.back}</span>
-        <span className="w-14 pr-8 text-right text-xs text-faint">{due ? 'due' : `in ${card.interval_days}d`}</span>
+        <span className="w-14 pr-8 text-right text-xs text-faint">{due}</span>
       </li>
     )
   }
   return <EditableCardRow card={card} due={due} />
 }
 
-function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX.Element {
+function EditableCardRow({ card, due }: { card: Card; due: string }): React.JSX.Element {
   const [front, setFront] = useState(card.front)
   const [back, setBack] = useState(card.back)
   const dirty = useRef(false)
@@ -403,7 +404,7 @@ function EditableCardRow({ card, due }: { card: Card; due: boolean }): React.JSX
         aria-label="Back"
       />
       <div className="flex items-center gap-1">
-        <span className="w-14 text-right text-xs text-faint">{due ? 'due' : `in ${card.interval_days}d`}</span>
+        <span className="w-14 text-right text-xs text-faint">{due}</span>
         <button
           type="button"
           title="Delete card"

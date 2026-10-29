@@ -7,6 +7,7 @@ import {
   clampParams,
   daysBetween,
   decayOf,
+  dueIn,
   factorOf,
   formatInterval,
   initialDifficulty,
@@ -282,6 +283,31 @@ describe('formatInterval', () => {
     expect(formatInterval(45)).toBe('1.5mo')
     expect(formatInterval(180)).toBe('6mo')
     expect(formatInterval(400)).toBe('1.1y')
+  })
+})
+
+describe('dueIn', () => {
+  const at = (ms: number): number => NOW.getTime() + ms
+  const HOUR = 3_600_000
+  const DAY = 24 * HOUR
+
+  it('says due once the time has come', () => {
+    expect(dueIn(at(0), NOW.getTime())).toBe('due')
+    expect(dueIn(at(-DAY), NOW.getTime())).toBe('due')
+  })
+
+  it('counts a relearning card in minutes, not as zero days', () => {
+    expect(dueIn(at(RELEARN_MINUTES * 60_000), NOW.getTime())).toBe(`in ${RELEARN_MINUTES}m`)
+    expect(dueIn(at(5 * HOUR + 1000), NOW.getTime())).toBe('in 5h')
+  })
+
+  it('counts the time left, not the whole interval', () => {
+    expect(dueIn(at(5 * DAY), NOW.getTime())).toBe('in 5d')
+    expect(dueIn(at(400 * DAY), NOW.getTime())).toBe('in 1.1y')
+  })
+
+  it('says nothing for an unreadable date', () => {
+    expect(dueIn(Number.NaN, NOW.getTime())).toBe('')
   })
 })
 
