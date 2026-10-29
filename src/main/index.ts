@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog, Menu, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
@@ -9,6 +9,7 @@ import * as repos from './repos'
 import { seedDemo } from './seed'
 import { startMcpHost } from './mcp/host'
 import { watchOutsideWrites } from './watch'
+import { plainMenu } from './menu'
 import { CHROME, TITLEBAR_HEIGHT, themeOf } from './window'
 
 // Test/demo hook: run against an isolated profile instead of the real one.
@@ -201,6 +202,7 @@ app.whenReady().then(() => {
   // Test hook: the profile is set up, no window needed (the MCP check uses it).
   if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
+  if (process.platform !== 'darwin') Menu.setApplicationMenu(Menu.buildFromTemplate(plainMenu(app.isPackaged)))
   createMainWindow()
   watchOutsideWrites()
 
