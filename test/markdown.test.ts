@@ -70,6 +70,15 @@ describe('tiptapDocToMarkdown', () => {
       tiptapDocToMarkdown(doc([{ type: 'codeBlock', attrs: { language: 'md' }, content: [text('x\n````\ny')] }]))
     ).toBe('`````md\nx\n````\ny\n`````\n')
   })
+
+  it('numbers an ordered list from its start', () => {
+    const items = [
+      { type: 'listItem', content: [para([text('five')])] },
+      { type: 'listItem', content: [para([text('six')])] }
+    ]
+    expect(tiptapDocToMarkdown(doc([{ type: 'orderedList', attrs: { start: 5 }, content: items }]))).toBe('5. five\n6. six\n')
+    expect(tiptapDocToMarkdown(doc([{ type: 'orderedList', attrs: { start: 1 }, content: items }]))).toBe('1. five\n2. six\n')
+  })
   it('returns empty string for an empty or malformed doc', () => {
     expect(tiptapDocToMarkdown(doc([para([])]))).toBe('')
     expect(tiptapDocToMarkdown(null)).toBe('')
