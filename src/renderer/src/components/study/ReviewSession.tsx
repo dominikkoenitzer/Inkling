@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
-import { endsReview, ignoresShortcut, reviewKey } from '@/lib/keys'
+import { endsReview, ignoresShortcut, onButton, reviewKey } from '@/lib/keys'
 import { loadDueCards, reviewCard } from '@/lib/calls'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
@@ -82,6 +82,8 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         }
         return
       }
+      // A focused button takes its own Space, so End session and the grades work from the keyboard.
+      if (e.key === ' ' && onButton(e)) return
       const action = reviewKey(e, showBack)
       if (!action) return
       e.preventDefault()
@@ -131,7 +133,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center-safe gap-6 overflow-y-auto p-8">
         {done ? (
           <div className="motion-rise flex flex-col items-center gap-2 text-center">
             <Inky size={44} className="mb-2" />
@@ -154,7 +156,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               onClick={() => setShowBack(true)}
               key={`${card.id}-${index}`}
             >
-              <div className="font-display whitespace-pre-line text-xl font-medium">
+              <div className="font-display whitespace-pre-line text-xl font-medium wrap-anywhere">
                 {card.cloze > 0 ? <ClozeText text={card.front} n={card.cloze} reveal={showBack} /> : card.front}
               </div>
               {showBack ? (
@@ -162,7 +164,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                 card.back && (
                   <>
                     <div className="motion-rise h-px w-16 bg-edge" />
-                    <div className="motion-rise whitespace-pre-line text-base text-muted">{card.back}</div>
+                    <div className="motion-rise whitespace-pre-line text-base text-muted wrap-anywhere">{card.back}</div>
                   </>
                 )
               ) : (
@@ -172,7 +174,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               )}
             </div>
             {showBack && (
-              <div className="motion-rise flex gap-2">
+              <div className="motion-rise flex flex-wrap justify-center gap-2">
                 {GRADES.map((g, i) => (
                   <button
                     key={g.grade}

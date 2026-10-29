@@ -144,6 +144,11 @@ export function stepRows(e: KeyboardEvent<HTMLElement>): void {
   next[Math.min(Math.max(stops(row).indexOf(from), 0), next.length - 1)]?.focus()
 }
 
+/** Whether a key lands on a focused button, which Space and Enter press by themselves. */
+export function onButton(e: { target: EventTarget | null }): boolean {
+  return (e.target as { tagName?: string } | null)?.tagName === 'BUTTON'
+}
+
 /**
  * Enter and Space on a focused `role="button"` element, the way a real button behaves. Keys
  * that start on a control nested inside it are left to that control.
