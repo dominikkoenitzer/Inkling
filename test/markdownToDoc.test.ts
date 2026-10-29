@@ -186,6 +186,7 @@ describe('round trip with tiptapDocToMarkdown', () => {
     })
   }
 
+  const inItem = [p(t('a')), { type: 'codeBlock', attrs: { language: 'ts' }, content: [t('x\n\n\n  y')] }, { type: 'blockquote', content: [p(t('q'))] }]
   const docs: Array<[string, Node]> = [
     ['headings and marks', doc(h(1, t('Big '), t('idea', italic)), p(t('Photo', bold), t('synthesis')), p(t('both', bold, italic)))],
     ['links and code', doc(p(t('see '), t('docs', link('https://example.com/a?b=1')), t(' and '), t('npm i', code), t(' or '), t('a`b', code)))],
@@ -199,6 +200,13 @@ describe('round trip with tiptapDocToMarkdown', () => {
     ['hard breaks', doc(p(t('one'), br, t('- two')), ul(li(p(t('a'), br, t('b')))))],
     ['card lines', doc(p(t('Term ::')), p(t('  first part')), p(t('Cell :: '), t('Smallest', bold), t(' unit')))],
     ['quote and rule', doc({ type: 'blockquote', content: [p(t('a')), p(t('b'))] }, { type: 'horizontalRule' }, p(t('end')))],
+    ['code and quote in a bullet', doc(ul(li(...inItem), li(p(t('b')))), p(t('after')))],
+    ['code and quote in an ordered item', doc(ol(li(...inItem), li(p(t('b')))), p(t('after')))],
+    ['code and quote in a task item', doc(tasks(task(false, ...inItem), task(true, p(t('b')))), p(t('after')))],
+    ['code and quote in a nested list', doc(ul(li(p(t('o')), ol(li(...inItem)), tasks(task(true, ...inItem))), li(p(t('c')))))],
+    ['code past the ninth item', doc({ ...ol(li(p(t('a'))), li(...inItem)), attrs: { start: 9 } })],
+    ['heading, rule and broken line in an item', doc(ul(li(p(t('a')), { type: 'horizontalRule' }, h(2, t('h')), p(t('b'), br, t('c')))))],
+    ['broken first line in a nested item', doc(ul(li(p(t('o')), ol(li(p(t('a'), br, t('b')), ...inItem.slice(1)))), li(p(t('c')))))],
     ['tildes and equals as text', doc(p(t('~~draft~~')), p(t('x==y and z==w')), p(t('~~~')), p(t('~~~ not code')), p(t('~5 min, a = b, a == b, a ~~ b')))],
     ['tildes and equals beside marks', doc(p(t('~gone~', strike), t(' and '), t('=x=', highlight)), p(t('a~'), t('b', strike), t('~c')), p(t('a =='), t('b', bold), t('== c')))],
     ['runs of three or more tildes or equals', doc(p(t('if a === b and c === d')), p(t('x ~~~ y ~~~~ z')), p(t('a === b', highlight)), p(t('a ~~~ b', strike)))]

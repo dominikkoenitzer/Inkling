@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { tiptapDocToMarkdown } from '../src/shared/markdown'
+import { markdownToDoc } from '../src/shared/markdownToDoc'
 
 const doc = (content: unknown[]): unknown => ({ type: 'doc', content })
 const text = (t: string, marks?: unknown[]): unknown => ({ type: 'text', text: t, ...(marks ? { marks } : {}) })
@@ -71,6 +72,24 @@ describe('tiptapDocToMarkdown', () => {
     ).toBe('`````md\nx\n````\ny\n`````\n')
   })
 
+  it('keeps every blank line inside a code block', () => {
+    const block = (code: string): unknown => ({ type: 'codeBlock', attrs: { language: null }, content: [text(code)] })
+    expect(tiptapDocToMarkdown(doc([block('a\n\n\nb')]))).toBe('```\na\n\n\nb\n```\n')
+    expect(tiptapDocToMarkdown(doc([block('\n\n\na\n\n\n'), para([text('after')])]))).toBe('```\n\n\n\na\n\n\n\n```\n\nafter\n')
+    for (const code of ['a\n\n\nb', '\n\n\na\n\n\n', 'a\n\n\n\n\nb\n\nc']) {
+      const d = doc([block(code), para([text('after')])])
+      expect(markdownToDoc(tiptapDocToMarkdown(d))).toEqual(d)
+    }
+  })
+
+  it('leaves one blank line after a block that ends in a hard break', () => {
+    const br = { type: 'hardBreak' }
+    const heading = { type: 'heading', attrs: { level: 1 }, content: [text('a'), br] }
+    const list = { type: 'bulletList', content: [{ type: 'listItem', content: [para([text('a'), br])] }] }
+    expect(tiptapDocToMarkdown(doc([heading, para([text('b')])]))).toBe('# a  \n\nb\n')
+    expect(tiptapDocToMarkdown(doc([list, para([text('b')])]))).toBe('- a  \n\nb\n')
+  })
+
   it('numbers an ordered list from its start', () => {
     const items = [
       { type: 'listItem', content: [para([text('five')])] },
@@ -100,6 +119,50 @@ describe('tiptapDocToMarkdown', () => {
     const md = tiptapDocToMarkdown(doc([{ type: 'bulletList', content: [item] }]))
     expect(md).toContain('- step one')
     expect(md).toContain('run()') // second block no longer dropped
+  })
+
+  it('writes every block of a list item inside the item', () => {
+    const code = { type: 'codeBlock', attrs: { language: null }, content: [text('x\n\n\ny')] }
+    const quote = { type: 'blockquote', content: [para([text('q')])] }
+    const body = [para([text('a')]), code, quote]
+    const li = (content: unknown[]): unknown => ({ type: 'listItem', content })
+    const task = (checked: boolean, content: unknown[]): unknown => ({ type: 'taskItem', attrs: { checked }, content })
+    const md = (list: unknown): string => tiptapDocToMarkdown(doc([list]))
+    expect(md({ type: 'bulletList', content: [li(body), li([para([text('b')])])] })).toBe(
+      '- a\n  ```\n  x\n\n\n  y\n  ```\n\n  > q\n\n- b\n'
+    )
+    expect(md({ type: 'orderedList', content: [li(body), li([para([text('b')])])] })).toBe(
+      '1. a\n   ```\n   x\n\n\n   y\n   ```\n\n   > q\n\n2. b\n'
+    )
+    expect(md({ type: 'taskList', content: [task(false, body), task(true, [para([text('b')])])] })).toBe(
+      '- [ ] a\n  ```\n  x\n\n\n  y\n  ```\n\n  > q\n\n- [x] b\n'
+    )
+    expect(md({ type: 'bulletList', content: [li([para([text('o')]), { type: 'bulletList', content: [li(body)] }]), li([para([text('c')])])] })).toBe(
+      '- o\n  - a\n    ```\n    x\n\n\n    y\n    ```\n\n    > q\n\n- c\n'
+    )
+    expect(md({ type: 'orderedList', attrs: { start: 9 }, content: [li([para([text('a')])]), li([para([text('b')]), code])] })).toBe(
+      '9. a\n10. b\n    ```\n    x\n\n\n    y\n    ```\n'
+    )
+  })
+
+  it('writes a heading, a rule and a broken line in a list item inside the item', () => {
+    const item = (content: unknown[]): unknown => ({ type: 'bulletList', content: [{ type: 'listItem', content }] })
+    const heading = { type: 'heading', attrs: { level: 2 }, content: [text('h')] }
+    const broken = para([text('b'), { type: 'hardBreak' }, text('c')])
+    expect(tiptapDocToMarkdown(doc([item([para([text('a')]), heading, broken])]))).toBe('- a\n  ## h\n\n  b  \n  c\n')
+    expect(tiptapDocToMarkdown(doc([item([para([text('a')]), item([broken])])]))).toBe('- a\n  - b  \n    c\n')
+    // a dash line right under the item's text would make that text a heading
+    expect(tiptapDocToMarkdown(doc([item([para([text('a')]), { type: 'horizontalRule' }])]))).toBe('- a\n\n  ---\n')
+  })
+
+  it('keeps a broken line and trailing spaces in code inside a quote', () => {
+    const quote = (content: unknown[]): unknown => doc([{ type: 'blockquote', content }])
+    const broken = quote([para([text('a'), { type: 'hardBreak' }, text('b')])])
+    const code = quote([{ type: 'codeBlock', attrs: { language: null }, content: [text('x  \n  \ny')] }, para([text('c')])])
+    expect(tiptapDocToMarkdown(broken)).toBe('> a  \n> b\n')
+    expect(tiptapDocToMarkdown(code)).toBe('> ```\n> x  \n>   \n> y\n> ```\n>\n> c\n')
+    expect(markdownToDoc(tiptapDocToMarkdown(broken))).toEqual(broken)
+    expect(markdownToDoc(tiptapDocToMarkdown(code))).toEqual(code)
   })
 
   it('escapes markdown metacharacters so literal text round-trips (regression)', () => {

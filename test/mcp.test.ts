@@ -841,7 +841,8 @@ describe('today', () => {
   it('shows open to-dos with dates and the decks with cards due', () => {
     const note = tools.createNote({ title: 'Lab', markdown: '- [ ] Late one\n- [ ] Plain one' })
     const [late] = tasksOf(note.id)
-    raw.prepare(`UPDATE tasks SET due_date = ? WHERE id = ?`).run('2020-01-02T12:00:00.000Z', late.id)
+    // stored like the app does, a local time as ISO UTC, so the local day stays 2 January in every zone
+    raw.prepare(`UPDATE tasks SET due_date = ? WHERE id = ?`).run(new Date(2020, 0, 2, 12).toISOString(), late.id)
     tools.addFlashcards({ deckName: 'Bio', cards: [{ front: 'Agar', back: 'A jelly' }] })
     tools.addFlashcards({ deckName: 'Done for now', cards: [{ front: 'x', back: 'y' }] })
     const later = (raw.prepare(`SELECT id FROM flashcards WHERE front = 'x'`).get() as { id: number }).id
