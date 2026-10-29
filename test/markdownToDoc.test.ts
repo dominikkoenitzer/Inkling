@@ -193,7 +193,8 @@ describe('round trip with tiptapDocToMarkdown', () => {
     ['card lines', doc(p(t('Term ::')), p(t('  first part')), p(t('Cell :: '), t('Smallest', bold), t(' unit')))],
     ['quote and rule', doc({ type: 'blockquote', content: [p(t('a')), p(t('b'))] }, { type: 'horizontalRule' }, p(t('end')))],
     ['tildes and equals as text', doc(p(t('~~draft~~')), p(t('x==y and z==w')), p(t('~~~')), p(t('~~~ not code')), p(t('~5 min, a = b, a == b, a ~~ b')))],
-    ['tildes and equals beside marks', doc(p(t('~gone~', strike), t(' and '), t('=x=', highlight)), p(t('a~'), t('b', strike), t('~c')), p(t('a =='), t('b', bold), t('== c')))]
+    ['tildes and equals beside marks', doc(p(t('~gone~', strike), t(' and '), t('=x=', highlight)), p(t('a~'), t('b', strike), t('~c')), p(t('a =='), t('b', bold), t('== c')))],
+    ['runs of three or more tildes or equals', doc(p(t('if a === b and c === d')), p(t('x ~~~ y ~~~~ z')), p(t('a === b', highlight)), p(t('a ~~~ b', strike)))]
   ]
   for (const [name, d] of docs) {
     it(`keeps the doc as it was: ${name}`, () => {
