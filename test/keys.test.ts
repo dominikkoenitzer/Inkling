@@ -14,9 +14,9 @@ import {
   keyLabel,
   onActivateKey,
   shortcutsKey,
-  takeShortcut,
-  tickTodo
+  takeShortcut
 } from '../src/renderer/src/lib/keys'
+import { tickTodo } from '../src/renderer/src/lib/editorKeys'
 import type { AppCommand } from '../src/shared/api'
 
 /** Just enough of a keydown event and its target to stand in for the DOM. */

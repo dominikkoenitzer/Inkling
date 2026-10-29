@@ -315,3 +315,15 @@ export function formatInterval(days: number): string {
   if (days < 365) return `${(days / 30).toFixed(days < 90 ? 1 : 0)}mo`
   return `${(days / 365).toFixed(1)}y`
 }
+
+/** Time left until a card is due, e.g. "in 10m", "in 5h", "in 12d"; "due" once it is. */
+export function dueIn(dueAt: number, now: number): string {
+  if (Number.isNaN(dueAt)) return ''
+  const ms = dueAt - now
+  if (ms <= 0) return 'due'
+  // Minutes round up, so the last minute before the hour reads "in 1h", never "in 60m".
+  if (ms <= 59 * 60_000) return `in ${Math.ceil(ms / 60_000)}m`
+  if (ms < 86_400_000) return `in ${Math.max(1, Math.floor(ms / 3_600_000))}h`
+  // Whole days, as the rating buttons pass them, so a part day never rounds up to "30d".
+  return `in ${formatInterval(Math.floor(ms / 86_400_000))}`
+}
