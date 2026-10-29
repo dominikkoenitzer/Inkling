@@ -154,7 +154,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
               onClick={() => setShowBack(true)}
               key={`${card.id}-${index}`}
             >
-              <div className="font-display whitespace-pre-line text-xl font-medium">
+              <div className="font-display whitespace-pre-line text-xl font-medium wrap-anywhere">
                 {card.cloze > 0 ? <ClozeText text={card.front} n={card.cloze} reveal={showBack} /> : card.front}
               </div>
               {showBack ? (
@@ -162,7 +162,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                 card.back && (
                   <>
                     <div className="h-px w-16 bg-edge" />
-                    <div className="whitespace-pre-line text-base text-muted">{card.back}</div>
+                    <div className="whitespace-pre-line text-base text-muted wrap-anywhere">{card.back}</div>
                   </>
                 )
               ) : (
