@@ -2,7 +2,7 @@
   "name": "inkling",
   "packageManager": "bun@1.4.2",
   "productName": "Inkling",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "A calm place for your notes, to-dos and flashcards",
   "main": "out/main/index.js",
   "author": "Inkling",

@@ -4,6 +4,15 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.4] - 2026-10-29
+
+### Added
+- Alt+Left, or Command+[ on a Mac, and the mouse's back button go back to the page before.
+
+### Fixed
+- Enter in a review shows the answer and then answers Good. Before, it did nothing until the
+  last screen.
+
 ## [0.9.3] - 2026-10-27
 
 ### Fixed
@@ -492,6 +501,7 @@ Final QA pass: 15 defects found by an adversarially-verified review and fixed:
 - Nested subtask text no longer folds into the parent task’s title.
 - A quick-add of only a date (e.g. `friday`) gets a neutral title instead of the raw date word.
 
+[0.9.4]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.4
 [0.9.3]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.3
 [0.9.2]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.2
 [0.9.1]: https://github.com/dominikkoenitzer/Inkling/releases/tag/v0.9.1
