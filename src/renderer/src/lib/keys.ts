@@ -95,6 +95,13 @@ export function canTab(el: { tabIndex: number; disabled?: boolean; closest: (sel
   return el.tabIndex >= 0 && !el.disabled && !el.closest('[inert]')
 }
 
+/** Back: Alt+Left, Command+[ on a Mac, or a keyboard's own Back key. */
+export function isBackKey(e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; shiftKey: boolean }, mac = isMac): boolean {
+  if (e.key === 'BrowserBack') return true
+  if (e.shiftKey || e.ctrlKey) return false
+  return mac ? e.metaKey && !e.altKey && e.key === '[' : e.altKey && !e.metaKey && e.key === 'ArrowLeft'
+}
+
 /** On the last screen of a review, Escape or Enter ends it; Enter on a button stays with the button. */
 export function endsReview(e: { key: string; target: EventTarget | null }): boolean {
   if (e.key === 'Escape') return true

@@ -9,7 +9,7 @@ import { ShortcutsModal } from '@/components/shell/ShortcutsModal'
 import { LogoMark } from '@/components/Inky'
 import { Toaster } from '@/components/ui'
 import { setTitlebar } from '@/lib/calls'
-import { ariaKeys, keyLabel, takeShortcut } from '@/lib/keys'
+import { ariaKeys, isBackKey, keyLabel, takeShortcut } from '@/lib/keys'
 import { usePresence } from '@/lib/motion'
 import type { AppCommand } from '@shared/api'
 
@@ -87,6 +87,30 @@ export default function App(): React.JSX.Element {
     const onKey = (e: KeyboardEvent): void => takeShortcut(e, runKey)
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Back by key or by the mouse's back button, unless a sheet in front has the keyboard.
+  useEffect(() => {
+    const overlayOpen = (): boolean => {
+      const app = useApp.getState()
+      return app.paletteOpen || app.settingsOpen || app.shortcutsOpen || document.querySelector('[data-sheet]') !== null
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.defaultPrevented || e.repeat || !isBackKey(e) || overlayOpen()) return
+      e.preventDefault()
+      useApp.getState().back()
+    }
+    const onMouse = (e: MouseEvent): void => {
+      if (e.button !== 3 || overlayOpen()) return
+      e.preventDefault()
+      useApp.getState().back()
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('mouseup', onMouse)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mouseup', onMouse)
+    }
   }, [])
 
   if (failed) {
