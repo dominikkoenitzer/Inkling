@@ -235,7 +235,7 @@ export const titleFieldCls =
   'font-display block w-full resize-none overflow-hidden bg-transparent field-sizing-content -my-[0.25em] py-[0.25em] text-[32px] font-semibold leading-tight tracking-tight'
 
 export const inputCls =
-  'w-full rounded-md border border-edge bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-accent'
+  'w-full rounded-md border border-edge-field bg-raised px-3 py-1.5 text-sm text-ink placeholder:text-faint focus:border-accent'
 
 export function Segmented<T extends string>({
   options,
