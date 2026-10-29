@@ -353,7 +353,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
     const res = await saveFile(`${base}.md`, md)
     if (res?.saved) {
-      say('Saved as Markdown', 2500)
+      say('Saved as Markdown.', 2500)
     } else if (res?.error) {
       say('Could not save the file.', 3500)
     }
