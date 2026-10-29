@@ -321,7 +321,8 @@ export function dueIn(dueAt: number, now: number): string {
   if (Number.isNaN(dueAt)) return ''
   const ms = dueAt - now
   if (ms <= 0) return 'due'
-  if (ms < 3_600_000) return `in ${Math.ceil(ms / 60_000)}m`
-  if (ms < 86_400_000) return `in ${Math.floor(ms / 3_600_000)}h`
+  // Minutes round up, so the last minute before the hour reads "in 1h", never "in 60m".
+  if (ms <= 59 * 60_000) return `in ${Math.ceil(ms / 60_000)}m`
+  if (ms < 86_400_000) return `in ${Math.max(1, Math.floor(ms / 3_600_000))}h`
   return `in ${formatInterval(ms / 86_400_000)}`
 }
