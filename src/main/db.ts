@@ -95,7 +95,13 @@ CREATE UNIQUE INDEX idx_cards_external ON flashcards(external_id) WHERE external
 export function openDb(dir: string): Database.Database {
   fs.mkdirSync(dir, { recursive: true })
   const file = join(dir, 'inkling.db')
-  db = new Database(file)
+  const d = new Database(file)
+  // Data from a newer Inkling stays exactly as it is: no journal switch, no backup, no write.
+  if ((d.pragma('user_version', { simple: true }) as number) > CURRENT_VERSION) {
+    d.close()
+    throw new NewerDataError()
+  }
+  db = d
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   // Back up first, so a migration that goes wrong still leaves the file as it was.
@@ -113,6 +119,18 @@ export function openDb(dir: string): Database.Database {
     console.error('settling the theme failed', err)
   }
   return db
+}
+
+/** The data on disk was written by a newer Inkling than this one. */
+class NewerDataError extends Error {
+  constructor() {
+    super('Your Inkling data is newer than this copy of Inkling. Update Inkling, then try again.')
+  }
+}
+
+/** What the start dialog says when `openDb` throws. */
+export function startFailure(err: unknown): string {
+  return err instanceof NewerDataError ? err.message : 'Inkling could not open its data.'
 }
 
 /** When 0.8.0 shipped (UTC). It reads a missing theme as light; 0.7 read it as dark. */
@@ -166,9 +184,7 @@ export function checkVersion(d: Database.Database): void {
   if (version < CURRENT_VERSION) {
     throw new Error('Inkling has to update its data first. Open Inkling once, then try again.')
   }
-  if (version > CURRENT_VERSION) {
-    throw new Error('Your Inkling data is newer than this copy of Inkling. Update Inkling, then try again.')
-  }
+  if (version > CURRENT_VERSION) throw new NewerDataError()
 }
 
 export function getDb(): Database.Database {
