@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { useApp, bumpData } from '@/stores/app'
 import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
-import { endsReview, ignoresShortcut } from '@/lib/keys'
+import { endsReview, ignoresShortcut, reviewKey } from '@/lib/keys'
 import { loadDueCards, reviewCard } from '@/lib/calls'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
@@ -67,7 +67,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
     }
   }
 
-  // keyboard: space reveals, 1-4 grade
+  // keyboard: Space or Enter reveals, Enter or 1-4 grade
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       // Typing "Chapter 2" in a field, or Esc in the palette, must not reveal, grade or end.
@@ -82,14 +82,12 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         }
         return
       }
-      if (e.key === ' ') {
-        e.preventDefault()
-        setShowBack(true)
-      }
-      if (showBack && ['1', '2', '3', '4'].includes(e.key)) {
-        void grade(GRADES[Number(e.key) - 1].grade)
-      }
-      if (e.key === 'Escape') finish()
+      const action = reviewKey(e, showBack)
+      if (!action) return
+      e.preventDefault()
+      if (action === 'reveal') setShowBack(true)
+      else if (action === 'finish') finish()
+      else void grade(action)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
