@@ -113,8 +113,13 @@ function renderBlock(node: PMNode, indent = ''): string {
     }
     case 'bulletList':
       return renderList(node, indent, () => '- ')
-    case 'orderedList':
-      return renderList(node, indent, (i) => `${i + 1}. `)
+    case 'orderedList': {
+      // a list number is read only up to nine digits, so a list that would pass that counts from 1
+      const start = Number(node.attrs?.start ?? 1)
+      const last = start + (node.content ?? []).length - 1
+      const first = Number.isInteger(start) && start >= 0 && last <= 999999999 ? start : 1
+      return renderList(node, indent, (i) => `${first + i}. `)
+    }
     case 'taskList':
       return renderList(node, indent, (_i, item) => (item.attrs?.checked ? '- [x] ' : '- [ ] '))
     case 'blockquote':
@@ -130,7 +135,9 @@ function renderBlock(node: PMNode, indent = ''): string {
     case 'codeBlock': {
       const lang = typeof node.attrs?.language === 'string' ? node.attrs.language : ''
       const code = (node.content ?? []).map((c) => c.text ?? '').join('')
-      return '```' + lang + '\n' + code + '\n```\n\n'
+      // a line of three or more backticks inside closes a fence no longer than it
+      const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) ?? []).map((run) => run.length + 1)))
+      return fence + lang + '\n' + code + '\n' + fence + '\n\n'
     }
     case 'horizontalRule':
       return '---\n\n'

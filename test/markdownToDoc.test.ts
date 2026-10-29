@@ -171,6 +171,10 @@ describe('markdownToDoc inline', () => {
 })
 
 describe('round trip with tiptapDocToMarkdown', () => {
+  it('keeps every item of an ordered list whose numbers would run past nine digits', () => {
+    const items = [li(p(t('one'))), li(p(t('two')))]
+    expect(markdownToDoc(tiptapDocToMarkdown(doc({ ...ol(...items), attrs: { start: 999999999 } })))).toEqual(doc(ol(...items)))
+  })
   const samples = [
     '# Biology\n\n## Cells\n\nPlain text with **bold**, *italic*, ~~gone~~, ==marked== and `code`.\n\nA [link](https://example.com) here.\n\nLine one  \nline two\n\nPhotosynthesis :: How plants turn light into energy\n\nMitochondria :: Makes the energy the cell runs on\n',
     '- one\n- two\n  - nested\n  - also nested\n\n- three\n\n1. first\n2. second\n\n- [ ] open task\n- [x] done task\n',
@@ -188,6 +192,9 @@ describe('round trip with tiptapDocToMarkdown', () => {
     ['nested lists', doc(ul(li(p(t('a')), ul(li(p(t('b'))), li(p(t('c'))))), li(p(t('d')))), ol(li(p(t('one'))), li(p(t('two')))))],
     ['task lists', doc(tasks(task(false, p(t('open'))), task(true, p(t('done')), tasks(task(false, p(t('sub')))))))],
     ['code block', doc({ type: 'codeBlock', attrs: { language: 'ts' }, content: [t('const a = 1\nconst b = 2')] }, p(t('after')))],
+    ['code block holding a fence line', doc({ type: 'codeBlock', attrs: { language: 'md' }, content: [t('a\n```\nb')] }, p(t('after')))],
+    ['code block holding a longer fence line', doc({ type: 'codeBlock', attrs: { language: null }, content: [t('```\nx\n````\ny')] })],
+    ['ordered list with a start', doc({ ...ol(li(p(t('five'))), li(p(t('six')))), attrs: { start: 5 } }, p(t('after')))],
     ['characters that need escaping', doc(p(t('a*b_c [x] \\ back`tick')), p(t('# not a heading')), p(t('1. not a list')), p(t('- not a bullet')), p(t('> not a quote')))],
     ['hard breaks', doc(p(t('one'), br, t('- two')), ul(li(p(t('a'), br, t('b')))))],
     ['card lines', doc(p(t('Term ::')), p(t('  first part')), p(t('Cell :: '), t('Smallest', bold), t(' unit')))],
