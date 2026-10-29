@@ -79,8 +79,27 @@ export function addCard(deckId: number, front: string, back: string): Card {
 }
 
 /**
+ * The hand-added cloze cards that were added together with `card`. Nothing stores that link,
+ * so the cloze cards in its deck with its front and back are dealt out in id order, each to
+ * the first set still missing its cloze number, and the set holding `card` is the one. A set
+ * never holds a number twice, so an edit can never delete a card of another set.
+ */
+function handSet(card: Card): Card[] {
+  const twins = getDb()
+    .prepare(`SELECT * FROM flashcards WHERE deck_id = ? AND source_line IS NULL AND cloze > 0 AND front = ? AND back = ? ORDER BY id`)
+    .all(card.deck_id, card.front, card.back) as Card[]
+  const sets: Card[][] = []
+  for (const c of twins) {
+    const set = sets.find((s) => !s.some((x) => x.cloze === c.cloze))
+    if (set) set.push(c)
+    else sets.push([c])
+  }
+  return sets.find((s) => s.some((x) => x.id === card.id)) ?? [card]
+}
+
+/**
  * Edits a card together with its cloze siblings: the cards of the same note line, or for
- * a card added by hand, the cloze cards in its deck that share its text.
+ * a card added by hand, the cards added with it (`handSet`).
  */
 export function updateCard(id: number, front: string, back: string): void {
   const db = getDb()
@@ -91,9 +110,7 @@ export function updateCard(id: number, front: string, back: string): void {
       card.source_line !== null
         ? (db.prepare(`SELECT * FROM flashcards WHERE deck_id = ? AND source_line = ? ORDER BY id`).all(card.deck_id, card.source_line) as Card[])
         : card.cloze > 0
-          ? (db
-              .prepare(`SELECT * FROM flashcards WHERE deck_id = ? AND source_line IS NULL AND cloze > 0 AND front = ? ORDER BY id`)
-              .all(card.deck_id, card.front) as Card[])
+          ? handSet(card)
           : [card]
     applyLine(card.deck_id, siblings, front, back, card.source_line, card.source_line !== null)
   })()
