@@ -121,6 +121,40 @@ describe('tiptapDocToMarkdown', () => {
     expect(md).toContain('run()') // second block no longer dropped
   })
 
+  it('writes every block of a list item inside the item', () => {
+    const code = { type: 'codeBlock', attrs: { language: null }, content: [text('x\n\n\ny')] }
+    const quote = { type: 'blockquote', content: [para([text('q')])] }
+    const body = [para([text('a')]), code, quote]
+    const li = (content: unknown[]): unknown => ({ type: 'listItem', content })
+    const task = (checked: boolean, content: unknown[]): unknown => ({ type: 'taskItem', attrs: { checked }, content })
+    const md = (list: unknown): string => tiptapDocToMarkdown(doc([list]))
+    expect(md({ type: 'bulletList', content: [li(body), li([para([text('b')])])] })).toBe(
+      '- a\n  ```\n  x\n\n\n  y\n  ```\n\n  > q\n\n- b\n'
+    )
+    expect(md({ type: 'orderedList', content: [li(body), li([para([text('b')])])] })).toBe(
+      '1. a\n   ```\n   x\n\n\n   y\n   ```\n\n   > q\n\n2. b\n'
+    )
+    expect(md({ type: 'taskList', content: [task(false, body), task(true, [para([text('b')])])] })).toBe(
+      '- [ ] a\n  ```\n  x\n\n\n  y\n  ```\n\n  > q\n\n- [x] b\n'
+    )
+    expect(md({ type: 'bulletList', content: [li([para([text('o')]), { type: 'bulletList', content: [li(body)] }]), li([para([text('c')])])] })).toBe(
+      '- o\n  - a\n    ```\n    x\n\n\n    y\n    ```\n\n    > q\n\n- c\n'
+    )
+    expect(md({ type: 'orderedList', attrs: { start: 9 }, content: [li([para([text('a')])]), li([para([text('b')]), code])] })).toBe(
+      '9. a\n10. b\n    ```\n    x\n\n\n    y\n    ```\n'
+    )
+  })
+
+  it('writes a heading, a rule and a broken line in a list item inside the item', () => {
+    const item = (content: unknown[]): unknown => ({ type: 'bulletList', content: [{ type: 'listItem', content }] })
+    const heading = { type: 'heading', attrs: { level: 2 }, content: [text('h')] }
+    const broken = para([text('b'), { type: 'hardBreak' }, text('c')])
+    expect(tiptapDocToMarkdown(doc([item([para([text('a')]), heading, broken])]))).toBe('- a\n  ## h\n\n  b  \n  c\n')
+    expect(tiptapDocToMarkdown(doc([item([para([text('a')]), item([broken])])]))).toBe('- a\n  - b  \n    c\n')
+    // a dash line right under the item's text would make that text a heading
+    expect(tiptapDocToMarkdown(doc([item([para([text('a')]), { type: 'horizontalRule' }])]))).toBe('- a\n\n  ---\n')
+  })
+
   it('escapes markdown metacharacters so literal text round-trips (regression)', () => {
     expect(tiptapDocToMarkdown(doc([para([text('- not a list')])]))).toBe('\\- not a list\n')
     expect(tiptapDocToMarkdown(doc([para([text('# not a heading')])]))).toBe('\\# not a heading\n')
