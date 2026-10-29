@@ -93,7 +93,10 @@ const summary = (n: Note): NoteSummary => ({ id: n.id, title: titleOf(n), update
 
 /** Reads a date or date-time the assistant gave, as the UTC ISO string rows are stamped with. */
 function isoFrom(value: string, field: string): string {
-  const t = Date.parse(value)
+  // A date alone is the start of that local day, as the dates `today` gives; Date.parse would take UTC.
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
+  const local = day ? new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3])) : null
+  const t = local ? (localDay(local) === day![0] ? local.getTime() : NaN) : Date.parse(value)
   if (Number.isNaN(t)) throw new Error(`${field} is not a date. Use ISO 8601, like 2026-10-16 or 2026-10-16T08:00:00Z.`)
   return new Date(t).toISOString()
 }
