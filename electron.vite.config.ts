@@ -30,6 +30,8 @@ export default defineConfig({
     // Single source of truth for the version shown in Settings. It used to be typed by
     // hand there and had already drifted a release behind package.json.
     define: { __APP_VERSION__: JSON.stringify(version) },
+    // electron-vite leaves the renderer unminified; kept names leave stack frames readable without source maps.
+    build: { minify: true, rolldownOptions: { output: { keepNames: true } } },
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src/renderer/src'),
