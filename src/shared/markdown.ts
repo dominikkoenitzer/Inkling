@@ -19,13 +19,13 @@ interface PMNode {
 function escapeInline(t: string): string {
   return t.replace(/([\\`*_[\]])/g, '\\$1')
 }
-// a ~ or = run opens or closes strike or highlight when two long beside a non-space, or when it touches a delimiter it joins
+// a ~ or = run opens or closes strike or highlight when two long beside a non-space, at any place when longer, or when it touches a delimiter it joins
 function escapeRuns(t: string, joinsBefore: boolean, joinsAfter: boolean): string {
   return t.replace(/~+|=+/g, (run: string, at: number) => {
     const start = at === 0
     const end = at + run.length === t.length
     const spaced = (start || /\s/.test(t[at - 1])) && (end || /\s/.test(t[at + run.length]))
-    return (start && joinsBefore) || (end && joinsAfter) || (run.length > 1 && !spaced) ? run.replace(/./g, '\\$&') : run
+    return (start && joinsBefore) || (end && joinsAfter) || run.length > 2 || (run.length === 2 && !spaced) ? run.replace(/./g, '\\$&') : run
   })
 }
 // escape a leading block marker so a line of plain text isn't reparsed as a heading, quote,

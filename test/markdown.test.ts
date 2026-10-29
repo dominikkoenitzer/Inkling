@@ -104,7 +104,7 @@ describe('tiptapDocToMarkdown', () => {
     expect(after('2) two')).toBe('intro  \n2\\) two\n')
     // a dash or equals line under text would make the line above a heading
     expect(after('---')).toBe('intro  \n\\---\n')
-    expect(after('===')).toBe('intro  \n\\===\n')
+    expect(after('===')).toBe('intro  \n\\=\\=\\=\n')
   })
 
   it('escapes block markers at the start of a list item', () => {
@@ -140,6 +140,13 @@ describe('tiptapDocToMarkdown', () => {
     expect(plain('~5 min, a = b, a == b, a ~~ b')).toBe('~5 min, a = b, a == b, a ~~ b\n')
   })
 
+  it('escapes a run of three or more ~ or = even with spaces on both sides', () => {
+    const plain = (t: string): string => tiptapDocToMarkdown(doc([para([text(t)])]))
+    expect(plain('if a === b and c === d')).toBe('if a \\=\\=\\= b and c \\=\\=\\= d\n')
+    expect(plain('x ~~~ y ~~~~ z')).toBe('x \\~\\~\\~ y \\~\\~\\~\\~ z\n')
+    expect(tiptapDocToMarkdown(doc([para([text('a === b', [{ type: 'highlight' }])])]))).toBe('==a \\=\\=\\= b==\n')
+  })
+
   it('escapes a ~ or = that would join the delimiter of a mark beside it', () => {
     const strike = [{ type: 'strike' }]
     expect(tiptapDocToMarkdown(doc([para([text('~gone~', strike), text(' and '), text('=x=', [{ type: 'highlight' }])])]))).toBe(
@@ -149,8 +156,8 @@ describe('tiptapDocToMarkdown', () => {
   })
 
   it('escapes a line that would open a ~~~ fence', () => {
-    expect(tiptapDocToMarkdown(doc([para([text('~~~')])]))).toBe('\\~~~\n')
-    expect(tiptapDocToMarkdown(doc([para([text('~~~ not code')])]))).toBe('\\~~~ not code\n')
-    expect(tiptapDocToMarkdown(doc([para([text('intro'), { type: 'hardBreak' }, text('  ~~~~')])]))).toBe('intro  \n  \\~~~~\n')
+    expect(tiptapDocToMarkdown(doc([para([text('~~~')])]))).toBe('\\~\\~\\~\n')
+    expect(tiptapDocToMarkdown(doc([para([text('~~~ not code')])]))).toBe('\\~\\~\\~ not code\n')
+    expect(tiptapDocToMarkdown(doc([para([text('intro'), { type: 'hardBreak' }, text('  ~~~~')])]))).toBe('intro  \n  \\~\\~\\~\\~\n')
   })
 })
