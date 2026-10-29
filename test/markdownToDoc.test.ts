@@ -191,11 +191,26 @@ describe('round trip with tiptapDocToMarkdown', () => {
     ['characters that need escaping', doc(p(t('a*b_c [x] \\ back`tick')), p(t('# not a heading')), p(t('1. not a list')), p(t('- not a bullet')), p(t('> not a quote')))],
     ['hard breaks', doc(p(t('one'), br, t('- two')), ul(li(p(t('a'), br, t('b')))))],
     ['card lines', doc(p(t('Term ::')), p(t('  first part')), p(t('Cell :: '), t('Smallest', bold), t(' unit')))],
-    ['quote and rule', doc({ type: 'blockquote', content: [p(t('a')), p(t('b'))] }, { type: 'horizontalRule' }, p(t('end')))]
+    ['quote and rule', doc({ type: 'blockquote', content: [p(t('a')), p(t('b'))] }, { type: 'horizontalRule' }, p(t('end')))],
+    ['tildes and equals as text', doc(p(t('~~draft~~')), p(t('x==y and z==w')), p(t('~~~')), p(t('~~~ not code')), p(t('~5 min, a = b, a == b, a ~~ b')))],
+    ['tildes and equals beside marks', doc(p(t('~gone~', strike), t(' and '), t('=x=', highlight)), p(t('a~'), t('b', strike), t('~c')), p(t('a =='), t('b', bold), t('== c')))],
+    ['runs of three or more tildes or equals', doc(p(t('if a === b and c === d')), p(t('x ~~~ y ~~~~ z')), p(t('a === b', highlight)), p(t('a ~~~ b', strike)))]
   ]
   for (const [name, d] of docs) {
     it(`keeps the doc as it was: ${name}`, () => {
       expect(markdownToDoc(tiptapDocToMarkdown(d))).toEqual(d)
     })
   }
+
+  // Markdown cannot mark a space at a mark's edge, so the spaces come back plain around the marked text.
+  for (const mark of [bold, italic, strike, highlight]) {
+    it(`keeps the text and the ${mark.type} of a run with spaces at its edges`, () => {
+      const back = markdownToDoc(tiptapDocToMarkdown(doc(p(t('a'), t(' b ', mark), t('c'), t(' d e  ', mark), t('f')))))
+      expect(back).toEqual(doc(p(t('a '), t('b', mark), t(' c '), t('d e', mark), t('  f'))))
+    })
+  }
+  it('keeps the text and marks of a link with a bold run that ends in a space', () => {
+    const d = doc(p(t('see '), t('the docs ', bold, link('https://example.com')), t('now')))
+    expect(markdownToDoc(tiptapDocToMarkdown(d))).toEqual(doc(p(t('see '), t('the docs', link('https://example.com'), bold), t(' ', link('https://example.com')), t('now'))))
+  })
 })
