@@ -115,6 +115,23 @@ describe('listNotes', () => {
     expect(notes[0]).toEqual({ id: b.id, title: 'New', updatedAt: '2026-03-01T00:00:00.000Z' })
     expect(tools.listNotes({ limit: 2 }).notes.map((n) => n.id)).toEqual([b.id, c.id])
   })
+
+  it('reads a date alone as the start of the local day', () => {
+    const zone = process.env.TZ
+    process.env.TZ = 'Europe/Zurich'
+    try {
+      const before = tools.createNote({ title: 'Before midnight' })
+      const after = tools.createNote({ title: 'After midnight' })
+      raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-22T21:30:00.000Z', before.id)
+      raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-22T22:30:00.000Z', after.id)
+      expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title)).toEqual(['After midnight'])
+      expect(tools.listNotes({ changedSince: '2026-10-22T23:00:00Z' }).notes).toEqual([])
+      expect(() => tools.listNotes({ changedSince: '2026-02-30' })).toThrow(/not a date/)
+    } finally {
+      if (zone === undefined) delete process.env.TZ
+      else process.env.TZ = zone
+    }
+  })
 })
 
 describe('readNote', () => {
@@ -590,7 +607,8 @@ describe('listNotes paging, recent changes and the trash', () => {
     const b = tools.createNote({ title: 'B' })
     const c = tools.createNote({ title: 'C' })
     raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-01-01T00:00:00.000Z', a.id)
-    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-02-01T00:00:00.000Z', b.id)
+    // B at the start of 1 February in the zone the tests run in, where a date alone begins.
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run(new Date(2026, 1, 1).toISOString(), b.id)
     raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-03-01T00:00:00.000Z', c.id)
 
     expect(tools.listNotes({ limit: 2 })).toMatchObject({ more: true })
@@ -612,7 +630,8 @@ describe('listNotes paging, recent changes and the trash', () => {
     expect(tools.listNotes({ changedSince: '2026-10-23T06:00:00Z' }).notes.map((n) => n.title)).toEqual(['Late'])
     expect(tools.listNotes({ changedSince: '2026-10-23T05:45:00+00:00' }).notes.map((n) => n.title)).toEqual(['Late'])
     expect(tools.listNotes({ changedSince: '2026-10-23T06:00:01Z' }).notes).toEqual([])
-    expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
+    // A date alone is local midnight, so the day before both stamps takes in both in any zone.
+    expect(tools.listNotes({ changedSince: '2026-10-22' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
   })
 
   it('lists the latest change first in either stored form', () => {
@@ -663,6 +682,18 @@ describe('sections', () => {
     tools.replaceNoteSection({ id: note.id, heading: 'A', markdown: '' })
     expect(tools.readNote({ id: note.id }).markdown.startsWith('## A\n\n## B')).toBe(true)
     expect(() => tools.replaceNoteSection({ id: note.id, heading: 'B', markdown: 'x' })).toThrow(/2 headings are called "B"/)
+  })
+
+  it('keeps the underline on the start and end of a section that stay as they were', () => {
+    const note = tools.createNote({ title: 'Plan' })
+    const under = (text: string): Node => ({ type: 'text', text, marks: [{ type: 'underline' }] as never })
+    const para = (...content: Node[]): Node => ({ type: 'paragraph', content })
+    const heading: Node = { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'A' }] }
+    const doc = { type: 'doc', content: [heading, para(under('First')), para({ type: 'text', text: 'middle' }), para(under('Last'))] }
+    repos.updateNote(note.id, { content: JSON.stringify(doc) })
+
+    tools.replaceNoteSection({ id: note.id, heading: 'A', markdown: 'First\nmiddle, longer\nLast' })
+    expect(stored(note.id).content).toEqual([heading, para(under('First')), para({ type: 'text', text: 'middle, longer' }), para(under('Last'))])
   })
 })
 
@@ -715,6 +746,39 @@ describe('editNote', () => {
     expect(tools.readNote({ id: note.id }).markdown).toBe('one\n\nfour words\n')
     tools.editNote({ id: note.id, oldText: 'one\n\n', newText: 'one ' })
     expect(tools.readNote({ id: note.id }).markdown).toBe('one four words\n')
+  })
+
+  it('keeps the underline on text the edit leaves as it was', () => {
+    const note = tools.createNote({ title: 'Lab' })
+    const text = (t: string, ...marks: string[]): Node =>
+      marks.length > 0 ? { type: 'text', text: t, marks: marks.map((type) => ({ type })) as never } : { type: 'text', text: t }
+    const doc = (...content: Node[]): string => JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content }] })
+    repos.updateNote(note.id, { content: doc(text('Hello '), text('world', 'underline'), text(' and '), text('more', 'bold', 'underline', 'highlight')) })
+
+    tools.editNote({ id: note.id, oldText: 'Hello', newText: 'Hi' })
+    expect(stored(note.id).content![0].content).toEqual([
+      text('Hi '),
+      text('world', 'underline'),
+      text(' and '),
+      text('more', 'bold', 'underline', 'highlight')
+    ])
+    tools.editNote({ id: note.id, oldText: 'world', newText: 'word' })
+    expect(stored(note.id).content![0].content!.slice(0, 2)).toEqual([text('Hi '), text('word', 'underline')])
+    tools.editNote({ id: note.id, oldText: 'word', newText: 'earth' })
+    expect(stored(note.id).content![0].content![0]).toEqual(text('Hi earth and '))
+  })
+
+  it('keeps the blank lines and the blocks an edit across blocks leaves as they were', () => {
+    const note = tools.createNote({ title: 'Lab' })
+    const para = (text?: string): Node => (text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' })
+    const alpha: Node = { type: 'paragraph', content: [{ type: 'text', text: 'Alpha', marks: [{ type: 'underline' }] as never }] }
+    const doc = { type: 'doc', content: [alpha, para(), para('Beta'), para(), para(), para('Gamma'), para('Delta')] }
+    repos.updateNote(note.id, { content: JSON.stringify(doc) })
+
+    tools.editNote({ id: note.id, oldText: 'Alpha\n\nBeta\n\nGamma', newText: 'Alpha\n\nBeta, longer\n\nGamma' })
+    expect(stored(note.id).content).toEqual([alpha, para(), para('Beta, longer'), para(), para(), para('Gamma'), para('Delta')])
+    tools.editNote({ id: note.id, oldText: 'Beta, longer\n\nGamma', newText: 'Gamma' })
+    expect(stored(note.id).content).toEqual([alpha, para(), para('Gamma'), para('Delta')])
   })
 })
 
