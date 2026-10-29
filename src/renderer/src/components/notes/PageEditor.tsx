@@ -232,8 +232,12 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     lastItemsRef.current = extractNoteTaskItems(safeParse(stored.content) as Record<string, unknown>)
   }
 
-  // Tracked, so deleting this note waits for the save to land.
-  const doSave = (): Promise<boolean> => saveNote(noteId, save())
+  // Tracked, so deleting this note waits for the save to land. A failed one takes "Saved" down.
+  const doSave = (): Promise<boolean> =>
+    saveNote(noteId, save()).then((saved) => {
+      if (!saved) setSavedAt(null)
+      return saved
+    })
 
   /** Puts a stored note into the editor, kept out of the undo history. */
   const showNote = (note: Note): void => {
