@@ -115,6 +115,23 @@ describe('listNotes', () => {
     expect(notes[0]).toEqual({ id: b.id, title: 'New', updatedAt: '2026-03-01T00:00:00.000Z' })
     expect(tools.listNotes({ limit: 2 }).notes.map((n) => n.id)).toEqual([b.id, c.id])
   })
+
+  it('reads a date alone as the start of the local day', () => {
+    const zone = process.env.TZ
+    process.env.TZ = 'Europe/Zurich'
+    try {
+      const before = tools.createNote({ title: 'Before midnight' })
+      const after = tools.createNote({ title: 'After midnight' })
+      raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-22T21:30:00.000Z', before.id)
+      raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-22T22:30:00.000Z', after.id)
+      expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title)).toEqual(['After midnight'])
+      expect(tools.listNotes({ changedSince: '2026-10-22T23:00:00Z' }).notes).toEqual([])
+      expect(() => tools.listNotes({ changedSince: '2026-02-30' })).toThrow(/not a date/)
+    } finally {
+      if (zone === undefined) delete process.env.TZ
+      else process.env.TZ = zone
+    }
+  })
 })
 
 describe('readNote', () => {
