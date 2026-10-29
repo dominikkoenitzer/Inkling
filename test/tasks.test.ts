@@ -209,6 +209,20 @@ describe('an empty checkbox line', () => {
     expect(openTasks().map((t) => t.title)).toEqual(['Buy agar', 'Book the lab'])
   })
 
+  it('drops the row an older build made for it when another note holds null', () => {
+    const odd = createNote({ notebook_id: 1, title: 'Old', content: docOf() })
+    raw.prepare(`UPDATE notes SET content = 'null' WHERE id = ?`).run(odd.id)
+    raw.exec(`INSERT INTO tasks (notebook_id, note_id, title, status) VALUES (1, ${odd.id}, 'Untitled task', 'todo')`)
+    const { noteId, ids } = linkedNote()
+    raw.exec(`INSERT INTO tasks (notebook_id, note_id, title, status) VALUES (1, ${noteId}, 'Untitled task', 'todo')`)
+    const blank = (raw.prepare(`SELECT MAX(id) AS id FROM tasks`).get() as { id: number }).id
+    raw.prepare(`UPDATE notes SET content = ? WHERE id = ?`).run(docOf(list(item(ids[0], 'Buy agar'), item(blank, ''), item(ids[1], 'Book the lab'))), noteId)
+
+    expect(dropBlankTasks()).toBe(1)
+
+    expect((raw.prepare(`SELECT title FROM tasks WHERE id = ?`).get(blank) as { title: string }).title).toBe('')
+  })
+
   it('keeps a to-do someone named "Untitled task"', () => {
     const note = createNote({ notebook_id: 1, title: 'Lab', content: docOf(list(item(null, 'Untitled task'))) })
     syncNoteTasks(note.id, 1, itemsOf(note.content))
