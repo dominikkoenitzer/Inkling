@@ -301,6 +301,13 @@ describe('dueIn', () => {
     expect(dueIn(at(5 * HOUR + 1000), NOW.getTime())).toBe('in 5h')
   })
 
+  it('goes from 59 minutes to one hour', () => {
+    expect(dueIn(at(1000), NOW.getTime())).toBe('in 1m')
+    expect(dueIn(at(59 * 60_000), NOW.getTime())).toBe('in 59m')
+    expect(dueIn(at(HOUR - 100), NOW.getTime())).toBe('in 1h')
+    expect(dueIn(at(HOUR), NOW.getTime())).toBe('in 1h')
+  })
+
   it('counts the time left, not the whole interval', () => {
     expect(dueIn(at(5 * DAY), NOW.getTime())).toBe('in 5d')
     expect(dueIn(at(400 * DAY), NOW.getTime())).toBe('in 1.1y')
