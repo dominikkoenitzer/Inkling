@@ -16,6 +16,14 @@ function resolveLocal(from: string, spec: string): string | null {
   return file ?? null
 }
 
+/** The static, non-type imports of one file. */
+function importsOf(source: string): string[] {
+  return [
+    ...Array.from(source.matchAll(/^(?:import|export)\s+(?!type\s)[^'"]*?\sfrom\s+(['"])([^'"]+)\1/gm), (m) => m[2]),
+    ...Array.from(source.matchAll(/^import\s+(['"])([^'"]+)\1/gm), (m) => m[2])
+  ]
+}
+
 /** Every package the renderer loads before any lazy chunk: static, non-type imports from the entry on. */
 function firstLoadPackages(entry: string): Set<string> {
   const seen = new Set<string>()
@@ -23,12 +31,7 @@ function firstLoadPackages(entry: string): Set<string> {
   const walk = (file: string): void => {
     if (seen.has(file)) return
     seen.add(file)
-    const source = readFileSync(file, 'utf8')
-    const specs = [
-      ...Array.from(source.matchAll(/^(?:import|export)\s+(?!type\s)[^'"]*?\sfrom\s+'([^']+)'/gm), (m) => m[1]),
-      ...Array.from(source.matchAll(/^import\s+'([^']+)'/gm), (m) => m[1])
-    ]
-    for (const spec of specs) {
+    for (const spec of importsOf(readFileSync(file, 'utf8'))) {
       const local = resolveLocal(file, spec)
       if (local) walk(local)
       else if (!spec.startsWith('.') && !spec.startsWith('@/') && !spec.startsWith('@shared/')) packages.add(spec)
@@ -39,6 +42,11 @@ function firstLoadPackages(entry: string): Set<string> {
 }
 
 describe('first load', () => {
+  it('reads imports in either quote style', () => {
+    const source = ['import { a } from "@tiptap/core"', "import './b.css'", 'import "c"', "export * from 'd'"].join('\n')
+    expect(importsOf(source).sort()).toEqual(['./b.css', '@tiptap/core', 'c', 'd'])
+  })
+
   it('leaves the editor libraries to the note chunk', () => {
     const packages = Array.from(firstLoadPackages(resolve(root, 'src/renderer/src/main.tsx')))
     expect(packages).toContain('react')
