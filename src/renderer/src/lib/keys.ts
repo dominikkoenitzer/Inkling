@@ -102,6 +102,19 @@ export function endsReview(e: { key: string; target: EventTarget | null }): bool
   return e.key === 'Enter' && tag !== 'BUTTON' && tag !== 'A'
 }
 
+/**
+ * What a key does on a card under review: Space or Enter shows the answer, then Enter or 3
+ * grades it Good and 1 to 4 pick a grade; Esc stops. Enter on a focused button stays with it.
+ */
+export function reviewKey(e: { key: string; target: EventTarget | null }, showBack: boolean): 'reveal' | 'again' | 'hard' | 'good' | 'easy' | 'finish' | null {
+  if (e.key === 'Escape') return 'finish'
+  const tag = (e.target as { tagName?: string } | null)?.tagName
+  const enter = e.key === 'Enter' && tag !== 'BUTTON' && tag !== 'A'
+  if (!showBack) return e.key === ' ' || enter ? 'reveal' : null
+  if (enter) return 'good'
+  return (['again', 'hard', 'good', 'easy'] as const)[Number(e.key) - 1] ?? null
+}
+
 /** The row Up or Down moves to from row `at` of `count`; null when the key is not for the rows. */
 export function nextRow(at: number, count: number, key: string): number | null {
   if (at < 0 || (key !== 'ArrowDown' && key !== 'ArrowUp')) return null

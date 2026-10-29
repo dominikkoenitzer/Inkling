@@ -28,7 +28,8 @@ const GROUPS: Array<{ title: string; rows: Array<[string, string[]]> }> = [
   {
     title: 'Reviewing cards',
     rows: [
-      ['Show the answer', ['Space']],
+      ['Show the answer', ['Space', 'Enter']],
+      ['Good', ['Enter']],
       ['Again, Hard, Good, Easy', ['1', '2', '3', '4']],
       ['Stop', ['Esc']]
     ]
