@@ -98,8 +98,10 @@ function renderBlock(node: PMNode, indent = ''): string {
     case 'bulletList':
       return renderList(node, indent, () => '- ')
     case 'orderedList': {
+      // a list number is read only up to nine digits, so a list that would pass that counts from 1
       const start = Number(node.attrs?.start ?? 1)
-      const first = Number.isInteger(start) && start >= 0 ? start : 1
+      const last = start + (node.content ?? []).length - 1
+      const first = Number.isInteger(start) && start >= 0 && last <= 999999999 ? start : 1
       return renderList(node, indent, (i) => `${first + i}. `)
     }
     case 'taskList':

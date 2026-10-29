@@ -79,6 +79,16 @@ describe('tiptapDocToMarkdown', () => {
     expect(tiptapDocToMarkdown(doc([{ type: 'orderedList', attrs: { start: 5 }, content: items }]))).toBe('5. five\n6. six\n')
     expect(tiptapDocToMarkdown(doc([{ type: 'orderedList', attrs: { start: 1 }, content: items }]))).toBe('1. five\n2. six\n')
   })
+  it('numbers an ordered list from 1 when a number would run past nine digits', () => {
+    const items = [
+      { type: 'listItem', content: [para([text('five')])] },
+      { type: 'listItem', content: [para([text('six')])] }
+    ]
+    const from = (start: number): string => tiptapDocToMarkdown(doc([{ type: 'orderedList', attrs: { start }, content: items }]))
+    expect(from(999999998)).toBe('999999998. five\n999999999. six\n')
+    expect(from(999999999)).toBe('1. five\n2. six\n')
+    expect(from(1234567890)).toBe('1. five\n2. six\n')
+  })
   it('returns empty string for an empty or malformed doc', () => {
     expect(tiptapDocToMarkdown(doc([para([])]))).toBe('')
     expect(tiptapDocToMarkdown(null)).toBe('')
