@@ -56,11 +56,14 @@ function renderInline(nodes: PMNode[] | undefined): string {
       const has = (m: string): boolean => marks.some((x) => x.type === m)
       // inline code can't contain other markdown, so keep it raw and return early
       if (has('code')) return codeSpan(n.text ?? '')
-      let t = escapeInline(n.text ?? '')
-      if (has('bold')) t = `**${t}**`
-      if (has('italic')) t = `*${t}*`
-      if (has('strike')) t = `~~${t}~~`
-      if (has('highlight')) t = `==${t}==`
+      // a delimiter next to a space neither opens nor closes, so the edge spaces go outside it
+      const [, lead, core, trail] = /^(\s*)([\s\S]*?)(\s*)$/.exec(escapeInline(n.text ?? ''))!
+      let t = core
+      if (t && has('bold')) t = `**${t}**`
+      if (t && has('italic')) t = `*${t}*`
+      if (t && has('strike')) t = `~~${t}~~`
+      if (t && has('highlight')) t = `==${t}==`
+      t = lead + t + trail
       const link = marks.find((x) => x.type === 'link')
       const href = link?.attrs?.href
       if (typeof href === 'string' && href) t = `[${t}](${href})`
