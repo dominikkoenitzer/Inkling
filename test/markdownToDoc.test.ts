@@ -171,6 +171,10 @@ describe('markdownToDoc inline', () => {
 })
 
 describe('round trip with tiptapDocToMarkdown', () => {
+  it('keeps every item of an ordered list whose numbers would run past nine digits', () => {
+    const items = [li(p(t('one'))), li(p(t('two')))]
+    expect(markdownToDoc(tiptapDocToMarkdown(doc({ ...ol(...items), attrs: { start: 999999999 } })))).toEqual(doc(ol(...items)))
+  })
   const samples = [
     '# Biology\n\n## Cells\n\nPlain text with **bold**, *italic*, ~~gone~~, ==marked== and `code`.\n\nA [link](https://example.com) here.\n\nLine one  \nline two\n\nPhotosynthesis :: How plants turn light into energy\n\nMitochondria :: Makes the energy the cell runs on\n',
     '- one\n- two\n  - nested\n  - also nested\n\n- three\n\n1. first\n2. second\n\n- [ ] open task\n- [x] done task\n',
