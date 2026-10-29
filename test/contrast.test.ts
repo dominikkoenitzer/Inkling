@@ -30,6 +30,12 @@ const token = (theme: Theme, name: string): Rgba => {
   if (!value) throw new Error(`no ${name} in the ${theme} theme`)
   return parse(value)
 }
+// The colour a rule gives an element, its theme's own rule first; undefined when it inherits.
+const ruleColour = (theme: Theme, selector: string): Rgba | undefined => {
+  const value = declsOf(`:root[data-theme='${theme}'] ${selector}`).color ?? declsOf(selector).color
+  const v = value?.match(/^var\((--[\w-]+)\)$/)
+  return v ? token(theme, v[1]) : undefined
+}
 
 const over = (top: Rgba, under: Rgba): Rgba => [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1) as Rgba
 const luminance = (c: Rgba): number => {
@@ -62,6 +68,17 @@ describe.each<Theme>(['light', 'dark'])('%s theme contrast', (theme) => {
     const pairs = texts.flatMap((fg) =>
       surfaces.flatMap((bg) => fills.map((fill): [string, Rgba, Rgba] => [`${fg} on ${fill} over ${bg}`, t(fg), over(t(fill), t(bg))]))
     )
+    expect(below(pairs, 4.5)).toEqual([])
+  })
+
+  it('keeps text inside a highlight at 4.5:1', () => {
+    const mark = t('--mark')
+    const inMark = ruleColour(theme, '.tiptap mark')
+    const link = ruleColour(theme, '.tiptap a') ?? t('--accent-text')
+    const pairs: Array<[string, Rgba, Rgba]> = ['--text-primary', '--text-muted', '--text-faint'].map((fg) => [`${fg} in a highlight`, inMark ?? t(fg), mark])
+    // A link can sit around a highlight or inside one.
+    pairs.push(['highlight inside a link', inMark ?? link, mark])
+    pairs.push(['link inside a highlight', ruleColour(theme, '.tiptap mark a') ?? link, mark])
     expect(below(pairs, 4.5)).toEqual([])
   })
 
