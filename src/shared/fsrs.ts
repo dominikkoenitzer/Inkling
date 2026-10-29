@@ -315,3 +315,13 @@ export function formatInterval(days: number): string {
   if (days < 365) return `${(days / 30).toFixed(days < 90 ? 1 : 0)}mo`
   return `${(days / 365).toFixed(1)}y`
 }
+
+/** Time left until a card is due, e.g. "in 10m", "in 5h", "in 12d"; "due" once it is. */
+export function dueIn(dueAt: number, now: number): string {
+  if (Number.isNaN(dueAt)) return ''
+  const ms = dueAt - now
+  if (ms <= 0) return 'due'
+  if (ms < 3_600_000) return `in ${Math.ceil(ms / 60_000)}m`
+  if (ms < 86_400_000) return `in ${Math.floor(ms / 3_600_000)}h`
+  return `in ${formatInterval(ms / 86_400_000)}`
+}
