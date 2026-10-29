@@ -327,7 +327,7 @@ function CardRow({ card }: { card: Card }): React.JSX.Element {
       <li className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 border-b border-edge py-1.5">
         <span className="min-w-0 truncate px-1.5 py-1 text-sm">{card.front}</span>
         <span className="min-w-0 truncate px-1.5 py-1 text-sm text-muted">{card.back}</span>
-        <span className="w-14 pr-8 text-right text-xs text-faint">{due}</span>
+        <span className="mr-8 w-14 text-right text-xs text-faint">{due}</span>
       </li>
     )
   }
