@@ -32,6 +32,24 @@ export function StudyView(): React.JSX.Element {
     }
   }, [version, today])
 
+  // The deck last open, and the list it came back to; its row takes focus back once the list shows again.
+  const back = useRef<{ id: number; list: Deck[] | null } | null>(null)
+  const open = selectedDeckId ?? reviewingDeckId
+  useEffect(() => {
+    if (open !== null) {
+      back.current = { id: open, list: null }
+      return
+    }
+    const from = back.current
+    if (!from || !decks) return
+    // One more try when the list reloads, for a deck that was deleted on the way out.
+    if (from.list && from.list !== decks) back.current = null
+    else from.list = decks
+    if (document.activeElement !== document.body) return
+    const row = document.querySelector<HTMLElement>(`[data-deck="${from.id}"]`)
+    ;(row ?? newDeckRef.current)?.focus()
+  }, [open, decks])
+
   if (decks === null) return <div />
 
   const reviewing = decks.find((d) => d.id === reviewingDeckId)
@@ -101,6 +119,7 @@ export function StudyView(): React.JSX.Element {
               <li key={d.id} className="flex items-center gap-1 border-b border-edge">
                 <button
                   type="button"
+                  data-deck={d.id}
                   onClick={() => useApp.getState().openDeck(d.id)}
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-3 text-left transition-colors hover:bg-hover"
                 >
