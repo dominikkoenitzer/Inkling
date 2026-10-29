@@ -13,7 +13,8 @@ import { loadNote, peekNote, saveFile, saveNote, syncNoteCards } from '@/lib/cal
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
-import { keyLabel, tickTodo } from '@/lib/keys'
+import { keyLabel } from '@/lib/keys'
+import { tickTodo } from '@/lib/editorKeys'
 import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
 
@@ -232,8 +233,12 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     lastItemsRef.current = extractNoteTaskItems(safeParse(stored.content) as Record<string, unknown>)
   }
 
-  // Tracked, so deleting this note waits for the save to land.
-  const doSave = (): Promise<boolean> => saveNote(noteId, save())
+  // Tracked, so deleting this note waits for the save to land. A failed one takes "Saved" down.
+  const doSave = (): Promise<boolean> =>
+    saveNote(noteId, save()).then((saved) => {
+      if (!saved) setSavedAt(null)
+      return saved
+    })
 
   /** Puts a stored note into the editor, kept out of the undo history. */
   const showNote = (note: Note): void => {
@@ -349,7 +354,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     const base = (titleRef.current || 'note').replace(/[\\/:*?"<>|]/g, '').trim() || 'note'
     const res = await saveFile(`${base}.md`, md)
     if (res?.saved) {
-      say('Saved as Markdown', 2500)
+      say('Saved as Markdown.', 2500)
     } else if (res?.error) {
       say('Could not save the file.', 3500)
     }
