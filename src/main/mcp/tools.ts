@@ -33,11 +33,21 @@ export interface TodoResult {
 
 const titleOf = (n: Note): string => n.title?.trim() || 'Untitled'
 
+const isNode = (n: unknown): n is Record<string, unknown> => !!n && typeof n === 'object' && !Array.isArray(n)
+
+/** A stored node without the nulls and bare values its child and mark lists can hold; every real node stays as it is. */
+function realNodes<T extends Record<string, unknown>>(node: T): T {
+  const out: Record<string, unknown> = { ...node }
+  if (Array.isArray(node.content)) out.content = node.content.filter(isNode).map(realNodes)
+  if (Array.isArray(node.marks)) out.marks = node.marks.filter(isNode)
+  return out as T
+}
+
 /** The stored doc, or null when the content is not one. */
 function parseDoc(content: string): Doc | null {
   try {
-    const doc = JSON.parse(content) as Doc
-    if (doc && Array.isArray(doc.content)) return doc
+    const doc: unknown = JSON.parse(content)
+    if (isNode(doc) && Array.isArray(doc.content)) return realNodes(doc) as Doc
   } catch {
     // not JSON
   }
