@@ -128,7 +128,8 @@ function renderBlock(node: PMNode): string {
       return renderBlocks(node.content)
         .trimEnd()
         .split('\n')
-        .map((l) => `> ${l}`.trimEnd())
+        // trailing spaces are a hard break or part of the code, so only an empty line drops its space
+        .map((l) => (l ? `> ${l}` : '>'))
         .join('\n')
     case 'codeBlock': {
       const lang = typeof node.attrs?.language === 'string' ? node.attrs.language : ''

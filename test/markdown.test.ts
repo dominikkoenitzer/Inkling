@@ -155,6 +155,16 @@ describe('tiptapDocToMarkdown', () => {
     expect(tiptapDocToMarkdown(doc([item([para([text('a')]), { type: 'horizontalRule' }])]))).toBe('- a\n\n  ---\n')
   })
 
+  it('keeps a broken line and trailing spaces in code inside a quote', () => {
+    const quote = (content: unknown[]): unknown => doc([{ type: 'blockquote', content }])
+    const broken = quote([para([text('a'), { type: 'hardBreak' }, text('b')])])
+    const code = quote([{ type: 'codeBlock', attrs: { language: null }, content: [text('x  \n  \ny')] }, para([text('c')])])
+    expect(tiptapDocToMarkdown(broken)).toBe('> a  \n> b\n')
+    expect(tiptapDocToMarkdown(code)).toBe('> ```\n> x  \n>   \n> y\n> ```\n>\n> c\n')
+    expect(markdownToDoc(tiptapDocToMarkdown(broken))).toEqual(broken)
+    expect(markdownToDoc(tiptapDocToMarkdown(code))).toEqual(code)
+  })
+
   it('escapes markdown metacharacters so literal text round-trips (regression)', () => {
     expect(tiptapDocToMarkdown(doc([para([text('- not a list')])]))).toBe('\\- not a list\n')
     expect(tiptapDocToMarkdown(doc([para([text('# not a heading')])]))).toBe('\\# not a heading\n')
