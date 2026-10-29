@@ -607,7 +607,8 @@ describe('listNotes paging, recent changes and the trash', () => {
     const b = tools.createNote({ title: 'B' })
     const c = tools.createNote({ title: 'C' })
     raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-01-01T00:00:00.000Z', a.id)
-    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-02-01T00:00:00.000Z', b.id)
+    // B at the start of 1 February in the zone the tests run in, where a date alone begins.
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run(new Date(2026, 1, 1).toISOString(), b.id)
     raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-03-01T00:00:00.000Z', c.id)
 
     expect(tools.listNotes({ limit: 2 })).toMatchObject({ more: true })
@@ -629,7 +630,8 @@ describe('listNotes paging, recent changes and the trash', () => {
     expect(tools.listNotes({ changedSince: '2026-10-23T06:00:00Z' }).notes.map((n) => n.title)).toEqual(['Late'])
     expect(tools.listNotes({ changedSince: '2026-10-23T05:45:00+00:00' }).notes.map((n) => n.title)).toEqual(['Late'])
     expect(tools.listNotes({ changedSince: '2026-10-23T06:00:01Z' }).notes).toEqual([])
-    expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
+    // A date alone is local midnight, so the day before both stamps takes in both in any zone.
+    expect(tools.listNotes({ changedSince: '2026-10-22' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
   })
 
   it('lists the latest change first in either stored form', () => {
