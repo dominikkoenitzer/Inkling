@@ -9,6 +9,7 @@ import {
   closesSheet,
   editKey,
   ignoresShortcut,
+  isBackKey,
   isCommandKey,
   keyLabel,
   onActivateKey,
@@ -313,5 +314,29 @@ describe('isCommandKey', () => {
     expect(isCommandKey(press(false, true), true)).toBe(true)
     expect(isCommandKey(press(true, false), true)).toBe(false)
     expect(isCommandKey(press(true, true), true)).toBe(false)
+  })
+})
+
+describe('isBackKey', () => {
+  const press = (key: string, mods: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; shiftKey?: boolean } = {}) => ({
+    key,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    ...mods
+  })
+
+  it('takes Alt+Left on Windows and Linux, and Command+[ on a Mac', () => {
+    expect(isBackKey(press('ArrowLeft', { altKey: true }), false)).toBe(true)
+    expect(isBackKey(press('[', { metaKey: true }), true)).toBe(true)
+    expect(isBackKey(press('BrowserBack'), false)).toBe(true)
+  })
+
+  it('leaves Left alone, and Left with other keys held', () => {
+    expect(isBackKey(press('ArrowLeft'), false)).toBe(false)
+    expect(isBackKey(press('ArrowLeft', { altKey: true, shiftKey: true }), false)).toBe(false)
+    expect(isBackKey(press('ArrowLeft', { altKey: true }), true)).toBe(false)
+    expect(isBackKey(press('[', { metaKey: true }), false)).toBe(false)
   })
 })
