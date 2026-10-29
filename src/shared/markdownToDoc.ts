@@ -56,7 +56,8 @@ function stripIndent(line: string, cols: number): string {
 function dedent(lines: string[]): string[] {
   const widths = lines.filter((l) => !isBlank(l)).map(indentOf)
   const cut = widths.length > 0 ? Math.min(...widths) : 0
-  return lines.map((l) => (isBlank(l) ? '' : stripIndent(l, cut)))
+  // A blank line keeps its spaces past the cut: in a code block they are part of the code.
+  return lines.map((l) => stripIndent(l, cut))
 }
 
 /** Two trailing spaces or an unescaped trailing backslash: the next line is a hard break away. */
@@ -210,7 +211,7 @@ function parseList(lines: string[], start: number, out: Node[]): number {
         let j = i
         while (j < lines.length && isBlank(lines[j])) j++
         if (j < lines.length && indentOf(lines[j]) >= base + 2) {
-          for (; i < j; i++) child.push('')
+          for (; i < j; i++) child.push(lines[i])
           continue
         }
         break
