@@ -250,6 +250,11 @@ textarea:focus {
   border-radius: 3px;
   padding: 0 2px;
 }
+/* The dark highlight is too dark for muted, faint and link text, so text inside it takes the main colour. */
+:root[data-theme='dark'] .tiptap mark,
+:root[data-theme='dark'] .tiptap mark a {
+  color: var(--text-primary);
+}
 .tiptap a {
   color: var(--accent-text);
   text-decoration: underline;
