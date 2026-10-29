@@ -13,6 +13,7 @@ import {
   isCommandKey,
   keyLabel,
   onActivateKey,
+  onButton,
   shortcutsKey,
   takeShortcut
 } from '../src/renderer/src/lib/keys'
@@ -279,6 +280,15 @@ describe('tickTodo', () => {
     const doc = docOf({ type: 'codeBlock', content: [{ type: 'text', text: 'let a' }] }, para('Plain'))
     expect(press(doc, (d) => TextSelection.create(d, find(d, 'let a', 'codeBlock').text + 1))).toBeNull()
     expect(press(doc, (d) => TextSelection.create(d, find(d, 'Plain', 'paragraph').text + 1))).toBeNull()
+  })
+})
+
+describe('onButton', () => {
+  it('tells a key on a focused button, which presses it, from one on the page', () => {
+    expect(onButton(key({ tagName: 'BUTTON' }))).toBe(true)
+    expect(onButton(key({ tagName: 'BODY' }))).toBe(false)
+    expect(onButton(key({ tagName: 'DIV' }))).toBe(false)
+    expect(onButton(key(null))).toBe(false)
   })
 })
 
