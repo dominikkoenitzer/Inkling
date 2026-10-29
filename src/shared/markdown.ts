@@ -19,11 +19,21 @@ interface PMNode {
 function escapeInline(t: string): string {
   return t.replace(/([\\`*_[\]])/g, '\\$1')
 }
+// a ~ or = run opens or closes strike or highlight when two long beside a non-space, or when it touches a delimiter it joins
+function escapeRuns(t: string, joinsBefore: boolean, joinsAfter: boolean): string {
+  return t.replace(/~+|=+/g, (run: string, at: number) => {
+    const start = at === 0
+    const end = at + run.length === t.length
+    const spaced = (start || /\s/.test(t[at - 1])) && (end || /\s/.test(t[at + run.length]))
+    return (start && joinsBefore) || (end && joinsAfter) || (run.length > 1 && !spaced) ? run.replace(/./g, '\\$&') : run
+  })
+}
 // escape a leading block marker so a line of plain text isn't reparsed as a heading, quote,
-// list item, rule, or the dash/equals underline that turns the line above into a heading
+// list item, rule, ~~~ fence, or the dash/equals underline that turns the line above into a heading
 function escapeLeadingBlock(line: string): string {
   return line
     .replace(/^(\s*)([#>])/, '$1\\$2')
+    .replace(/^(\s*)(~)(?=~~)/, '$1\\$2')
     .replace(/^(\s*)([-+])(?=\s|$)/, '$1\\$2')
     .replace(/^(\s*)(-)(?=[-\s]*$)/, '$1\\$2')
     .replace(/^(\s*)(=)(?=[=\s]*$)/, '$1\\$2')
@@ -47,7 +57,7 @@ function codeSpan(code: string): string {
 function renderInline(nodes: PMNode[] | undefined): string {
   if (!nodes) return ''
   return nodes
-    .map((n) => {
+    .map((n, i) => {
       if (n.type === 'hardBreak') return '  \n'
       // A [[wiki-link]] is an atom with no child content; export the syntax verbatim so
       // the exported Markdown round-trips into other wiki-style tools.
@@ -56,17 +66,20 @@ function renderInline(nodes: PMNode[] | undefined): string {
       const has = (m: string): boolean => marks.some((x) => x.type === m)
       // inline code can't contain other markdown, so keep it raw and return early
       if (has('code')) return codeSpan(n.text ?? '')
+      const href = marks.find((x) => x.type === 'link')?.attrs?.href
+      const linked = typeof href === 'string' && href !== ''
       // a delimiter next to a space neither opens nor closes, so the edge spaces go outside it
       const [, lead, core, trail] = /^(\s*)([\s\S]*?)(\s*)$/.exec(escapeInline(n.text ?? ''))!
-      let t = core
+      const marked = core !== '' && ['bold', 'italic', 'strike', 'highlight'].some(has)
+      // a marked run touches its own delimiters, a plain one those of the nodes beside it, a link label neither
+      const joins = (k: number): boolean => k >= 0 && k < nodes.length && nodes[k].type !== 'hardBreak'
+      let t = escapeRuns(core, marked || (!linked && !lead && joins(i - 1)), marked || (!linked && !trail && joins(i + 1)))
       if (t && has('bold')) t = `**${t}**`
       if (t && has('italic')) t = `*${t}*`
       if (t && has('strike')) t = `~~${t}~~`
       if (t && has('highlight')) t = `==${t}==`
       t = lead + t + trail
-      const link = marks.find((x) => x.type === 'link')
-      const href = link?.attrs?.href
-      if (typeof href === 'string' && href) t = `[${t}](${href})`
+      if (linked) t = `[${t}](${href})`
       return t
     })
     .join('')

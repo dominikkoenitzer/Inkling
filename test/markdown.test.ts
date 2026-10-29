@@ -131,4 +131,26 @@ describe('tiptapDocToMarkdown', () => {
     // a link label may hold spaces, so they stay inside it and only leave the bold
     expect(marked('b ', [{ type: 'bold' }, { type: 'link', attrs: { href: 'https://x.dev' } }])).toBe('a[**b** ](https://x.dev)c\n')
   })
+
+  it('escapes ~~ and == only where they would open or close a mark', () => {
+    const plain = (t: string): string => tiptapDocToMarkdown(doc([para([text(t)])]))
+    expect(plain('~~draft~~')).toBe('\\~\\~draft\\~\\~\n')
+    expect(plain('x==y and z==w')).toBe('x\\=\\=y and z\\=\\=w\n')
+    // a lone ~ or =, or a pair with spaces on both sides, opens nothing
+    expect(plain('~5 min, a = b, a == b, a ~~ b')).toBe('~5 min, a = b, a == b, a ~~ b\n')
+  })
+
+  it('escapes a ~ or = that would join the delimiter of a mark beside it', () => {
+    const strike = [{ type: 'strike' }]
+    expect(tiptapDocToMarkdown(doc([para([text('~gone~', strike), text(' and '), text('=x=', [{ type: 'highlight' }])])]))).toBe(
+      '~~\\~gone\\~~~ and ==\\=x\\===\n'
+    )
+    expect(tiptapDocToMarkdown(doc([para([text('a~'), text('b', strike), text('~c')])]))).toBe('a\\~~~b~~\\~c\n')
+  })
+
+  it('escapes a line that would open a ~~~ fence', () => {
+    expect(tiptapDocToMarkdown(doc([para([text('~~~')])]))).toBe('\\~~~\n')
+    expect(tiptapDocToMarkdown(doc([para([text('~~~ not code')])]))).toBe('\\~~~ not code\n')
+    expect(tiptapDocToMarkdown(doc([para([text('intro'), { type: 'hardBreak' }, text('  ~~~~')])]))).toBe('intro  \n  \\~~~~\n')
+  })
 })
