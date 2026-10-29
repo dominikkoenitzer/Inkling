@@ -99,7 +99,14 @@ export function createServer(dataDir: string, version: string): McpServer {
       .readdirSync(dir)
       .filter((f) => f.startsWith('assistant-') && f.endsWith('.db'))
       .sort()
-    for (const f of old.slice(0, -KEEP_BACKUPS)) fs.unlinkSync(join(dir, f))
+    // Pruning is housekeeping: a copy that cannot be removed stays, and the write goes on.
+    for (const f of old.slice(0, -KEEP_BACKUPS)) {
+      try {
+        fs.unlinkSync(join(dir, f))
+      } catch (err) {
+        console.error('removing an old backup failed', err)
+      }
+    }
   }
 
   const read =
