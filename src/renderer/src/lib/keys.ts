@@ -32,6 +32,25 @@ export function onActivateKey(run: () => void): (e: KeyboardEvent<HTMLElement>) 
   }
 }
 
+interface Row<T> {
+  nextElementSibling: Row<T> | null
+  previousElementSibling: Row<T> | null
+  querySelector(selector: string): T | null
+}
+
+/** Where focus goes when `row` leaves a list: the `pick` control in the nearest row after it, else before it. */
+export function nextInList<T>(row: Row<T> | null, pick: string): T | null {
+  for (let r = row?.nextElementSibling; r; r = r.nextElementSibling) {
+    const found = r.querySelector(pick)
+    if (found) return found
+  }
+  for (let r = row?.previousElementSibling; r; r = r.previousElementSibling) {
+    const found = r.querySelector(pick)
+    if (found) return found
+  }
+  return null
+}
+
 /** A keydown in a text field: Enter commits it, and Escape cancels its edit when `cancel` is given. */
 export function editKey(
   e: KeyboardEvent<HTMLInputElement>,
