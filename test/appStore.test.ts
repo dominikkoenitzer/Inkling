@@ -339,4 +339,15 @@ describe('back', () => {
     useApp.getState().back()
     expect(at()).toBe('note 6')
   })
+
+  it('skips a note dropped for being empty', async () => {
+    useApp.setState({ view: 'today' })
+    useApp.getState().openDeck(2)
+    useApp.getState().openNote(13)
+    inkling.notes.dropIfEmpty.mockResolvedValueOnce(true)
+    useApp.getState().setView('today')
+    await vi.waitFor(() => expect(useApp.getState().selectedNoteId).toBeNull())
+    useApp.getState().back()
+    expect(at()).toBe('study 2')
+  })
 })
