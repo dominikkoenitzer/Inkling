@@ -309,6 +309,7 @@ useApp.subscribe((state, prev) => {
   void settleNote(left).then(async () => {
     if (showing(useApp.getState()) === left || deleting.has(left)) return
     if (!(await api.notes.dropIfEmpty(left))) return
+    forgetPlace(left)
     bumpData('notes')
     if (useApp.getState().selectedNoteId === left) useApp.setState({ selectedNoteId: null })
   }).catch((err: unknown) => console.error('Could not clear the empty note.', err)) // it stays, and goes on a later leave
