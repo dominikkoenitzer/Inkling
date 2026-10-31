@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import { Extension } from '@tiptap/core'
-import type { Schema } from '@tiptap/pm/model'
+import type { Node as PMNode, Schema } from '@tiptap/pm/model'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
@@ -15,6 +15,7 @@ import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
 import { keyLabel } from '@/lib/keys'
 import { tickTodo } from '@/lib/editorKeys'
+import { stampNodeIds } from '@/lib/nodeIds'
 import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
 
@@ -160,6 +161,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       // assistant changed meanwhile comes back, is merged with it, and goes again.
       const base = contentRef.current === null ? undefined : { title: baseTitleRef.current, content: contentRef.current }
       const json = readDoc()
+      // The doc the reply's ids are for, by position.
+      const read = editor.isDestroyed ? null : editor.state.doc
       const items = extractNoteTaskItems(json)
       const patch = { title: titleRef.current || null, content: JSON.stringify(json) }
       let saved: Note | null
@@ -171,8 +174,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
           takeIn(result.note, schema)
           continue
         }
-        if (!editor.isDestroyed) {
-          assignNodeIds(editor, 'taskItem', 'taskId', result.ids, syncingRef)
+        if (read && !editor.isDestroyed) {
+          assignNodeIds(editor, 'taskItem', 'taskId', result.ids, read, syncingRef)
         } else {
           // Closed while saving: stamp the ids into the last doc itself, as they were saved.
           docRef.current = stampTaskIds(json, result.ids)
@@ -324,6 +327,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
 
   const makeFlashcards = async (): Promise<void> => {
     if (!editor || notebookIdRef.current === null) return
+    const read = editor.state.doc
     const lines = extractNoteCardLines(editor.getJSON() as Record<string, unknown>)
     if (lines.length === 0) {
       say('Write a line like Term :: Definition or {{c1::word}} first.', 3500)
@@ -341,7 +345,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     // Stamped by paragraph position: continuation lines and plain text get no id.
     const perParagraph: number[] = []
     lines.forEach((l, i) => (perParagraph[l.paragraph] = lineIds[i]))
-    assignNodeIds(editor, 'paragraph', 'cardLine', perParagraph, syncingRef)
+    assignNodeIds(editor, 'paragraph', 'cardLine', perParagraph, read, syncingRef)
     await doSave() // keep the stamped ids, or the next sync matches by text alone
     bumpData('decks')
     useApp.getState().openDeck(deck.id)
@@ -401,37 +405,20 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   )
 }
 
-/**
- * Stamp database ids onto nodes of one type, in document order, matching the order the
- * main process returned. Kept out of the undo history so Ctrl+Z cannot un-assign an id.
- */
+/** Stamps the ids through `stampNodeIds`, without scheduling a save for it. */
 function assignNodeIds(
   editor: Editor,
   nodeType: string,
   attr: string,
   ids: number[],
+  read: PMNode,
   syncingRef: { current: boolean }
 ): void {
-  const { state, view } = editor
-  const tr = state.tr
-  let i = 0
-  let changed = false
-  state.doc.descendants((node, pos) => {
-    if (node.type.name === nodeType) {
-      const want = ids[i++]
-      if (want !== undefined && want > 0 && node.attrs[attr] !== want) {
-        tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: want })
-        changed = true
-      }
-    }
-    return true
-  })
-  if (changed) {
-    tr.setMeta('addToHistory', false)
-    syncingRef.current = true
-    view.dispatch(tr)
-    syncingRef.current = false
-  }
+  const tr = stampNodeIds(editor.state, nodeType, attr, ids, read)
+  if (!tr) return
+  syncingRef.current = true
+  editor.view.dispatch(tr)
+  syncingRef.current = false
 }
 
 /* --------------------------------- Toolbar -------------------------------- */
