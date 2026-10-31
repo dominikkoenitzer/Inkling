@@ -15,6 +15,7 @@ import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
 import { keyLabel } from '@/lib/keys'
 import { tickTodo } from '@/lib/editorKeys'
+import { stampNodeIds } from '@/lib/nodeIds'
 import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
 
@@ -401,10 +402,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   )
 }
 
-/**
- * Stamp database ids onto nodes of one type, in document order, matching the order the
- * main process returned. Kept out of the undo history so Ctrl+Z cannot un-assign an id.
- */
+/** Stamps the ids through `stampNodeIds`, without scheduling a save for it. */
 function assignNodeIds(
   editor: Editor,
   nodeType: string,
@@ -412,26 +410,11 @@ function assignNodeIds(
   ids: number[],
   syncingRef: { current: boolean }
 ): void {
-  const { state, view } = editor
-  const tr = state.tr
-  let i = 0
-  let changed = false
-  state.doc.descendants((node, pos) => {
-    if (node.type.name === nodeType) {
-      const want = ids[i++]
-      if (want !== undefined && want > 0 && node.attrs[attr] !== want) {
-        tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: want })
-        changed = true
-      }
-    }
-    return true
-  })
-  if (changed) {
-    tr.setMeta('addToHistory', false)
-    syncingRef.current = true
-    view.dispatch(tr)
-    syncingRef.current = false
-  }
+  const tr = stampNodeIds(editor.state, nodeType, attr, ids)
+  if (!tr) return
+  syncingRef.current = true
+  editor.view.dispatch(tr)
+  syncingRef.current = false
 }
 
 /* --------------------------------- Toolbar -------------------------------- */
