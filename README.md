@@ -1,6 +1,6 @@
 # Inkling
 
-[![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
+[![CI](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dominikkoenitzer/Inkling/actions/workflows/ci.yml)
 
 Inkling is a desktop app for studying from your own notes: the to-dos and flashcards you write in a note come together on one Today page, and everything stays on your computer.
 
