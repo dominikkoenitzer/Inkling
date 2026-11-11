@@ -13,8 +13,8 @@ vi.mock('../src/main/db', async (orig) => ({ ...(await orig<object>()), getDb: (
 
 const { migrate } = await import('../src/main/db')
 const { createNotebook } = await import('../src/main/repos/notebooks')
-const { createNote, removeNote, updateNote } = await import('../src/main/repos/notes')
-const { saveNoteWithTasks, setTaskDone, syncNoteTasks } = await import('../src/main/repos/tasks')
+const { createNote, listNotes, removeNote, updateNote } = await import('../src/main/repos/notes')
+const { openTasks, saveNoteWithTasks, setTaskDone, syncNoteTasks } = await import('../src/main/repos/tasks')
 const { addCard, createDeck, reviewCard } = await import('../src/main/repos/flashcards')
 
 /** Mid-afternoon, so a stored clock time can never pass for a day by chance. */
@@ -73,6 +73,54 @@ describe('nothing keeps the clock time of something he did', () => {
       expect.arrayContaining(['notebooks.created_at', 'notes.updated_at', 'notes.deleted_at', 'tasks.completed_at', 'flashcards.last_review', 'review_log.reviewed_at'])
     )
     expect(found.filter((s) => !isLocalMidnight(s.value))).toEqual([])
+  })
+
+  it('stamps the day when a to-do already in a note is ticked', () => {
+    const book = createNotebook({ name: 'Biology', color: 'teal' })
+    const note = createNote({ notebook_id: book.id, title: 'Cells' })
+    const [taskId] = syncNoteTasks(note.id, book.id, [{ taskId: null, title: 'Read chapter 2', checked: false }])
+    syncNoteTasks(note.id, book.id, [{ taskId, title: 'Read chapter 2', checked: true }])
+    const done = db.prepare(`SELECT completed_at FROM tasks WHERE id = ?`).get(taskId) as { completed_at: string }
+    expect(isLocalMidnight(done.completed_at)).toBe(true)
+  })
+
+  it('stamps the day when ticking a to-do writes the checkbox into its note', () => {
+    const book = createNotebook({ name: 'Biology', color: 'teal' })
+    const note = createNote({ notebook_id: book.id, title: 'Cells' })
+    const [taskId] = syncNoteTasks(note.id, book.id, [{ taskId: null, title: 'Read chapter 2', checked: false }])
+    const line = { type: 'taskItem', attrs: { checked: false, taskId }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Read chapter 2' }] }] }
+    updateNote(note.id, { content: JSON.stringify({ type: 'doc', content: [{ type: 'taskList', content: [line] }] }) })
+    const before = db.prepare(`SELECT edit_seq FROM notes WHERE id = ?`).get(note.id) as { edit_seq: number }
+    setTaskDone(taskId, true)
+    const after = db.prepare(`SELECT content, updated_at, edit_seq FROM notes WHERE id = ?`).get(note.id) as { content: string; updated_at: string; edit_seq: number }
+    expect(after.content).toContain('"checked":true')
+    expect(after.edit_seq).toBeGreaterThan(before.edit_seq)
+    expect(isLocalMidnight(after.updated_at)).toBe(true)
+  })
+
+  it('makes a new card due on the day it was added', () => {
+    const book = createNotebook({ name: 'Biology', color: 'teal' })
+    const card = addCard(createDeck(book.id, 'Cells').id, 'front', 'back')
+    expect(isLocalMidnight(card.next_review_date)).toBe(true)
+  })
+
+  it('lists the note edited last first, also within one day', () => {
+    const book = createNotebook({ name: 'Biology', color: 'teal' })
+    const first = createNote({ notebook_id: book.id, title: 'First' })
+    const second = createNote({ notebook_id: book.id, title: 'Second' })
+    expect(listNotes().map((n) => n.id)).toEqual([second.id, first.id])
+    updateNote(first.id, { title: 'First, edited' })
+    expect(listNotes().map((n) => n.id)).toEqual([first.id, second.id])
+  })
+
+  it('lists the to-dos of the note edited last first, also within one day', () => {
+    const book = createNotebook({ name: 'Biology', color: 'teal' })
+    const first = createNote({ notebook_id: book.id, title: 'First' })
+    const second = createNote({ notebook_id: book.id, title: 'Second' })
+    syncNoteTasks(second.id, book.id, [{ taskId: null, title: 'task b', checked: false }])
+    syncNoteTasks(first.id, book.id, [{ taskId: null, title: 'task a', checked: false }])
+    updateNote(first.id, { title: 'First, edited' })
+    expect(openTasks().map((t) => t.title)).toEqual(['task a', 'task b'])
   })
 
   it('names backups without a time', () => {
