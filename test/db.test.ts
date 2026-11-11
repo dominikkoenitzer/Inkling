@@ -540,8 +540,9 @@ describe('an upgrade while the assistant writes', () => {
 
 describe('migrate to v15', () => {
   /** A current database put back to schema 14, before notes counted their edits. */
-  function v14(): ReturnType<typeof open> {
-    const opened = open()
+  function v14(file?: string): ReturnType<typeof open> {
+    const opened = open(file)
+    if (file) opened.raw.exec('PRAGMA journal_mode = WAL')
     migrate(opened.db)
     opened.raw.exec(`
       ALTER TABLE notes DROP COLUMN edit_seq;
@@ -633,6 +634,100 @@ describe('migrate to v15', () => {
       raw.exec(`PRAGMA user_version = 14`)
       migrate(db)
       expect({ rows: stamps(raw), seq: raw.prepare(`SELECT id, edit_seq FROM notes ORDER BY id`).all() }).toEqual(once)
+    }))
+
+  /** A schema 14 store on disk with many clock times, and the times it holds. */
+  function v14OnDisk(): { dir: string; file: string; raw: DatabaseSync; db: ReturnType<typeof open>['db']; times: string[] } {
+    const dir = mkdtempSync(join(tmpdir(), 'inkling-move-'))
+    const file = join(dir, 'inkling.db')
+    const { raw, db } = v14(file)
+    const add = raw.prepare(`INSERT INTO notes (notebook_id, title, content, created_at, updated_at) VALUES (1, ?, '{}', ?, ?)`)
+    const times: string[] = []
+    for (let i = 0; i < 200; i++) {
+      const made = new Date(Date.UTC(2026, 9, 1, 6, 0, i * 7)).toISOString().replace('T', ' ').slice(0, 19)
+      const edited = new Date(Date.UTC(2026, 10, 1, 7, 3, i * 11)).toISOString()
+      add.run(`Note ${i}`, made, edited)
+      times.push(made, edited)
+    }
+    for (const r of stamps(raw) as Array<Record<string, unknown>>) {
+      for (const v of [r.a, r.b, r.c]) if (typeof v === 'string' && /\d\d:\d\d/.test(v)) times.push(v)
+    }
+    raw.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+    return { dir, file, raw, db, times }
+  }
+
+  /** The clock times among `times` still found in the database file or its log. */
+  const leftIn = (file: string, times: string[]): string[] => {
+    const bytes = [file, `${file}-wal`].filter((f) => fs.existsSync(f)).map((f) => readFileSync(f).toString('latin1')).join('')
+    return times.filter((t) => bytes.includes(t))
+  }
+
+  it('leaves none of the old times in the file once the app has moved it', () =>
+    inZurich(() => {
+      const { dir, file, raw, db, times } = v14OnDisk()
+      expect(leftIn(file, times).length).toBe(times.length)
+      opening.db = db
+      try {
+        openDb(dir)
+        expect(version(raw)).toBe(15)
+        raw.close()
+        expect(leftIn(file, times)).toEqual([])
+      } finally {
+        if (raw.isOpen) raw.close()
+        rmSync(dir, { recursive: true, force: true })
+      }
+    }))
+
+  it('clears the old times at the next start when the assistant held the file', () =>
+    inZurich(() => {
+      const { dir, file, raw, db, times } = v14OnDisk()
+      const exec = raw.exec.bind(raw)
+      let locked = true
+      opening.db = Object.assign(db, {
+        exec: (sql: string) => {
+          if (locked && sql.trim().toUpperCase() === 'VACUUM') throw Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' })
+          return exec(sql)
+        }
+      })
+      const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      try {
+        openDb(dir)
+        expect(version(raw)).toBe(15)
+        locked = false
+        openDb(dir)
+        raw.close()
+        expect(leftIn(file, times)).toEqual([])
+      } finally {
+        quiet.mockRestore()
+        if (raw.isOpen) raw.close()
+        rmSync(dir, { recursive: true, force: true })
+      }
+    }))
+
+  it('stays at schema 14 with every time kept when the backup before the move fails', () =>
+    inZurich(() => {
+      const { dir, raw, db } = v14OnDisk()
+      // A file where the backups folder should be: the copy cannot be made.
+      writeFileSync(join(dir, 'backups'), 'in the way')
+      const before = stamps(raw)
+      opening.db = db
+      const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      try {
+        let thrown: unknown
+        try {
+          openDb(dir)
+        } catch (err) {
+          thrown = err
+        }
+        expect(thrown).toBeInstanceOf(Error)
+        expect(startFailure(thrown)).toBe('Inkling could not make a backup before updating your data, so it left the data as it was.')
+        expect(version(raw)).toBe(14)
+        expect(stamps(raw)).toEqual(before)
+      } finally {
+        quiet.mockRestore()
+        if (raw.isOpen) raw.close()
+        rmSync(dir, { recursive: true, force: true })
+      }
     }))
 })
 
