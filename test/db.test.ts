@@ -721,8 +721,14 @@ describe('migrate to v15', () => {
         }
         expect(thrown).toBeInstanceOf(Error)
         expect(startFailure(thrown)).toBe('Inkling could not make a backup before updating your data, so it left the data as it was.')
-        expect(version(raw)).toBe(14)
-        expect(stamps(raw)).toEqual(before)
+        // The app closes the file when it gives up; read it as it was left.
+        const left = new DatabaseSync(join(dir, 'inkling.db'))
+        try {
+          expect(version(left)).toBe(14)
+          expect(stamps(left)).toEqual(before)
+        } finally {
+          left.close()
+        }
       } finally {
         quiet.mockRestore()
         if (raw.isOpen) raw.close()

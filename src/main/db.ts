@@ -108,12 +108,21 @@ export function openDb(dir: string): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   // Back up first, so a migration that goes wrong still leaves the file as it was.
+  let backedUp = true
   try {
     backup(db, dir)
   } catch (err) {
+    backedUp = false
     console.error('backup failed', err)
   }
-  migrate(db)
+  // Schema 15 drops the times for good, so it waits for a start whose backup holds them.
+  migrate(db, { dropTimes: backedUp })
+  if ((db.pragma('user_version', { simple: true }) as number) < CURRENT_VERSION) {
+    db.close()
+    db = null
+    throw new NoBackupError()
+  }
+  compactIfMoved(db)
   // Only a default for upgraders: if the write fails (the MCP server may hold the lock),
   // the app starts anyway and tries again next time.
   try {
@@ -131,9 +140,16 @@ class NewerDataError extends Error {
   }
 }
 
+/** The backup before a move that cannot be undone failed, so the data stays as it was. */
+class NoBackupError extends Error {
+  constructor() {
+    super('Inkling could not make a backup before updating your data, so it left the data as it was.')
+  }
+}
+
 /** What the start dialog says when `openDb` throws. */
 export function startFailure(err: unknown): string {
-  return err instanceof NewerDataError ? err.message : 'Inkling could not open its data.'
+  return err instanceof NewerDataError || err instanceof NoBackupError ? err.message : 'Inkling could not open its data.'
 }
 
 /** When 0.8.0 shipped (UTC). It reads a missing theme as light; 0.7 read it as dark. */
@@ -231,8 +247,11 @@ CREATE INDEX IF NOT EXISTS idx_review_log_deck ON review_log(deck_id);
 /** The schema version the code in this build expects. */
 const CURRENT_VERSION = 15
 
-/** Exported for the migration tests; `openDb` is the only caller in the app. */
-export function migrate(d: Database.Database): void {
+/**
+ * Exported for the migration tests; `openDb` is the only caller in the app. Without
+ * `dropTimes` it stops at schema 14, before the step that keeps the day only.
+ */
+export function migrate(d: Database.Database, { dropTimes = true }: { dropTimes?: boolean } = {}): void {
   const version = d.pragma('user_version', { simple: true }) as number
 
   if (version === 0) {
@@ -393,7 +412,7 @@ export function migrate(d: Database.Database): void {
     // cannot meet a new line that took its id in the meantime.
     taskIdsAutoincrement(d)
   }
-  if (version < 15) {
+  if (version < 15 && dropTimes) {
     // Only the day of an action is kept from here on.
     keepDaysOnly(d)
   }
@@ -509,8 +528,31 @@ function keepDaysOnly(d: Database.Database): void {
         if (!Number.isNaN(t)) set.run(dayStamp(new Date(t)), row.id)
       }
     }
+    // The old values stay in the file's free space until it is rewritten; see compactIfMoved.
+    if (has('settings', 'key')) d.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, '1')`).run(COMPACT_KEY)
     d.pragma('user_version = 15')
   }).immediate()
+}
+
+/** Set by the move to schema 15 until the file is rewritten without the times it held. */
+const COMPACT_KEY = 'compact_pending'
+
+/**
+ * Rewrites the file after the move to schema 15, so the times it dropped are not left in its
+ * free space or its write-ahead log. While the assistant holds the file this cannot finish;
+ * the mark stays and the next start tries again.
+ */
+function compactIfMoved(d: Database.Database): void {
+  try {
+    if (!d.prepare(`SELECT 1 FROM settings WHERE key = ?`).get(COMPACT_KEY)) return
+    d.exec('VACUUM')
+    const log = d.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as { busy: number }
+    if (log.busy !== 0) return
+    d.prepare(`DELETE FROM settings WHERE key = ?`).run(COMPACT_KEY)
+    d.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get()
+  } catch (err) {
+    console.error('rewriting the data file failed', err)
+  }
 }
 
 /**
