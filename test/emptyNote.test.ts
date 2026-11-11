@@ -21,7 +21,8 @@ beforeEach(() => {
       content TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      deleted_at DATETIME
+      deleted_at DATETIME,
+      edit_seq INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE tasks (id INTEGER PRIMARY KEY, notebook_id INTEGER, note_id INTEGER, title TEXT, status TEXT);
     CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT, note_id INTEGER);

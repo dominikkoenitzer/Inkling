@@ -20,6 +20,8 @@ export interface Note {
   updated_at: string
   /** Tombstone: set while the note is deleted and still undoable, null otherwise. */
   deleted_at: string | null
+  /** Counts up with every edit, so the newest edit sorts first within a day. */
+  edit_seq: number
 }
 
 /** The title and content an editor save started from. */

@@ -5,7 +5,7 @@
  */
 import { getDb } from '../db'
 import * as repos from '../repos'
-import { localDay, storedTime } from '@shared/day'
+import { localDay, startOfDay, storedTime } from '@shared/day'
 import { tiptapDocToMarkdown } from '@shared/markdown'
 import { markdownToDoc } from '@shared/markdownToDoc'
 import { extractNoteTaskItems, stampTaskIds } from '@shared/noteTasks'
@@ -135,9 +135,10 @@ export function listNotes(input: { limit?: number; offset?: number; changedSince
 } {
   const limit = input.limit ?? 50
   const offset = input.offset ?? 0
-  const since = input.changedSince !== undefined ? Date.parse(isoFrom(input.changedSince, 'changedSince')) : null
+  // Rows keep only the day of an edit, so a time given counts from the start of its day.
+  const since = input.changedSince !== undefined ? startOfDay(new Date(isoFrom(input.changedSince, 'changedSince'))).getTime() : null
   const rows = input.inTrash
-    ? (getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`).all() as Note[])
+    ? (getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NOT NULL ORDER BY julianday(deleted_at) DESC, id DESC`).all() as Note[])
     : repos.listNotes()
   // Compared as times: rows hold either the ISO form or SQLite's own.
   const picked = since !== null ? rows.filter((n) => storedTime(n.updated_at) >= since) : rows

@@ -3,7 +3,6 @@ import {
   DEFAULT_PARAMS,
   MAX_INTERVAL_DAYS,
   MIN_STABILITY,
-  RELEARN_MINUTES,
   clampParams,
   daysBetween,
   decayOf,
@@ -24,6 +23,7 @@ import {
   schedule,
   type SchedulableCard
 } from '../src/shared/fsrs'
+import { dayStamp } from '../src/shared/day'
 
 const NOW = new Date('2026-08-16T12:00:00.000Z')
 const daysAgo = (n: number): string => new Date(NOW.getTime() - n * 86_400_000).toISOString()
@@ -173,11 +173,11 @@ describe('schedule: a card seen for the first time', () => {
     expect(r.elapsedDays).toBe(0)
   })
 
-  it('sends Again back inside the session as a learning card', () => {
+  it('keeps Again due today as a learning card', () => {
     const r = schedule(fresh, 1, NOW)
     expect(r.state).toBe('learning')
     expect(r.scheduledDays).toBe(0)
-    expect(Date.parse(r.due) - NOW.getTime()).toBe(RELEARN_MINUTES * 60_000)
+    expect(r.due).toBe(dayStamp(NOW))
   })
 
   it('graduates anything else to review, at least a day out', () => {
@@ -265,8 +265,9 @@ describe('previewIntervals', () => {
 })
 
 describe('daysBetween', () => {
-  it('measures fractional days forward in time', () => {
-    expect(daysBetween(daysAgo(2.5), NOW)).toBeCloseTo(2.5, 6)
+  it('counts calendar days forward in time, not hours', () => {
+    expect(daysBetween(new Date(2026, 7, 13, 23, 0).toISOString(), new Date(2026, 7, 16, 1, 0))).toBe(3)
+    expect(daysBetween(new Date(2026, 7, 16, 0, 0).toISOString(), new Date(2026, 7, 16, 23, 0))).toBe(0)
   })
 
   it('never returns a negative span, and survives an unparseable timestamp', () => {
@@ -291,21 +292,17 @@ describe('dueIn', () => {
   const HOUR = 3_600_000
   const DAY = 24 * HOUR
 
-  it('says due once the time has come', () => {
+  const local = (day: number, hour: number): number => new Date(2026, 7, day, hour).getTime()
+
+  it('says due on its day and after it', () => {
     expect(dueIn(at(0), NOW.getTime())).toBe('due')
     expect(dueIn(at(-DAY), NOW.getTime())).toBe('due')
+    expect(dueIn(local(16, 23), local(16, 1))).toBe('due')
   })
 
-  it('counts a relearning card in minutes, not as zero days', () => {
-    expect(dueIn(at(RELEARN_MINUTES * 60_000), NOW.getTime())).toBe(`in ${RELEARN_MINUTES}m`)
-    expect(dueIn(at(5 * HOUR + 1000), NOW.getTime())).toBe('in 5h')
-  })
-
-  it('goes from 59 minutes to one hour', () => {
-    expect(dueIn(at(1000), NOW.getTime())).toBe('in 1m')
-    expect(dueIn(at(59 * 60_000), NOW.getTime())).toBe('in 59m')
-    expect(dueIn(at(HOUR - 100), NOW.getTime())).toBe('in 1h')
-    expect(dueIn(at(HOUR), NOW.getTime())).toBe('in 1h')
+  it('counts the next day as one day, however few hours are left', () => {
+    expect(dueIn(local(17, 0), local(16, 23))).toBe('in 1d')
+    expect(dueIn(local(17, 23), local(16, 0))).toBe('in 1d')
   })
 
   it('counts the time left, not the whole interval', () => {
@@ -313,9 +310,9 @@ describe('dueIn', () => {
     expect(dueIn(at(400 * DAY), NOW.getTime())).toBe('in 1.1y')
   })
 
-  it('counts whole days, as the hours are counted', () => {
-    expect(dueIn(at(DAY + 13 * HOUR), NOW.getTime())).toBe('in 1d')
-    expect(dueIn(at(29.6 * DAY), NOW.getTime())).toBe('in 29d')
+  it('counts calendar days', () => {
+    expect(dueIn(local(18, 1), local(16, 22))).toBe('in 2d')
+    expect(dueIn(new Date(2026, 8, 14, 9).getTime(), local(16, 12))).toBe('in 29d')
   })
 
   it('says nothing for an unreadable date', () => {

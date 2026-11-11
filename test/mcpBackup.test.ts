@@ -98,14 +98,14 @@ describe('the copy before an assistant first writes', () => {
     expect(backups()).toEqual([expect.stringMatching(/^assistant-.*\.db$/)])
     const copy = new DatabaseSync(join(dir, 'backups', backups()[0]))
     try {
-      expect(copy.prepare('PRAGMA user_version').get()).toEqual({ user_version: 14 })
+      expect(copy.prepare('PRAGMA user_version').get()).toEqual({ user_version: 15 })
     } finally {
       copy.close()
     }
   })
 
   const earlier = [1, 2, 3].map((day) => `assistant-2026-10-0${day}T08-00-00.db`)
-  const made = expect.stringMatching(/^assistant-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
+  const made = 'assistant-1.db'
 
   it('keeps the newest three', async () => {
     mkdirSync(join(dir, 'backups'))
@@ -114,21 +114,22 @@ describe('the copy before an assistant first writes', () => {
     const created = await createNote('Lab')
 
     expect(created.isError ?? false).toBe(false)
-    expect(backups()).toEqual([...earlier.slice(1), made])
+    expect(backups()).toEqual([made, ...earlier.slice(1)].sort())
   })
 
   it('still writes when an old copy cannot be removed, and removes the others', async () => {
     mkdirSync(join(dir, 'backups'))
     for (const f of earlier) writeFileSync(join(dir, 'backups', f), 'earlier')
-    // Sorts first and cannot be unlinked, like a copy open in another program.
-    mkdirSync(join(dir, 'backups', 'assistant-0.db'))
+    // Oldest of all and cannot be unlinked, like a copy open in another program.
+    const stuck = 'assistant-2026-01-01T00-00-00.db'
+    mkdirSync(join(dir, 'backups', stuck))
     const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     try {
       const created = await createNote('Lab')
 
       expect(created.isError ?? false).toBe(false)
       expect(notes()).toEqual([{ title: 'Lab' }])
-      expect(backups()).toEqual(['assistant-0.db', ...earlier.slice(1), made])
+      expect(backups()).toEqual([made, stuck, ...earlier.slice(1)].sort())
       expect(quiet).toHaveBeenCalledWith('removing an old backup failed', expect.any(Error))
     } finally {
       quiet.mockRestore()

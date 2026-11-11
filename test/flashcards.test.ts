@@ -154,12 +154,12 @@ describe('cards of a note in the trash', () => {
 })
 
 describe('due dates in either stored form', () => {
-  it('count and order cards by their time, not by how the time is written', () => {
+  it('count cards due by the end of today and order them, whichever way the date is written', () => {
     const { deckId, cards } = sync([line('noon', '1'), line('six', '2'), line('five', '3')])
     const due = (front: string, at: string): void => {
       raw.prepare(`UPDATE flashcards SET next_review_date = ? WHERE id = ?`).run(at, cards.find((c) => c.front === front)!.id)
     }
-    due('noon', '2026-10-23 12:00:00')
+    due('noon', '2026-10-24 12:00:00')
     due('six', '2026-10-23 06:00:00')
     due('five', '2026-10-23T05:00:00.000Z')
     vi.useFakeTimers({ toFake: ['Date'] })

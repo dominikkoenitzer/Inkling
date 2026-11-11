@@ -4,6 +4,7 @@ import fs, { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFil
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openSqlite } from './sqlite'
+import { dayStamp, storedTime } from '../src/shared/day'
 
 // The migration runs in Electron against better-sqlite3; here against Node's own SQLite.
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
@@ -23,6 +24,9 @@ const open = openSqlite
 
 const columns = (raw: DatabaseSync, table: string): string[] =>
   (raw.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name)
+
+/** The local-midnight stamp schema 15 keeps for a stored time. */
+const day = (v: string): string => dayStamp(new Date(storedTime(v)))
 
 const version = (raw: DatabaseSync): number => (raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version
 
@@ -100,11 +104,12 @@ PRAGMA user_version = 3;
 
     migrate(db)
 
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
     expect(raw.prepare(`SELECT id, state, last_review, next_review_date FROM flashcards ORDER BY id`).all()).toEqual([
-      { id: 1, state: 'review', last_review: '2026-10-22T12:00:00.000Z', next_review_date: '2026-10-25T12:00:00.000Z' },
-      { id: 2, state: 'review', last_review: '2026-10-20T12:00:00.000Z', next_review_date: '2026-10-25 12:00:00' },
-      { id: 3, state: 'new', last_review: null, next_review_date: '2026-10-25 12:00:00' }
+      // Schema 15 then keeps only the day of each.
+      { id: 1, state: 'review', last_review: day('2026-10-22T12:00:00.000Z'), next_review_date: day('2026-10-25T12:00:00.000Z') },
+      { id: 2, state: 'review', last_review: day('2026-10-20T12:00:00.000Z'), next_review_date: day('2026-10-25 12:00:00') },
+      { id: 3, state: 'new', last_review: null, next_review_date: day('2026-10-25 12:00:00') }
     ])
   })
 })
@@ -122,7 +127,7 @@ describe('migrate to v11', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
     expect(columns(raw, 'flashcard_decks')).toContain('note_id')
     expect(columns(raw, 'flashcards')).toEqual(expect.arrayContaining(['source_line', 'cloze']))
     expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
@@ -155,7 +160,7 @@ describe('migrate to v11', () => {
     const fresh = open()
     migrate(fresh.db)
 
-    expect(version(fresh.raw)).toBe(14)
+    expect(version(fresh.raw)).toBe(15)
     for (const table of ['flashcard_decks', 'flashcards']) {
       expect(columns(fresh.raw, table)).toEqual(columns(upgraded.raw, table))
     }
@@ -165,7 +170,7 @@ describe('migrate to v11', () => {
     const { raw, db } = open()
     migrate(db)
     migrate(db)
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
   })
 })
 
@@ -186,7 +191,7 @@ describe('migrate to v12', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
     expect(columns(raw, 'flashcards')).toContain('external_id')
     expect(raw.prepare(`SELECT * FROM flashcards WHERE id = 1`).get()).toMatchObject({
       front: 'Osmosis',
@@ -234,7 +239,7 @@ describe('migrate to v13', () => {
 
     migrate(db)
 
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
     expect(raw.prepare(`SELECT source_id FROM search_index WHERE search_index MATCH '"photosynthesis"*'`).all()).toEqual([{ source_id: '1' }])
     expect(indexed(raw)).toEqual([
       { title: 'Plants', content_text: 'Photosynthesis', source_type: 'note', source_id: '1' },
@@ -250,7 +255,7 @@ describe('migrate to v13', () => {
     raw.exec(`PRAGMA user_version = 12`)
     migrate(db)
 
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
     expect(indexed(raw)).toEqual(once)
   })
 })
@@ -342,9 +347,15 @@ PRAGMA user_version = 13;
 
     migrate(db)
 
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
     expect(tasksSql(raw)).toMatch(/id INTEGER PRIMARY KEY AUTOINCREMENT/)
-    expect(tasks(raw)).toEqual(rows)
+    // Schema 15 then keeps only the day of each time.
+    const asDays = (r: Record<string, unknown>): Record<string, unknown> => ({
+      ...r,
+      created_at: r.created_at === null ? null : day(String(r.created_at)),
+      completed_at: r.completed_at === null ? null : day(String(r.completed_at))
+    })
+    expect(tasks(raw)).toEqual((rows as Array<Record<string, unknown>>).map(asDays))
     expect(links(raw, 'tasks')).toEqual(taskLinks)
     expect(links(raw, 'focus_sessions')).toEqual(sessionLinks)
     expect(indexes(raw)).toEqual(named)
@@ -400,13 +411,14 @@ PRAGMA user_version = 13;
   it('gives the same table when it runs again', () => {
     const { raw, db } = v13()
     migrate(db)
-    add(raw, 'Call Anna')
+    // Stamped with its day, as the app writes it.
+    raw.prepare(`UPDATE tasks SET created_at = ? WHERE id = ?`).run(dayStamp(), add(raw, 'Call Anna'))
     const once = { rows: tasks(raw), sql: tasksSql(raw), named: indexes(raw), seq: raw.prepare(`SELECT * FROM sqlite_sequence`).all() }
 
     raw.exec(`PRAGMA user_version = 13`)
     migrate(db)
 
-    expect(version(raw)).toBe(14)
+    expect(version(raw)).toBe(15)
     expect({ rows: tasks(raw), sql: tasksSql(raw), named: indexes(raw), seq: raw.prepare(`SELECT * FROM sqlite_sequence`).all() }).toEqual(once)
     expect(foreignKeys(raw)).toBe(1)
   })
@@ -515,7 +527,7 @@ describe('an upgrade while the assistant writes', () => {
     try {
       const outcomes = whileAssistantWrites(raw, assistant, () => migrate(db))
 
-      expect(version(raw)).toBe(14)
+      expect(version(raw)).toBe(15)
       expect(outcomes.length).toBeGreaterThan(1)
       expect(outcomes).not.toContain('wrote')
       // The write that waited lands once the upgrade is done.
@@ -524,6 +536,104 @@ describe('an upgrade while the assistant writes', () => {
       close()
     }
   })
+})
+
+describe('migrate to v15', () => {
+  /** A current database put back to schema 14, before notes counted their edits. */
+  function v14(): ReturnType<typeof open> {
+    const opened = open()
+    migrate(opened.db)
+    opened.raw.exec(`
+      ALTER TABLE notes DROP COLUMN edit_seq;
+      DELETE FROM settings WHERE key = 'theme';
+      INSERT INTO notebooks (id, name, color, created_at) VALUES (1, 'Home', 'teal', '2026-10-10 18:30:00');
+      INSERT INTO notes (id, notebook_id, title, content, created_at, updated_at, deleted_at) VALUES
+        (1, 1, 'Late', '{}', '2026-10-10 18:30:00', '2026-11-02T15:20:00.000Z', NULL),
+        (2, 1, 'Early', '{}', '2026-10-11 08:00:00', '2026-11-01 09:10:00', NULL),
+        (3, 1, 'Same', '{}', '2026-10-11 08:00:00', '2026-11-01 09:10:00', '2026-11-03 07:45:10'),
+        (4, 1, 'Odd', '{}', 'not a date', 'not a date', NULL);
+      INSERT INTO tasks (id, notebook_id, note_id, title, status, due_date, created_at, completed_at) VALUES
+        (1, 1, 1, 'Buy agar', 'done', '2026-11-20', '2026-10-12 13:02:00', '2026-11-04T20:59:59.999Z');
+      INSERT INTO flashcard_decks (id, notebook_id, name, created_at) VALUES (1, 1, 'Cells', '2026-10-13 10:00:00');
+      INSERT INTO flashcards (id, deck_id, front, back, next_review_date, last_review) VALUES
+        (1, 1, 'front', 'back', '2026-11-12T14:00:00.000Z', '2026-11-02 23:30:00');
+      INSERT INTO review_log (card_id, deck_id, rating, state, stability, difficulty, reviewed_at) VALUES
+        (1, 1, 3, 'review', 2, 5, '2026-11-02 23:30:00');
+      PRAGMA user_version = 14;
+    `)
+    return opened
+  }
+  const stamps = (raw: DatabaseSync): unknown[] =>
+    raw.prepare(`
+      SELECT 'notebooks' AS t, id, created_at AS a, NULL AS b, NULL AS c FROM notebooks
+      UNION ALL SELECT 'notes', id, created_at, updated_at, deleted_at FROM notes
+      UNION ALL SELECT 'tasks', id, created_at, completed_at, due_date FROM tasks
+      UNION ALL SELECT 'decks', id, created_at, NULL, NULL FROM flashcard_decks
+      UNION ALL SELECT 'cards', id, next_review_date, last_review, NULL FROM flashcards
+      UNION ALL SELECT 'log', id, reviewed_at, NULL, NULL FROM review_log
+      ORDER BY 1, 2`).all()
+  const inZurich = (run: () => void): void => {
+    const zone = process.env.TZ
+    process.env.TZ = 'Europe/Zurich'
+    try {
+      run()
+    } finally {
+      if (zone === undefined) delete process.env.TZ
+      else process.env.TZ = zone
+    }
+  }
+
+  it('keeps the day of every stored time and drops the time', () =>
+    inZurich(() => {
+      const { raw, db } = v14()
+      migrate(db)
+      expect(version(raw)).toBe(15)
+      expect(stamps(raw)).toEqual([
+        { t: 'cards', id: 1, a: day('2026-11-12T14:00:00.000Z'), b: day('2026-11-02 23:30:00'), c: null },
+        { t: 'decks', id: 1, a: day('2026-10-13 10:00:00'), b: null, c: null },
+        { t: 'log', id: 1, a: day('2026-11-02 23:30:00'), b: null, c: null },
+        { t: 'notebooks', id: 1, a: day('2026-10-10 18:30:00'), b: null, c: null },
+        { t: 'notes', id: 1, a: day('2026-10-10 18:30:00'), b: day('2026-11-02T15:20:00.000Z'), c: null },
+        { t: 'notes', id: 2, a: day('2026-10-11 08:00:00'), b: day('2026-11-01 09:10:00'), c: null },
+        { t: 'notes', id: 3, a: day('2026-10-11 08:00:00'), b: day('2026-11-01 09:10:00'), c: day('2026-11-03 07:45:10') },
+        // Unreadable values never were a time, so they stay as they are.
+        { t: 'notes', id: 4, a: 'not a date', b: 'not a date', c: null },
+        // A due date is picked, not done, so it keeps its form.
+        { t: 'tasks', id: 1, a: day('2026-10-12 13:02:00'), b: day('2026-11-04T20:59:59.999Z'), c: '2026-11-20' }
+      ])
+      // Late in the day in UTC is the next morning here.
+      expect(day('2026-11-02 23:30:00')).toBe(new Date(2026, 10, 3).toISOString())
+    }))
+
+  it('orders notes by their last edit, oldest edit lowest, ties by id', () =>
+    inZurich(() => {
+      const { raw, db } = v14()
+      migrate(db)
+      expect(raw.prepare(`SELECT id, edit_seq FROM notes ORDER BY id`).all()).toEqual([
+        { id: 1, edit_seq: 4 },
+        { id: 2, edit_seq: 2 },
+        { id: 3, edit_seq: 3 },
+        { id: 4, edit_seq: 1 }
+      ])
+    }))
+
+  it('settles the theme from the times before they become days', () =>
+    inZurich(() => {
+      // Made after 0.8.0 shipped, though its day began before it: the look stays light.
+      const { raw, db } = v14()
+      migrate(db)
+      expect(raw.prepare(`SELECT value FROM settings WHERE key = 'theme'`).get()).toEqual({ value: 'light' })
+    }))
+
+  it('gives the same rows when it runs again', () =>
+    inZurich(() => {
+      const { raw, db } = v14()
+      migrate(db)
+      const once = { rows: stamps(raw), seq: raw.prepare(`SELECT id, edit_seq FROM notes ORDER BY id`).all() }
+      raw.exec(`PRAGMA user_version = 14`)
+      migrate(db)
+      expect({ rows: stamps(raw), seq: raw.prepare(`SELECT id, edit_seq FROM notes ORDER BY id`).all() }).toEqual(once)
+    }))
 })
 
 describe('the theme of a database without one', () => {
@@ -630,9 +740,8 @@ describe('the startup backup', () => {
     const { dir, raw } = folder(true)
     try {
       openDb(dir)
-      const now = kept(dir)
-      expect(now.slice(0, 4)).toEqual(earlier.slice(1))
-      expect(now[4]).toMatch(/^inkling-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
+      // The oldest time-named copy goes; the new one is numbered.
+      expect(kept(dir)).toEqual(['inkling-1.db', ...earlier.slice(1)].sort())
     } finally {
       raw.close()
       rmSync(dir, { recursive: true, force: true })
@@ -641,17 +750,15 @@ describe('the startup backup', () => {
 
   it('keeps pruning past an old copy it cannot remove', () => {
     const { dir, raw } = folder(true)
-    // Sorts first and cannot be unlinked, like a copy open in another program.
-    mkdirSync(join(dir, 'backups', 'inkling-0.db'))
+    // Oldest of all and cannot be unlinked, like a copy open in another program.
+    const stuck = 'inkling-2026-01-01T00-00-00.db'
+    mkdirSync(join(dir, 'backups', stuck))
     const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     try {
       openDb(dir)
       expect(quiet).not.toHaveBeenCalledWith('backup failed', expect.anything())
       expect(quiet).toHaveBeenCalledWith('removing an old backup failed', expect.any(Error))
-      const now = kept(dir)
-      expect(now.slice(0, 5)).toEqual(['inkling-0.db', ...earlier.slice(1)])
-      expect(now[5]).toMatch(/^inkling-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
-      expect(now).toHaveLength(6)
+      expect(kept(dir)).toEqual(['inkling-1.db', stuck, ...earlier.slice(1)].sort())
     } finally {
       quiet.mockRestore()
       raw.close()
@@ -715,7 +822,7 @@ describe('the startup backup', () => {
     try {
       openDb(dir)
       expect(quiet).not.toHaveBeenCalled()
-      expect(kept(dir)).toEqual([busy, expect.stringMatching(/^inkling-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)])
+      expect(kept(dir)).toEqual([busy, 'inkling-1.db'])
     } finally {
       remove.mockRestore()
       quiet.mockRestore()

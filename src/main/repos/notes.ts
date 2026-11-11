@@ -1,14 +1,15 @@
 import { getDb } from '../db'
-import { now } from './dates'
+import { today } from './dates'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
 import { isEmptyNote } from '@shared/emptyNote'
+import { addDays } from '@shared/day'
 import type { Note, NoteBase } from '@shared/types'
 
 const EMPTY_DOC = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] })
 
-/** Every live note, newest edit first. */
+/** Every live note, newest edit first: `edit_seq` counts edits, as rows keep only the day. */
 export function listNotes(): Note[] {
-  return getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY julianday(updated_at) DESC, id DESC`).all() as Note[]
+  return getDb().prepare(`SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY edit_seq DESC, id DESC`).all() as Note[]
 }
 
 export function getNote(id: number): Note | null {
@@ -16,11 +17,11 @@ export function getNote(id: number): Note | null {
 }
 
 export function createNote(input: { notebook_id: number; title?: string | null; content?: string }): Note {
-  const ts = now()
+  const ts = today()
   const info = getDb()
     .prepare(
-      `INSERT INTO notes (notebook_id, title, content, created_at, updated_at)
-       VALUES (@notebook_id, @title, @content, @ts, @ts)`
+      `INSERT INTO notes (notebook_id, title, content, created_at, updated_at, edit_seq)
+       VALUES (@notebook_id, @title, @content, @ts, @ts, (SELECT COALESCE(MAX(edit_seq), 0) + 1 FROM notes))`
     )
     .run({ notebook_id: input.notebook_id, title: input.title ?? null, content: input.content ?? EMPTY_DOC, ts })
   const note = getNote(Number(info.lastInsertRowid))!
@@ -45,11 +46,11 @@ export function updateNote(id: number, patch: Record<string, unknown>, base?: No
         : ('content' in patch ? ' AND content IN (@base, @content)' : ' AND content = @base') +
           ('title' in patch ? ' AND (title IS @baseTitle OR title IS @title)' : '')
     const info = getDb()
-      .prepare(`UPDATE notes SET ${sets}, updated_at = @ts WHERE id = @id AND deleted_at IS NULL${unchanged}`)
+      .prepare(`UPDATE notes SET ${sets}, updated_at = @ts, edit_seq = (SELECT COALESCE(MAX(edit_seq), 0) + 1 FROM notes) WHERE id = @id AND deleted_at IS NULL${unchanged}`)
       .run({
         ...patch,
         id,
-        ts: now(),
+        ts: today(),
         ...(base === undefined ? {} : { base: base.content }),
         ...(base !== undefined && 'title' in patch ? { baseTitle: base.title } : {})
       })
@@ -107,7 +108,7 @@ export const TRASH_RETENTION_DAYS = 30
  * purged for real after TRASH_RETENTION_DAYS. The toast offers an undo until then.
  */
 export function removeNote(id: number): void {
-  getDb().prepare(`UPDATE notes SET deleted_at = ? WHERE id = ?`).run(now(), id)
+  getDb().prepare(`UPDATE notes SET deleted_at = ? WHERE id = ?`).run(today(), id)
   ftsDelete('note', id)
 }
 
@@ -120,7 +121,7 @@ export function restoreNote(id: number): Note | null {
 
 /** Called once at startup: anything deleted longer ago than the retention window goes. */
 export function purgeExpiredNotes(): number {
-  const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 86_400_000).toISOString()
+  const cutoff = addDays(new Date(), -TRASH_RETENTION_DAYS).toISOString()
   const stale = getDb()
     .prepare(`SELECT id FROM notes WHERE deleted_at IS NOT NULL AND deleted_at < ?`)
     .all(cutoff) as Array<{ id: number }>

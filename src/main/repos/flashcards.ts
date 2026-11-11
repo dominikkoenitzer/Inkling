@@ -1,41 +1,42 @@
 import { getDb } from '../db'
-import { now } from './dates'
+import { dueBefore, today } from './dates'
 import { ftsDelete, ftsUpsert } from './search'
 import { getSetting } from './settings'
 import { RATINGS, parseParams, schedule } from '@shared/fsrs'
 import { clozeNumbers } from '@shared/cloze'
+import { dayStamp } from '@shared/day'
 import type { Card, Deck, NoteCardLine, ReviewGrade } from '@shared/types'
 
 /** A deck made from a note that is in the trash: hidden with the note until it comes back. */
 const TRASHED_DECK = `EXISTS (SELECT 1 FROM notes n WHERE n.id = d.note_id AND n.deleted_at IS NOT NULL)`
 
-/** A due time compared as a time: rows hold it as ISO or in SQLite's own form, which sort apart as text. */
+/** A due date compared as a time: rows hold it as ISO or in SQLite's own form, which sort apart as text. */
 const DUE = `julianday(c.next_review_date)`
 
 const DECK_ROWS = `
     SELECT d.*,
       (SELECT COUNT(*) FROM flashcards c WHERE c.deck_id = d.id) AS card_count,
-      (SELECT COUNT(*) FROM flashcards c WHERE c.deck_id = d.id AND ${DUE} <= julianday(?)) AS due_count
+      (SELECT COUNT(*) FROM flashcards c WHERE c.deck_id = d.id AND ${DUE} < julianday(?)) AS due_count
     FROM flashcard_decks d`
 
 export function listDecks(notebookId?: number): Deck[] {
-  const nowIso = now()
+  const before = dueBefore()
   const base = `${DECK_ROWS} WHERE NOT ${TRASHED_DECK}`
   if (notebookId !== undefined) {
-    return getDb().prepare(`${base} AND d.notebook_id = ? ORDER BY d.id`).all(nowIso, notebookId) as Deck[]
+    return getDb().prepare(`${base} AND d.notebook_id = ? ORDER BY d.id`).all(before, notebookId) as Deck[]
   }
-  return getDb().prepare(`${base} ORDER BY d.id`).all(nowIso) as Deck[]
+  return getDb().prepare(`${base} ORDER BY d.id`).all(before) as Deck[]
 }
 
 function getDeck(id: number): Deck {
-  return getDb().prepare(`${DECK_ROWS} WHERE d.id = ?`).get(now(), id) as Deck
+  return getDb().prepare(`${DECK_ROWS} WHERE d.id = ?`).get(dueBefore(), id) as Deck
 }
 
 /** Inserts a deck with its search entry and returns the new id. */
 function insertDeck(notebookId: number, name: string, noteId: number | null = null): number {
   const info = getDb()
     .prepare(`INSERT INTO flashcard_decks (notebook_id, name, created_at, note_id) VALUES (?, ?, ?, ?)`)
-    .run(notebookId, name, now(), noteId)
+    .run(notebookId, name, today(), noteId)
   const id = Number(info.lastInsertRowid)
   ftsUpsert('deck', id, name, '')
   return id
@@ -63,9 +64,9 @@ export function dueCards(deckId: number): Card[] {
   return getDb()
     .prepare(
       `SELECT c.* FROM flashcards c JOIN flashcard_decks d ON d.id = c.deck_id
-       WHERE c.deck_id = ? AND ${DUE} <= julianday(?) AND NOT ${TRASHED_DECK} ORDER BY ${DUE}`
+       WHERE c.deck_id = ? AND ${DUE} < julianday(?) AND NOT ${TRASHED_DECK} ORDER BY ${DUE}, c.id`
     )
-    .all(deckId, now()) as Card[]
+    .all(deckId, dueBefore()) as Card[]
 }
 
 /** Adds one card, or one per cloze number when the front holds cloze markup. Returns the first. */
@@ -129,7 +130,7 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
   const card = db.prepare(`SELECT * FROM flashcards WHERE id = ?`).get(cardId) as Card | undefined
   if (!card) throw new Error(`card ${cardId} not found`)
 
-  // Not the module-level now(): the schedule and the log must use the same instant.
+  // One reading of the clock, so the schedule and the log keep the same day.
   const reviewedAt = new Date()
   // Fitted parameters stored by earlier versions still apply; anything unusable gives the defaults.
   const params = parseParams(getSetting('fsrs_params'))
@@ -139,7 +140,7 @@ export function reviewCard(cardId: number, grade: ReviewGrade): Card {
     reviewedAt,
     params
   )
-  const reviewedAtIso = reviewedAt.toISOString()
+  const reviewedAtIso = dayStamp(reviewedAt)
 
   const tx = db.transaction(() => {
     db.prepare(
@@ -232,7 +233,7 @@ function applyLine(
     }
     const info = db
       .prepare(`INSERT INTO flashcards (deck_id, front, back, next_review_date, source_line, cloze) VALUES (?, ?, ?, ?, ?, ?)`)
-      .run(deckId, front, back, now(), lineKey, n)
+      .run(deckId, front, back, today(), lineKey, n)
     const id = Number(info.lastInsertRowid)
     if (keyed && lineKey === null) {
       lineKey = id
