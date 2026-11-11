@@ -4,7 +4,7 @@ import fs from 'fs'
 import { tiptapToText } from './repos/text'
 import { extractNoteTaskItems } from '@shared/noteTasks'
 import { dayStamp, storedTime } from '@shared/day'
-import { backupsOldestFirst, nextBackupName } from './backupNames'
+import { backupsOldestFirst, nextBackupName, stampDayOnly } from './backupNames'
 
 let db: Database.Database | null = null
 
@@ -587,6 +587,7 @@ function backup(d: Database.Database, dir: string): void {
     fs.rmSync(partial, { force: true })
     throw err
   }
+  stampDayOnly(target)
   const files = backupsOldestFirst(fs.readdirSync(backupsDir), 'inkling')
   while (files.length > 5) {
     const oldest = files.shift()!
@@ -597,4 +598,6 @@ function backup(d: Database.Database, dir: string): void {
       console.error('removing an old backup failed', err)
     }
   }
+  // Last, as every copy, rename and removal above moves the folder's time.
+  stampDayOnly(backupsDir)
 }

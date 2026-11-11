@@ -7,7 +7,7 @@ import { join } from 'path'
 import { attachDb, checkVersion, getDb } from '../db'
 import * as repos from '../repos'
 import * as tools from './tools'
-import { backupsOldestFirst, nextBackupName } from '../backupNames'
+import { backupsOldestFirst, nextBackupName, stampDayOnly } from '../backupNames'
 
 const INSTRUCTIONS = `Inkling is the user's notes app. It holds notes (Markdown in, Markdown out), to-dos (the checkbox lines inside notes, "- [ ] text") and flashcards.
 Search or list before you write, and add to an existing note when one fits. A "- [ ]" line you write becomes a to-do on the user's Today list. A "Term :: Definition" line in a note becomes a flashcard with make_flashcards_from_note.
@@ -85,6 +85,7 @@ export function createServer(dataDir: string, version: string): McpServer {
       fs.rmSync(partial, { force: true })
       throw err
     }
+    stampDayOnly(target)
   }
   // Writes that arrive together share one copy; a failed one is tried again on the next write.
   let backedUp: Promise<void> | undefined
@@ -104,6 +105,7 @@ export function createServer(dataDir: string, version: string): McpServer {
         console.error('removing an old backup failed', err)
       }
     }
+    stampDayOnly(dir)
   }
 
   const read =
