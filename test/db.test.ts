@@ -4,7 +4,7 @@ import fs, { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFil
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openSqlite } from './sqlite'
-import { dayStamp, storedTime } from '../src/shared/day'
+import { dayStamp, startOfDay, storedTime } from '../src/shared/day'
 
 // The migration runs in Electron against better-sqlite3; here against Node's own SQLite.
 vi.mock('electron', () => ({ app: { getPath: () => '' } }))
@@ -832,6 +832,19 @@ describe('the startup backup', () => {
     } finally {
       copy?.close()
       reader.close()
+      raw.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('stamps the copy and its folder with the day only', () => {
+    const { dir, raw } = folder(true)
+    try {
+      openDb(dir)
+      const day = startOfDay().getTime()
+      expect(fs.statSync(join(dir, 'backups', 'inkling-1.db')).mtimeMs).toBe(day)
+      expect(fs.statSync(join(dir, 'backups')).mtimeMs).toBe(day)
+    } finally {
       raw.close()
       rmSync(dir, { recursive: true, force: true })
     }

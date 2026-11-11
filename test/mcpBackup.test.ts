@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DatabaseSync, backup } from 'node:sqlite'
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { openSqlite } from './sqlite'
+import { startOfDay } from '../src/shared/day'
 
 const opening = vi.hoisted(() => ({ db: {} as object }))
 // `new Database(file)` in attachDb hands back the MCP server's connection.
@@ -106,6 +107,17 @@ describe('the copy before an assistant first writes', () => {
 
   const earlier = [1, 2, 3].map((day) => `assistant-2026-10-0${day}T08-00-00.db`)
   const made = 'assistant-1.db'
+
+  it('stamps the copy and its folder with the day only', async () => {
+    mkdirSync(join(dir, 'backups'))
+    for (const f of earlier) writeFileSync(join(dir, 'backups', f), 'earlier')
+
+    expect((await createNote('Lab')).isError ?? false).toBe(false)
+
+    const day = startOfDay().getTime()
+    expect(statSync(join(dir, 'backups', made)).mtimeMs).toBe(day)
+    expect(statSync(join(dir, 'backups')).mtimeMs).toBe(day)
+  })
 
   it('keeps the newest three', async () => {
     mkdirSync(join(dir, 'backups'))
