@@ -115,8 +115,10 @@ describe('the copy before an assistant first writes', () => {
     expect((await createNote('Lab')).isError ?? false).toBe(false)
 
     const day = startOfDay().getTime()
-    expect(statSync(join(dir, 'backups', made)).mtimeMs).toBe(day)
-    expect(statSync(join(dir, 'backups')).mtimeMs).toBe(day)
+    for (const path of [join(dir, 'backups', made), join(dir, 'backups')]) {
+      const stat = statSync(path)
+      expect([stat.mtimeMs, stat.atimeMs]).toEqual([day, day])
+    }
   })
 
   it('keeps the newest three', async () => {

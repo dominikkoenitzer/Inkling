@@ -704,6 +704,32 @@ describe('migrate to v15', () => {
       }
     }))
 
+  it('keeps its mark while the log cannot be emptied, and clears the old times at the next start', () =>
+    inZurich(() => {
+      const { dir, file, raw, db, times } = v14OnDisk()
+      const prepare = raw.prepare.bind(raw)
+      let held = true
+      // A reader of the assistant keeps the log from being emptied: the checkpoint reports busy.
+      opening.db = Object.assign(db, {
+        prepare: (sql: string) =>
+          held && sql === 'PRAGMA wal_checkpoint(TRUNCATE)' ? { get: () => ({ busy: 1, log: 9, checkpointed: 0 }) } : prepare(sql)
+      })
+      const mark = () => prepare(`SELECT value FROM settings WHERE key = 'compact_pending'`).get()
+      try {
+        openDb(dir)
+        expect(version(raw)).toBe(15)
+        expect(mark()).toBeDefined()
+        held = false
+        openDb(dir)
+        expect(mark()).toBeUndefined()
+        raw.close()
+        expect(leftIn(file, times)).toEqual([])
+      } finally {
+        if (raw.isOpen) raw.close()
+        rmSync(dir, { recursive: true, force: true })
+      }
+    }))
+
   it('stays at schema 14 with every time kept when the backup before the move fails', () =>
     inZurich(() => {
       const { dir, raw, db } = v14OnDisk()
@@ -842,8 +868,10 @@ describe('the startup backup', () => {
     try {
       openDb(dir)
       const day = startOfDay().getTime()
-      expect(fs.statSync(join(dir, 'backups', 'inkling-1.db')).mtimeMs).toBe(day)
-      expect(fs.statSync(join(dir, 'backups')).mtimeMs).toBe(day)
+      for (const path of [join(dir, 'backups', 'inkling-1.db'), join(dir, 'backups')]) {
+        const stat = fs.statSync(path)
+        expect([stat.mtimeMs, stat.atimeMs]).toEqual([day, day])
+      }
     } finally {
       raw.close()
       rmSync(dir, { recursive: true, force: true })
