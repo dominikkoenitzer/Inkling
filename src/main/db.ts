@@ -587,7 +587,6 @@ function backup(d: Database.Database, dir: string): void {
     fs.rmSync(partial, { force: true })
     throw err
   }
-  stampDayOnly(target)
   const files = backupsOldestFirst(fs.readdirSync(backupsDir), 'inkling')
   while (files.length > 5) {
     const oldest = files.shift()!
@@ -598,6 +597,7 @@ function backup(d: Database.Database, dir: string): void {
       console.error('removing an old backup failed', err)
     }
   }
-  // Last, as every copy, rename and removal above moves the folder's time.
-  stampDayOnly(backupsDir)
+  // Last, as every copy, rename and removal above moves the folder's time. One child sets both
+  // creation times on Windows, and the start never waits on it.
+  void stampDayOnly(target, backupsDir)
 }

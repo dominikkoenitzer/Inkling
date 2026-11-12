@@ -74,7 +74,7 @@ export function createServer(dataDir: string, version: string): McpServer {
   // the app makes when it starts, so whatever an assistant does can be undone by hand.
   const dir = join(dataDir, 'backups')
   // The copy gets its `.db` name only once complete, so a failed one never counts among the kept.
-  const copy = async (): Promise<void> => {
+  const copy = async (): Promise<string> => {
     fs.mkdirSync(dir, { recursive: true })
     const target = join(dir, nextBackupName(fs.readdirSync(dir), 'assistant'))
     const partial = `${target}.${process.pid}.partial`
@@ -85,17 +85,20 @@ export function createServer(dataDir: string, version: string): McpServer {
       fs.rmSync(partial, { force: true })
       throw err
     }
-    stampDayOnly(target)
+    return target
   }
   // Writes that arrive together share one copy; a failed one is tried again on the next write.
-  let backedUp: Promise<void> | undefined
+  let backedUp: Promise<string> | undefined
   const backupOnce = async (): Promise<void> => {
-    if (backedUp) return backedUp
+    if (backedUp) {
+      await backedUp
+      return
+    }
     backedUp = copy().catch((err: unknown) => {
       backedUp = undefined
       throw err
     })
-    await backedUp
+    const target = await backedUp
     const old = backupsOldestFirst(fs.readdirSync(dir), 'assistant')
     // Pruning is housekeeping: a copy that cannot be removed stays, and the write goes on.
     for (const f of old.slice(0, -KEEP_BACKUPS)) {
@@ -105,7 +108,8 @@ export function createServer(dataDir: string, version: string): McpServer {
         console.error('removing an old backup failed', err)
       }
     }
-    stampDayOnly(dir)
+    // One child sets both creation times on Windows, and the write never waits on it.
+    void stampDayOnly(target, dir)
   }
 
   const read =
