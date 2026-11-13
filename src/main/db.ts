@@ -3,6 +3,8 @@ import { join } from 'path'
 import fs from 'fs'
 import { tiptapToText } from './repos/text'
 import { extractNoteTaskItems } from '@shared/noteTasks'
+import { dayStamp, storedTime } from '@shared/day'
+import { backupsOldestFirst, nextBackupName, stampDayOnly } from './backupNames'
 
 let db: Database.Database | null = null
 
@@ -22,7 +24,8 @@ CREATE TABLE notes (
   content TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  deleted_at DATETIME
+  deleted_at DATETIME,
+  edit_seq INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE tasks (
@@ -105,12 +108,21 @@ export function openDb(dir: string): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   // Back up first, so a migration that goes wrong still leaves the file as it was.
+  let backedUp = true
   try {
     backup(db, dir)
   } catch (err) {
+    backedUp = false
     console.error('backup failed', err)
   }
-  migrate(db)
+  // Schema 15 drops the times for good, so it waits for a start whose backup holds them.
+  migrate(db, { dropTimes: backedUp })
+  if ((db.pragma('user_version', { simple: true }) as number) < CURRENT_VERSION) {
+    db.close()
+    db = null
+    throw new NoBackupError()
+  }
+  compactIfMoved(db)
   // Only a default for upgraders: if the write fails (the MCP server may hold the lock),
   // the app starts anyway and tries again next time.
   try {
@@ -128,9 +140,16 @@ class NewerDataError extends Error {
   }
 }
 
+/** The backup before a move that cannot be undone failed, so the data stays as it was. */
+class NoBackupError extends Error {
+  constructor() {
+    super('Inkling could not make a backup before updating your data, so it left the data as it was.')
+  }
+}
+
 /** What the start dialog says when `openDb` throws. */
 export function startFailure(err: unknown): string {
-  return err instanceof NewerDataError ? err.message : 'Inkling could not open its data.'
+  return err instanceof NewerDataError || err instanceof NoBackupError ? err.message : 'Inkling could not open its data.'
 }
 
 /** When 0.8.0 shipped (UTC). It reads a missing theme as light; 0.7 read it as dark. */
@@ -226,10 +245,13 @@ CREATE INDEX IF NOT EXISTS idx_review_log_deck ON review_log(deck_id);
 `
 
 /** The schema version the code in this build expects. */
-const CURRENT_VERSION = 14
+const CURRENT_VERSION = 15
 
-/** Exported for the migration tests; `openDb` is the only caller in the app. */
-export function migrate(d: Database.Database): void {
+/**
+ * Exported for the migration tests; `openDb` is the only caller in the app. Without
+ * `dropTimes` it stops at schema 14, before the step that keeps the day only.
+ */
+export function migrate(d: Database.Database, { dropTimes = true }: { dropTimes?: boolean } = {}): void {
   const version = d.pragma('user_version', { simple: true }) as number
 
   if (version === 0) {
@@ -390,6 +412,10 @@ export function migrate(d: Database.Database): void {
     // cannot meet a new line that took its id in the meantime.
     taskIdsAutoincrement(d)
   }
+  if (version < 15 && dropTimes) {
+    // Only the day of an action is kept from here on.
+    keepDaysOnly(d)
+  }
 }
 
 /**
@@ -448,6 +474,87 @@ function taskIdsAutoincrement(d: Database.Database): void {
   }
 }
 
+/** Every column that records when something was done. A task's due date is picked, so it stays. */
+const DAY_COLUMNS: Array<[string, string]> = [
+  ['notebooks', 'created_at'],
+  ['notes', 'created_at'],
+  ['notes', 'updated_at'],
+  ['notes', 'deleted_at'],
+  ['tasks', 'created_at'],
+  ['tasks', 'completed_at'],
+  ['flashcard_decks', 'created_at'],
+  ['flashcards', 'next_review_date'],
+  ['flashcards', 'last_review'],
+  ['review_log', 'reviewed_at'],
+  ['grades', 'created_at'],
+  ['focus_sessions', 'started_at']
+]
+
+/** Numbers every note by its last edit, oldest first and unreadable times lowest, ties by id. */
+function rankEdits(d: Database.Database, hasEditTime: boolean): void {
+  d.exec(`ALTER TABLE notes ADD COLUMN edit_seq INTEGER NOT NULL DEFAULT 0`)
+  if (!hasEditTime) return
+  const notes = d.prepare(`SELECT id, updated_at FROM notes`).all() as Array<{ id: number; updated_at: string | null }>
+  const at = (v: string | null): number => {
+    const t = v === null ? Number.NaN : storedTime(v)
+    return Number.isNaN(t) ? -Infinity : t
+  }
+  notes.sort((a, b) => at(a.updated_at) - at(b.updated_at) || a.id - b.id)
+  const seq = d.prepare(`UPDATE notes SET edit_seq = ? WHERE id = ?`)
+  notes.forEach((n, i) => seq.run(i + 1, n.id))
+}
+
+/**
+ * Schema 15 keeps the day of each action and no time: every stored time becomes local midnight
+ * of its day, and notes get `edit_seq` so the newest edit still comes first. The theme is
+ * settled first, while the times it reads are still there. The start-up backup holds the
+ * times as they were.
+ */
+function keepDaysOnly(d: Database.Database): void {
+  d.transaction(() => {
+    const has = (table: string, col: string): boolean =>
+      (d.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).some((c) => c.name === col)
+    // Every real database has these by now; only a partial one lacks them, and has no theme to keep.
+    const themeReads: Array<[string, string]> = [['settings', 'key'], ['notebooks', 'created_at'], ['notes', 'created_at'], ['tasks', 'created_at'], ['review_log', 'reviewed_at']]
+    if (themeReads.every(([table, col]) => has(table, col))) settleTheme(d)
+    // Ranked once, when the column comes in; a second run must not undo the order edits gave it.
+    if (has('notes', 'id') && !has('notes', 'edit_seq')) rankEdits(d, has('notes', 'updated_at'))
+    for (const [table, col] of DAY_COLUMNS) {
+      if (!has(table, col)) continue
+      const set = d.prepare(`UPDATE ${table} SET ${col} = ? WHERE id = ?`)
+      for (const row of d.prepare(`SELECT id, ${col} AS v FROM ${table} WHERE ${col} IS NOT NULL`).all() as Array<{ id: number; v: unknown }>) {
+        const t = storedTime(String(row.v))
+        // An unreadable value stays as it is; it never was a time to keep.
+        if (!Number.isNaN(t)) set.run(dayStamp(new Date(t)), row.id)
+      }
+    }
+    // The old values stay in the file's free space until it is rewritten; see compactIfMoved.
+    if (has('settings', 'key')) d.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, '1')`).run(COMPACT_KEY)
+    d.pragma('user_version = 15')
+  }).immediate()
+}
+
+/** Set by the move to schema 15 until the file is rewritten without the times it held. */
+const COMPACT_KEY = 'compact_pending'
+
+/**
+ * Rewrites the file after the move to schema 15, so the times it dropped are not left in its
+ * free space or its write-ahead log. While the assistant holds the file this cannot finish;
+ * the mark stays and the next start tries again.
+ */
+function compactIfMoved(d: Database.Database): void {
+  try {
+    if (!d.prepare(`SELECT 1 FROM settings WHERE key = ?`).get(COMPACT_KEY)) return
+    d.exec('VACUUM')
+    const log = d.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as { busy: number }
+    if (log.busy !== 0) return
+    d.prepare(`DELETE FROM settings WHERE key = ?`).run(COMPACT_KEY)
+    d.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get()
+  } catch (err) {
+    console.error('rewriting the data file failed', err)
+  }
+}
+
 /**
  * Rolling local backups: keep the last 5. SQLite writes the copy from one read snapshot, WAL
  * included, so it stays whole while the MCP server reads or writes. A copy only gets its
@@ -464,8 +571,7 @@ function backup(d: Database.Database, dir: string): void {
       // an assistant's copy still being written; the next start removes it if it is left
     }
   }
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  const target = join(backupsDir, `inkling-${stamp}.db`)
+  const target = join(backupsDir, nextBackupName(fs.readdirSync(backupsDir), 'inkling'))
   const partial = `${target}.partial`
   try {
     d.prepare('VACUUM INTO ?').run(partial)
@@ -481,10 +587,7 @@ function backup(d: Database.Database, dir: string): void {
     fs.rmSync(partial, { force: true })
     throw err
   }
-  const files = fs
-    .readdirSync(backupsDir)
-    .filter((f) => f.startsWith('inkling-') && f.endsWith('.db'))
-    .sort()
+  const files = backupsOldestFirst(fs.readdirSync(backupsDir), 'inkling')
   while (files.length > 5) {
     const oldest = files.shift()!
     // One copy that cannot be removed must not stop the pruning, or every start would add one.
@@ -494,4 +597,7 @@ function backup(d: Database.Database, dir: string): void {
       console.error('removing an old backup failed', err)
     }
   }
+  // Last, as every copy, rename and removal above moves the folder's time. One child sets both
+  // creation times on Windows, and the start never waits on it.
+  void stampDayOnly(target, backupsDir)
 }

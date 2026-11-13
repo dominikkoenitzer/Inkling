@@ -57,7 +57,7 @@ beforeEach(() => {
     CREATE TABLE flashcard_decks (id INTEGER PRIMARY KEY, notebook_id INTEGER, name TEXT, note_id INTEGER);
     CREATE TABLE notes (
       id INTEGER PRIMARY KEY, notebook_id INTEGER, title TEXT, content TEXT NOT NULL,
-      created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
+      created_at DATETIME, updated_at DATETIME, deleted_at DATETIME, edit_seq INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE tasks (
       id INTEGER PRIMARY KEY, notebook_id INTEGER, note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL,

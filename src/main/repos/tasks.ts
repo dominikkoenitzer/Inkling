@@ -1,5 +1,5 @@
 import { getDb } from '../db'
-import { now } from './dates'
+import { today } from './dates'
 import { homeNotebookId } from './notebooks'
 import { createNote, getNote, updateNote } from './notes'
 import { ftsDelete, ftsUpsert, tiptapToText } from './search'
@@ -11,7 +11,6 @@ import type { Note, NoteBase, NoteTaskItem, OpenTask, Task } from '@shared/types
 /**
  * Open checkboxes from live notes: dated ones first, then the most recently edited notes.
  * An emptied line keeps its row with an empty title; that is no to-do and never listed.
- * The edit time is compared as a time: notes hold it as ISO or in SQLite's own form.
  */
 export function openTasks(): OpenTask[] {
   return getDb()
@@ -19,7 +18,7 @@ export function openTasks(): OpenTask[] {
       `SELECT t.*, n.title AS note_title FROM tasks t
        JOIN notes n ON n.id = t.note_id
        WHERE t.status != 'done' AND n.deleted_at IS NULL AND TRIM(t.title) != ''
-       ORDER BY t.due_date IS NULL, t.due_date, julianday(n.updated_at) DESC, t.id`
+       ORDER BY t.due_date IS NULL, t.due_date, n.edit_seq DESC, t.id`
     )
     .all() as OpenTask[]
 }
@@ -32,7 +31,7 @@ export function getTask(id: number): Task | null {
 export function setTaskDone(id: number, done: boolean): Task | null {
   const db = getDb()
   db.transaction(() => {
-    db.prepare(`UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?`).run(done ? 'done' : 'todo', done ? now() : null, id)
+    db.prepare(`UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?`).run(done ? 'done' : 'todo', done ? today() : null, id)
     const task = getTask(id)
     if (task?.note_id != null) checkNoteItem(task.note_id, id, done)
   })()
@@ -85,7 +84,7 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
         db.prepare(`UPDATE tasks SET title = ?, status = ?, completed_at = ? WHERE id = ?`).run(
           title,
           status,
-          status === 'done' ? (current.completed_at ?? now()) : null,
+          status === 'done' ? (current.completed_at ?? today()) : null,
           current.id
         )
         if (title) ftsUpsert('task', current.id, title, '')
@@ -109,8 +108,8 @@ export function syncNoteTasks(noteId: number, notebookId: number, items: NoteTas
             title,
             item.checked ? 'done' : 'todo',
             gone?.due_date ?? known?.due_date ?? null,
-            gone?.created_at ?? now(),
-            item.checked ? (gone?.completed_at ?? now()) : null
+            gone?.created_at ?? today(),
+            item.checked ? (gone?.completed_at ?? today()) : null
           )
         const newId = Number(info.lastInsertRowid)
         if (gone) removedTasks.delete(gone.id)
@@ -260,6 +259,6 @@ function checkNoteItem(noteId: number, taskId: number, checked: boolean): void {
   walk(doc)
   if (!changed) return
   const content = JSON.stringify(doc)
-  getDb().prepare(`UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`).run(content, now(), noteId)
+  getDb().prepare(`UPDATE notes SET content = ?, updated_at = ?, edit_seq = (SELECT COALESCE(MAX(edit_seq), 0) + 1 FROM notes) WHERE id = ?`).run(content, today(), noteId)
   if (note.deleted_at === null) ftsUpsert('note', noteId, note.title ?? 'Untitled', tiptapToText(content))
 }

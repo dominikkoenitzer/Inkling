@@ -5,7 +5,7 @@ import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
 import { endsReview, ignoresShortcut, onButton, reviewKey } from '@/lib/keys'
 import { loadDueCards, reviewCard } from '@/lib/calls'
-import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
+import { formatInterval, previewIntervals, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
 
@@ -188,7 +188,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
                     </span>
                     {/* What each answer would schedule, so the choice shows its cost. */}
                     <div className="text-xs font-normal text-faint">
-                      {intervals ? (intervals[g.rating] === 0 ? `${RELEARN_MINUTES}m` : formatInterval(intervals[g.rating])) : ''}
+                      {intervals ? (intervals[g.rating] === 0 ? 'today' : formatInterval(intervals[g.rating])) : ''}
                     </div>
                   </button>
                 ))}

@@ -17,7 +17,7 @@
  * See the algorithm description in the Open Spaced Repetition project wiki.
  */
 
-import { storedTime } from './day'
+import { addDays, dayStamp, daysApart, storedTime } from './day'
 
 /** 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches the review UI's keys 1–4. */
 export type Rating = 1 | 2 | 3 | 4
@@ -61,9 +61,6 @@ export const PARAM_BOUNDS: ReadonlyArray<readonly [number, number]> = [
 export const MIN_STABILITY = 0.001
 /** 100 years. Nothing useful is scheduled past this, and it keeps the arithmetic finite. */
 export const MAX_INTERVAL_DAYS = 36500
-/** A lapsed card comes back inside the same session rather than tomorrow. */
-export const RELEARN_MINUTES = 10
-
 /** Desired retention, fixed: the recall chance every interval is solved for. */
 export const RETENTION = 0.9
 
@@ -76,7 +73,7 @@ export interface SchedulableCard {
   state: CardState
   stability: number | null
   difficulty: number | null
-  /** ISO timestamp of the previous review, or null for a card that has never been seen. */
+  /** The day of the previous review as stored, or null for a card that has never been seen. */
   lastReview: string | null
 }
 
@@ -84,11 +81,11 @@ export interface ScheduleResult {
   state: CardState
   stability: number
   difficulty: number
-  /** Days since the previous review, recorded in the review log so parameters can be fitted later. */
+  /** Whole days since the previous review, recorded in the review log so parameters can be fitted later. */
   elapsedDays: number
-  /** Whole days until the next review; 0 for a lapse, which comes back in RELEARN_MINUTES. */
+  /** Whole days until the next review; 0 for a lapse, which stays due today. */
   scheduledDays: number
-  /** ISO timestamp the card next becomes due. */
+  /** The day the card next becomes due, stamped like every stored day. */
   due: string
   /** Recall probability at review time, and 1 for a card being seen for the first time. */
   retrievability: number
@@ -235,10 +232,11 @@ export function nextMemoryState(
   return { stability, difficulty: nextDifficulty(d, rating, w), retrievability: r }
 }
 
+/** Whole calendar days from a stored day to `to`, never negative; 0 when unreadable. */
 export function daysBetween(fromIso: string, to: Date): number {
   const from = storedTime(fromIso)
   if (Number.isNaN(from)) return 0
-  return Math.max(0, (to.getTime() - from) / 86_400_000)
+  return Math.max(0, daysApart(new Date(from), to))
 }
 
 /**
@@ -246,8 +244,8 @@ export function daysBetween(fromIso: string, to: Date): number {
  *
  * A card seen for the first time gets its memory state initialised from the rating.
  * Otherwise both stability and difficulty are updated from how long it had been since
- * the last review. `Again` always sends the card back inside the session; anything
- * else schedules it for the number of days that lands on `RETENTION`.
+ * the last review, in whole days. `Again` keeps the card due today, so the session brings it
+ * back; anything else schedules it for the number of days that lands on `RETENTION`.
  */
 export function schedule(
   card: SchedulableCard,
@@ -267,7 +265,7 @@ export function schedule(
   const r = next.retrievability
 
   if (rating === 1) {
-    // Lapses stay in the session: back in ten minutes, in a (re)learning state.
+    // Lapses stay due today, in a (re)learning state.
     const state: CardState = isNew || card.state === 'learning' ? 'learning' : 'relearning'
     return {
       state,
@@ -275,7 +273,7 @@ export function schedule(
       difficulty,
       elapsedDays,
       scheduledDays: 0,
-      due: new Date(now.getTime() + RELEARN_MINUTES * 60_000).toISOString(),
+      due: dayStamp(now),
       retrievability: r
     }
   }
@@ -287,7 +285,7 @@ export function schedule(
     difficulty,
     elapsedDays,
     scheduledDays,
-    due: new Date(now.getTime() + scheduledDays * 86_400_000).toISOString(),
+    due: addDays(now, scheduledDays).toISOString(),
     retrievability: r
   }
 }
@@ -316,14 +314,9 @@ export function formatInterval(days: number): string {
   return `${(days / 365).toFixed(1)}y`
 }
 
-/** Time left until a card is due, e.g. "in 10m", "in 5h", "in 12d"; "due" once it is. */
+/** Days left until a card is due, e.g. "in 1d", "in 12d"; "due" from its day on. */
 export function dueIn(dueAt: number, now: number): string {
   if (Number.isNaN(dueAt)) return ''
-  const ms = dueAt - now
-  if (ms <= 0) return 'due'
-  // Minutes round up, so the last minute before the hour reads "in 1h", never "in 60m".
-  if (ms <= 59 * 60_000) return `in ${Math.ceil(ms / 60_000)}m`
-  if (ms < 86_400_000) return `in ${Math.max(1, Math.floor(ms / 3_600_000))}h`
-  // Whole days, as the rating buttons pass them, so a part day never rounds up to "30d".
-  return `in ${formatInterval(Math.floor(ms / 86_400_000))}`
+  const days = daysApart(new Date(now), new Date(dueAt))
+  return days <= 0 ? 'due' : `in ${formatInterval(days)}`
 }

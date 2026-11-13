@@ -100,7 +100,7 @@ describe('search', () => {
 })
 
 describe('listNotes', () => {
-  it('lists live notes newest first, untitled ones as Untitled', () => {
+  it('lists live notes by their last edit, untitled ones as Untitled', () => {
     const a = tools.createNote({ title: 'Old' })
     const b = tools.createNote({ title: 'New' })
     const c = repos.createNote({ notebook_id: repos.homeNotebookId(), title: null })
@@ -108,6 +108,8 @@ describe('listNotes', () => {
     raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-01-01T00:00:00.000Z', a.id)
     raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-03-01T00:00:00.000Z', b.id)
     raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-02-01T00:00:00.000Z', c.id)
+    // Edited in this order: Old, then the untitled one, then New.
+    for (const [seq, id] of [[1, a.id], [2, c.id], [3, b.id]]) raw.prepare(`UPDATE notes SET edit_seq = ? WHERE id = ?`).run(seq, id)
     repos.removeNote(gone.id)
 
     const { notes } = tools.listNotes({})
@@ -125,7 +127,9 @@ describe('listNotes', () => {
       raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-22T21:30:00.000Z', before.id)
       raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-22T22:30:00.000Z', after.id)
       expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title)).toEqual(['After midnight'])
-      expect(tools.listNotes({ changedSince: '2026-10-22T23:00:00Z' }).notes).toEqual([])
+      // Notes keep only the day of a change, so a time counts from the start of its day.
+      expect(tools.listNotes({ changedSince: '2026-10-22T23:00:00Z' }).notes.map((n) => n.title)).toEqual(['After midnight'])
+      expect(tools.listNotes({ changedSince: '2026-10-24' }).notes).toEqual([])
       expect(() => tools.listNotes({ changedSince: '2026-02-30' })).toThrow(/not a date/)
     } finally {
       if (zone === undefined) delete process.env.TZ
@@ -621,17 +625,24 @@ describe('listNotes paging, recent changes and the trash', () => {
     expect(tools.listNotes({ inTrash: true }).notes).toEqual([expect.objectContaining({ id: b.id, title: 'B', deletedAt: expect.any(String) })])
   })
 
-  it('filters by the change time in either stored form', () => {
-    const early = tools.createNote({ title: 'Early' })
-    const late = tools.createNote({ title: 'Late' })
-    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23T05:30:00.000Z', early.id)
-    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-23 06:00:00', late.id)
+  it('filters by the change day in either stored form', () => {
+    const zone = process.env.TZ
+    process.env.TZ = 'Europe/Zurich'
+    try {
+      const early = tools.createNote({ title: 'Early' })
+      const late = tools.createNote({ title: 'Late' })
+      // Local midnight of 22 and 23 October, once as ISO and once in SQLite's own form.
+      raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-21T22:00:00.000Z', early.id)
+      raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-10-22 22:00:00', late.id)
 
-    expect(tools.listNotes({ changedSince: '2026-10-23T06:00:00Z' }).notes.map((n) => n.title)).toEqual(['Late'])
-    expect(tools.listNotes({ changedSince: '2026-10-23T05:45:00+00:00' }).notes.map((n) => n.title)).toEqual(['Late'])
-    expect(tools.listNotes({ changedSince: '2026-10-23T06:00:01Z' }).notes).toEqual([])
-    // A date alone is local midnight, so the day before both stamps takes in both in any zone.
-    expect(tools.listNotes({ changedSince: '2026-10-22' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
+      expect(tools.listNotes({ changedSince: '2026-10-23T06:00:00Z' }).notes.map((n) => n.title)).toEqual(['Late'])
+      expect(tools.listNotes({ changedSince: '2026-10-23' }).notes.map((n) => n.title)).toEqual(['Late'])
+      expect(tools.listNotes({ changedSince: '2026-10-22T23:59:00+02:00' }).notes.map((n) => n.title).sort()).toEqual(['Early', 'Late'])
+      expect(tools.listNotes({ changedSince: '2026-10-24' }).notes).toEqual([])
+    } finally {
+      if (zone === undefined) delete process.env.TZ
+      else process.env.TZ = zone
+    }
   })
 
   it('lists the latest change first in either stored form', () => {

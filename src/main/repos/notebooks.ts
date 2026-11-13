@@ -1,4 +1,5 @@
 import { getDb } from '../db'
+import { today } from './dates'
 import type { ColorKey, Notebook } from '@shared/types'
 
 // Notebooks are a storage detail now: the app shows one list of notes. Older databases can
@@ -11,8 +12,8 @@ export function listNotebooks(): Notebook[] {
 export function createNotebook(input: { name: string; color: ColorKey }): Notebook {
   const max = (getDb().prepare(`SELECT COALESCE(MAX(sort_order), -1) AS m FROM notebooks`).get() as { m: number }).m
   const info = getDb()
-    .prepare(`INSERT INTO notebooks (name, color, sort_order) VALUES (?, ?, ?)`)
-    .run(input.name, input.color, max + 1)
+    .prepare(`INSERT INTO notebooks (name, color, sort_order, created_at) VALUES (?, ?, ?, ?)`)
+    .run(input.name, input.color, max + 1, today())
   return getDb().prepare(`SELECT * FROM notebooks WHERE id = ?`).get(info.lastInsertRowid) as Notebook
 }
 

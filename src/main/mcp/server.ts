@@ -7,6 +7,7 @@ import { join } from 'path'
 import { attachDb, checkVersion, getDb } from '../db'
 import * as repos from '../repos'
 import * as tools from './tools'
+import { backupsOldestFirst, nextBackupName, stampDayOnly } from '../backupNames'
 
 const INSTRUCTIONS = `Inkling is the user's notes app. It holds notes (Markdown in, Markdown out), to-dos (the checkbox lines inside notes, "- [ ] text") and flashcards.
 Search or list before you write, and add to an existing note when one fits. A "- [ ]" line you write becomes a to-do on the user's Today list. A "Term :: Definition" line in a note becomes a flashcard with make_flashcards_from_note.
@@ -73,10 +74,9 @@ export function createServer(dataDir: string, version: string): McpServer {
   // the app makes when it starts, so whatever an assistant does can be undone by hand.
   const dir = join(dataDir, 'backups')
   // The copy gets its `.db` name only once complete, so a failed one never counts among the kept.
-  const copy = async (): Promise<void> => {
+  const copy = async (): Promise<string> => {
     fs.mkdirSync(dir, { recursive: true })
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const target = join(dir, `assistant-${stamp}.db`)
+    const target = join(dir, nextBackupName(fs.readdirSync(dir), 'assistant'))
     const partial = `${target}.${process.pid}.partial`
     try {
       await getDb().backup(partial)
@@ -85,20 +85,21 @@ export function createServer(dataDir: string, version: string): McpServer {
       fs.rmSync(partial, { force: true })
       throw err
     }
+    return target
   }
   // Writes that arrive together share one copy; a failed one is tried again on the next write.
-  let backedUp: Promise<void> | undefined
+  let backedUp: Promise<string> | undefined
   const backupOnce = async (): Promise<void> => {
-    if (backedUp) return backedUp
+    if (backedUp) {
+      await backedUp
+      return
+    }
     backedUp = copy().catch((err: unknown) => {
       backedUp = undefined
       throw err
     })
-    await backedUp
-    const old = fs
-      .readdirSync(dir)
-      .filter((f) => f.startsWith('assistant-') && f.endsWith('.db'))
-      .sort()
+    const target = await backedUp
+    const old = backupsOldestFirst(fs.readdirSync(dir), 'assistant')
     // Pruning is housekeeping: a copy that cannot be removed stays, and the write goes on.
     for (const f of old.slice(0, -KEEP_BACKUPS)) {
       try {
@@ -107,6 +108,8 @@ export function createServer(dataDir: string, version: string): McpServer {
         console.error('removing an old backup failed', err)
       }
     }
+    // One child sets both creation times on Windows, and the write never waits on it.
+    void stampDayOnly(target, dir)
   }
 
   const read =
@@ -158,7 +161,7 @@ export function createServer(dataDir: string, version: string): McpServer {
       inputSchema: {
         limit: limit(200, 50),
         offset: z.number().int().min(0).optional().describe('How many to skip, for the next page.'),
-        changedSince: z.string().max(40).optional().describe('Only notes changed at or after this date or time, ISO 8601.'),
+        changedSince: z.string().max(40).optional().describe('Only notes changed on or after this day, ISO 8601. Notes keep the day of a change, not its time.'),
         inTrash: z.boolean().optional().describe('List the notes in the trash instead, newest deletion first.')
       },
       outputSchema: {
