@@ -9,6 +9,7 @@
     { "source": "/update/:file", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/:file", "permanent": false }
   ],
   "headers": [
-    { "source": "/install", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] }
+    { "source": "/install", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] },
+    { "source": "/diag(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] }
   ]
 }
