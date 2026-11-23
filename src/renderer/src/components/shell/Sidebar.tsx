@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Keyboard, Layers, Plus, Settings, Sun } from 'lucide-react'
 import { useApp, useVersion, type View } from '@/stores/app'
 import { loadNotes, peekDecks } from '@/lib/calls'
 import { ariaKeys, keyLabel, shortcutsKey } from '@/lib/keys'
 import { useRows } from '@/lib/motion'
+import { groupLabels } from '@/lib/noteGroups'
 import type { Note } from '@shared/types'
 
 /** One quiet column: the main action, two places to go, every note, then help and settings. */
@@ -124,6 +125,7 @@ function NavRow({
 function NotesList(): React.JSX.Element {
   const view = useApp((s) => s.view)
   const selectedNoteId = useApp((s) => s.selectedNoteId)
+  const today = useApp((s) => s.today)
   const version = useVersion('notes')
   // Null until the first list arrives, so an empty list is never claimed before then.
   const [notes, setNotes] = useState<Note[] | null>(null)
@@ -143,6 +145,9 @@ function NotesList(): React.JSX.Element {
     }
   }, [version])
 
+  // Grouped by the day each note last changed, in the list's own order.
+  const labels = groupLabels(rows?.map((r) => r.item) ?? [], today)
+
   // Up and Down walk the list once a note in it has focus.
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
@@ -157,22 +162,26 @@ function NotesList(): React.JSX.Element {
     <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4" onKeyDown={onKey} onAnimationEnd={onAnimationEnd}>
       {notes === null && failed && <p className="px-2.5 py-1.5 text-sm text-faint">Could not load the notes.</p>}
       {rows?.length === 0 && <p className="px-2.5 py-1.5 text-sm text-faint">No notes yet.</p>}
-      {rows?.map((r) => {
+      {rows?.map((r, i) => {
         const n = r.item
         const active = view === 'notes' && selectedNoteId === n.id
+        const label = labels[i]
         return (
-          <button
-            key={r.key}
-            {...row(r)}
-            type="button"
-            onClick={() => useApp.getState().openNote(n.id)}
-            aria-current={active ? 'page' : undefined}
-            className={`motion-row flex h-8 w-full items-center rounded-md px-2.5 text-left text-sm transition-colors ${
-              active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
-            }`}
-          >
-            <span className="min-w-0 flex-1 truncate">{n.title?.trim() || 'Untitled'}</span>
-          </button>
+          <Fragment key={r.key}>
+            {/* Text only, so Up and Down and Tab pass over it. */}
+            {label && <h3 className="px-2.5 pb-1 pt-3 text-xs text-faint first:pt-1">{label}</h3>}
+            <button
+              {...row(r)}
+              type="button"
+              onClick={() => useApp.getState().openNote(n.id)}
+              aria-current={active ? 'page' : undefined}
+              className={`motion-row flex h-8 w-full items-center rounded-md px-2.5 text-left text-sm transition-colors ${
+                active ? 'bg-active text-ink' : 'text-muted hover:bg-hover hover:text-ink'
+              }`}
+            >
+              <span className="min-w-0 flex-1 truncate">{n.title?.trim() || 'Untitled'}</span>
+            </button>
+          </Fragment>
         )
       })}
     </div>
