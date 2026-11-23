@@ -5,23 +5,24 @@ import { join, resolve } from 'path'
 import os from 'os'
 import { dataReady, getDb, openDb } from '../db'
 import { settleData } from '../startup'
-
-// How long a server waits for the app or another server to finish setting up a fresh profile.
-const SETUP_WAIT = 5000
+import { waitForSetup } from '../lock'
 
 /**
  * A profile with no data yet gets it the way the app's first start makes it, under the app's own
- * lock, so the app or a second server never sets it up at the same time. Data already there,
- * older ones included, is the app's to update.
+ * lock, so the app or a second server never sets it up at the same time. An app started meanwhile
+ * waits for it. Data already there, older ones included, is the app's to update.
  */
 async function firstStart(dataDir: string): Promise<void> {
   const file = join(dataDir, 'inkling.db')
   if (fs.existsSync(file)) return
-  if (!app.requestSingleInstanceLock()) {
-    for (let waited = 0; waited < SETUP_WAIT && !dataReady(dataDir); waited += 50) await new Promise((r) => setTimeout(r, 50))
-    return
-  }
+  if (!app.requestSingleInstanceLock()) return waitForSetup(() => dataReady(dataDir))
   try {
+    // Test hook: keep the lock a while, so the MCP check can start the app inside it.
+    const hold = app.isPackaged ? 0 : Number(process.env['INKLING_SETUP_HOLD'] ?? 0)
+    if (hold > 0) {
+      console.error('setup holds the lock')
+      await new Promise((r) => setTimeout(r, hold))
+    }
     // Whoever held the lock before has finished.
     if (fs.existsSync(file)) return
     openDb(dataDir)

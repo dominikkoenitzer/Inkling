@@ -31,10 +31,10 @@ const results = []
 const ok = (name, cond, detail) => results.push((cond ? 'PASS ' : 'FAIL ') + name + (detail ? ` (${detail})` : ''))
 
 /** One MCP session over the child's stdin and stdout, on `dir` as its profile. */
-function session(dir = profile) {
+function session(dir = profile, extra = {}) {
   const packaged = process.env['MCP_SMOKE_EXE']
   const [cmd, args] = packaged ? [packaged, ['--mcp', ...sandbox]] : [electron, [root, '--mcp', ...sandbox]]
-  const child = spawn(cmd, args, { env: { ...env, INKLING_USERDATA: dir }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+  const child = spawn(cmd, args, { env: { ...env, INKLING_USERDATA: dir, ...extra }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
   const pending = new Map()
   const stray = []
   let buf = ''
@@ -136,8 +136,25 @@ try {
   rmSync(olderProfile, { recursive: true, force: true })
 
   // The app opens the profile the server set up, the way it starts without a window.
-  const setup = spawnSync(electron, [root, ...sandbox], { env: { ...env, INKLING_NO_WINDOW: '1' }, stdio: 'ignore', timeout: 60_000 })
-  ok('the app opens the profile the server set up', setup.status === 0, `exit ${setup.status}`)
+  const setup = spawnSync(electron, [root, ...sandbox], { env: { ...env, INKLING_NO_WINDOW: '1' }, encoding: 'utf8', timeout: 60_000 })
+  ok('the app opens the profile the server set up', setup.status === 0 && setup.stdout.includes('profile opened'), `exit ${setup.status}`)
+
+  // Inkling started while a server sets up a fresh profile waits for it, then opens; the hold hook needs the unpackaged server.
+  if (!process.env['MCP_SMOKE_EXE']) {
+    const heldProfile = mkdtempSync(join(tmpdir(), 'inkling-mcp-held-'))
+    const held = session(heldProfile, { INKLING_SETUP_HOLD: '2000' })
+    const starting = held.start()
+    const holding = () => held.stderr().includes('setup holds the lock')
+    for (let waited = 0; waited < 30_000 && !holding(); waited += 50) await new Promise((r) => setTimeout(r, 50))
+    const inside = holding() && !existsSync(join(heldProfile, 'inkling.db'))
+    const launch = spawnSync(electron, [root, ...sandbox], { env: { ...env, INKLING_USERDATA: heldProfile, INKLING_NO_WINDOW: '1' }, encoding: 'utf8', timeout: 60_000 })
+    await starting
+    ok('the app started during a server first start opens after it', inside && launch.status === 0 && launch.stdout.includes('profile opened'), `inside the hold ${inside}, exit ${launch.status}`)
+    const heldNotes = await held.call('list_notes')
+    ok('that profile is set up once', heldNotes.structuredContent?.notes?.length === 1, JSON.stringify(heldNotes.structuredContent?.notes?.map((n) => n.title)))
+    await held.close()
+    rmSync(heldProfile, { recursive: true, force: true })
+  }
 
   const s = session()
   const init = await s.start()

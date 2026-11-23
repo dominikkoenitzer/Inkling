@@ -3,7 +3,8 @@ import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
 import { pathToFileURL } from 'url'
-import { openDb, startFailure } from './db'
+import { dataReady, openDb, startFailure } from './db'
+import { takeLock } from './lock'
 import { registerIpc } from './ipc'
 import * as repos from './repos'
 import { seedDemo } from './seed'
@@ -25,15 +26,22 @@ if (process.env['INKLING_USERDATA']) {
 // The seed, screenshot and eval hooks below work in unpackaged builds only.
 const devHooks = !app.isPackaged
 
-// `--mcp` serves the data to an AI assistant instead of opening the app. It takes no lock,
-// so it runs next to an open window, and it never shows one.
+// `--mcp` serves the data to an AI assistant instead of opening the app. It takes the lock only
+// while it sets up a fresh profile, so it runs next to an open window, and it never shows one.
 const mcpMode = process.argv.includes('--mcp')
 if (mcpMode) startMcpHost()
 
 // Two copies on one database overwrite each other's notes. Electron keys this lock to the
 // userData path, so it is taken after the hook above: a separate profile gets its own.
-const isPrimary = !mcpMode && app.requestSingleInstanceLock()
-if (!isPrimary && !mcpMode) app.quit()
+const isPrimary: Promise<boolean> = mcpMode
+  ? Promise.resolve(false)
+  : takeLock(
+      () => app.requestSingleInstanceLock(),
+      () => dataReady(app.getPath('userData'))
+    )
+void isPrimary.then((primary) => {
+  if (!primary && !mcpMode) app.quit()
+})
 
 let mainWindow: BrowserWindow | null = null
 const commands = commandRelay()
@@ -215,11 +223,13 @@ async function newVersion(): Promise<string | null> {
 }
 
 app.on('second-instance', () => {
+  // A server holds the lock only while it sets up a fresh profile, and never shows a window.
+  if (mcpMode) return
   if (mainWindow || process.platform === 'darwin') showMainWindow()
 })
 
-app.whenReady().then(() => {
-  if (!isPrimary) return // quitting, or serving MCP: either way no window here
+app.whenReady().then(async () => {
+  if (!(await isPrimary)) return // quitting, or serving MCP: either way no window here
   const dataDir = app.getPath('userData')
   try {
     openDb(dataDir)
@@ -231,7 +241,10 @@ app.whenReady().then(() => {
   }
   settleData(devHooks && process.env['INKLING_SEED'] ? seedDemo : undefined)
   // Test hook: the profile is set up, no window needed (the MCP check uses it).
-  if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
+  if (devHooks && process.env['INKLING_NO_WINDOW']) {
+    console.log('profile opened')
+    return app.quit()
+  }
   registerIpc()
   ipcMain.handle('app.updateNotice', () => updateNotice)
   ipcMain.handle('app.openDownloadPage', () => openExternalLink(DOWNLOAD_PAGE))
