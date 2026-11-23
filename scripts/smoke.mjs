@@ -248,6 +248,10 @@ const editorChecks = `
     ok('Tab in the last cell adds a row', rows() === 3, rows() + ' rows')
     editor.commands.setTextSelection(at('Liver'))
     key('Enter', { shiftKey: true })
+    // Shift comes up again, as on a keyboard; the editor reads a release by its key code alone.
+    const shiftUp = new KeyboardEvent('keyup', { key: 'Shift', bubbles: true, cancelable: true })
+    Object.defineProperty(shiftUp, 'keyCode', { get: () => 16 })
+    dom.dispatchEvent(shiftUp)
     let breaks = 0
     editor.state.doc.descendants((x) => void (x.type.name === 'hardBreak' && breaks++))
     ok('Shift+Enter in a cell makes a line break in the same cell', breaks === 1 && rows() === 3)
@@ -257,7 +261,7 @@ const editorChecks = `
     const data = new DataTransfer()
     data.setData('text/html', '<table><tr><th>Step</th><th>Note</th></tr><tr><td><p>first line</p><p>second line</p></td><td><ul><li>alpha</li><li>beta</li></ul></td></tr></table>')
     data.setData('text/plain', 'Step Note')
-    // Ctrl+V as a keyboard sends it; the editor otherwise still counts Shift as held from Shift+Enter and pastes plain text.
+    // Ctrl+V as a keyboard sends it before the paste; with Shift held the editor would paste plain text.
     key('v', { ctrlKey: true })
     dom.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
     await wait(200)
