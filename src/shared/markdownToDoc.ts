@@ -162,12 +162,95 @@ function parseBlocks(lines: string[]): Node[] {
       continue
     }
 
+    const table = takeTable(lines, i)
+    if (table) {
+      out.push(table.node)
+      i = table.next
+      continue
+    }
+
     // Leading spaces stay: an indented line under a card line continues its answer.
     const { para, next } = takeParagraph(lines, line, i + 1)
     out.push(paragraph(para))
     i = next
   }
   return out
+}
+
+/* --------------------------------- Tables --------------------------------- */
+
+type Align = 'left' | 'center' | 'right' | null
+
+/**
+ * The cells of a table row, trimmed, split at every pipe without a backslash right before it;
+ * that backslash comes off, so an escaped pipe is a pipe in the cell. Null for a line without a pipe.
+ */
+function rowCells(line: string): string[] | null {
+  const s = line.trim()
+  const cells: string[] = []
+  let cell = ''
+  let pipes = 0
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '|') {
+      cell += s[i]
+    } else if (s[i - 1] === '\\') {
+      cell = cell.slice(0, -1) + '|'
+    } else {
+      pipes++
+      cells.push(cell)
+      cell = ''
+    }
+  }
+  cells.push(cell)
+  if (pipes === 0) return null
+  // Pipes at the ends frame the row and open no cell.
+  if (s.startsWith('|')) cells.shift()
+  if (s.endsWith('|') && !s.endsWith('\\|')) cells.pop()
+  return cells.map((c) => c.trim())
+}
+
+/** The alignment of each column when `line` is the row under a table's header, else null. */
+export function delimiterRow(line: string): Align[] | null {
+  const cells = rowCells(line)
+  if (!cells || cells.length === 0) return null
+  const aligns: Align[] = []
+  for (const c of cells) {
+    const m = /^(:?)-+(:?)$/.exec(c)
+    if (!m) return null
+    aligns.push(m[1] && m[2] ? 'center' : m[2] ? 'right' : m[1] ? 'left' : null)
+  }
+  return aligns
+}
+
+function tableCell(type: 'tableHeader' | 'tableCell', text: string, align: Align): Node {
+  const cell: Node = { type, content: [withContent({ type: 'paragraph' }, inline(text, [], true))] }
+  if (align) cell.attrs = { align }
+  return cell
+}
+
+/**
+ * A header row, the row of dashes under it and the rows after, up to a blank line, another
+ * block or a line without a pipe. Null when it is no table, or when a row has more cells than
+ * the header, so those lines stay text and nothing is lost.
+ */
+function takeTable(lines: string[], start: number): { node: Node; next: number } | null {
+  const head = rowCells(lines[start])
+  const aligns = start + 1 < lines.length ? delimiterRow(lines[start + 1]) : null
+  if (!head || !aligns || head.length !== aligns.length) return null
+  const body: string[][] = []
+  let i = start + 2
+  while (i < lines.length && !isBlank(lines[i]) && !startsBlock(lines[i])) {
+    const cells = rowCells(lines[i])
+    if (!cells) break
+    if (cells.length > head.length) return null
+    body.push(cells)
+    i++
+  }
+  const row = (cells: string[], type: 'tableHeader' | 'tableCell'): Node => ({
+    type: 'tableRow',
+    content: aligns.map((align, k) => tableCell(type, cells[k] ?? '', align))
+  })
+  return { node: { type: 'table', content: [row(head, 'tableHeader'), ...body.map((cells) => row(cells, 'tableCell'))] }, next: i }
 }
 
 /* ---------------------------------- Lists --------------------------------- */
@@ -257,7 +340,7 @@ const DELIMS: Delim[] = [
 
 type Parsed = { nodes: Node[]; end: number }
 /** Memo per position, and a work budget: past it, markers stay plain text. */
-type Ctx = { memo: Map<string, Parsed | null>; steps: number }
+type Ctx = { memo: Map<string, Parsed | null>; steps: number; cell: boolean }
 const STEP_BUDGET = 200_000
 
 function textNode(text: string, marks: Mark[]): Node {
@@ -266,9 +349,18 @@ function textNode(text: string, marks: Mark[]): Node {
   return node
 }
 
-function inline(src: string, marks: Mark[]): Node[] {
-  return mergeText(seq(src, 0, null, marks, { memo: new Map(), steps: 0 })!.nodes)
+/** Inline nodes of `src`; in a table cell, <br> is a line break. */
+function inline(src: string, marks: Mark[], cell = false): Node[] {
+  return mergeText(seq(src, 0, null, marks, { memo: new Map(), steps: 0, cell })!.nodes)
 }
+
+/** Where the image starting at `pos` ends, or -1. An image stays text exactly as typed. */
+export function imageEnd(src: string, pos: number): number {
+  if (src[pos] !== '!' || src[pos + 1] !== '[') return -1
+  return parseLink(src, pos + 1)?.end ?? -1
+}
+
+const BREAK_TAG = /^<br\s*\/?>/i
 
 function mergeText(nodes: Node[]): Node[] {
   const out: Node[] = []
@@ -398,10 +490,23 @@ function seq(src: string, pos: number, closer: Delim | null, marks: Mark[], ctx:
       i = close + run
       continue
     }
+    const image = imageEnd(src, i)
+    if (image !== -1) {
+      buf += src.slice(i, image)
+      i = image
+      continue
+    }
+    const tag = ctx.cell && ch === '<' ? BREAK_TAG.exec(src.slice(i, i + 8)) : null
+    if (tag) {
+      flush()
+      nodes.push({ type: 'hardBreak' })
+      i += tag[0].length
+      continue
+    }
     if (ch === '[' && !marks.some((m) => m.type === 'link')) {
       const link = parseLink(src, i)
       if (link) {
-        const inner = inline(link.label, SAFE_HREF.test(link.href) ? [...marks, { type: 'link', attrs: { href: link.href } }] : marks)
+        const inner = inline(link.label, SAFE_HREF.test(link.href) ? [...marks, { type: 'link', attrs: { href: link.href } }] : marks, ctx.cell)
         if (inner.length > 0) {
           flush()
           nodes.push(...inner)

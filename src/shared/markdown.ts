@@ -1,7 +1,8 @@
 /**
  * Convert a TipTap / ProseMirror document (as produced by editor.getJSON()) into
- * Markdown. Pure and dependency-free so it runs in either process.
+ * Markdown. Pure, so it runs in either process.
  */
+import { delimiterRow, imageEnd } from './markdownToDoc'
 
 interface PMMark {
   type: string
@@ -13,6 +14,26 @@ interface PMNode {
   marks?: PMMark[]
   attrs?: Record<string, unknown>
   content?: PMNode[]
+}
+
+// Stands in for an image while the text around it is escaped; text already holding it is escaped whole.
+const SHIELD = '\uE000'
+
+/** The text with each image swapped for SHIELD, the images in order in `images`. */
+function shieldImages(text: string, images: string[]): string {
+  if (text.includes(SHIELD)) return text
+  let out = ''
+  for (let i = 0; i < text.length; i++) {
+    const end = imageEnd(text, i)
+    if (end === -1) {
+      out += text[i]
+      continue
+    }
+    images.push(text.slice(i, end))
+    out += SHIELD
+    i = end - 1
+  }
+  return out
 }
 
 // escape characters that are meaningful inline so literal text survives a round-trip
@@ -38,6 +59,8 @@ function escapeLeadingBlock(line: string): string {
     .replace(/^(\s*)(-)(?=[-\s]*$)/, '$1\\$2')
     .replace(/^(\s*)(=)(?=[=\s]*$)/, '$1\\$2')
     .replace(/^(\s*)(\d+)([.)])(?=\s|$)/, '$1$2\\$3')
+    // a row of dashes and pipes would turn the line above into a table header
+    .replace(/^(\s*)(\S)(.*)$/, (line: string, pad: string, first: string, rest: string) => (delimiterRow(line) ? `${pad}\\${first}${rest}` : line))
 }
 
 // a hard break starts a new line, and every line can start a block
@@ -54,14 +77,13 @@ function codeSpan(code: string): string {
   return fence + pad + code + pad + fence
 }
 
-function renderInline(nodes: PMNode[] | undefined): string {
+// in a table cell a line break is <br>, so typed <br> text keeps a backslash
+function renderInline(nodes: PMNode[] | undefined, cell = false): string {
   if (!nodes) return ''
   return nodes
     .map((n, i) => {
-      if (n.type === 'hardBreak') return '  \n'
-      // A [[wiki-link]] is an atom with no child content; export the syntax verbatim so
-      // the exported Markdown round-trips into other wiki-style tools.
-      if (n.type !== 'text') return renderInline(n.content)
+      if (n.type === 'hardBreak') return cell ? '<br>' : '  \n'
+      if (n.type !== 'text') return renderInline(n.content, cell)
       const marks = n.marks ?? []
       const has = (m: string): boolean => marks.some((x) => x.type === m)
       // inline code can't contain other markdown, so keep it raw and return early
@@ -69,11 +91,15 @@ function renderInline(nodes: PMNode[] | undefined): string {
       const href = marks.find((x) => x.type === 'link')?.attrs?.href
       const linked = typeof href === 'string' && href !== ''
       // a delimiter next to a space neither opens nor closes, so the edge spaces go outside it
-      const [, lead, core, trail] = /^(\s*)([\s\S]*?)(\s*)$/.exec(escapeInline(n.text ?? ''))!
+      // an image stays exactly as typed, so it is kept out of the escaping
+      const images: string[] = []
+      const [, lead, core, trail] = /^(\s*)([\s\S]*?)(\s*)$/.exec(escapeInline(shieldImages(n.text ?? '', images)))!
       const marked = core !== '' && ['bold', 'italic', 'strike', 'highlight'].some(has)
       // a marked run touches its own delimiters, a plain one those of the nodes beside it, a link label neither
-      const joins = (k: number): boolean => k >= 0 && k < nodes.length && nodes[k].type !== 'hardBreak'
+      const joins = (k: number): boolean => k >= 0 && k < nodes.length && (cell || nodes[k].type !== 'hardBreak')
       let t = escapeRuns(core, marked || (!linked && !lead && joins(i - 1)), marked || (!linked && !trail && joins(i + 1)))
+      if (cell) t = t.replace(/<(br\s*\/?>)/gi, '\\<$1')
+      t = t.replace(new RegExp(SHIELD, 'g'), () => images.shift()!)
       if (t && has('bold')) t = `**${t}**`
       if (t && has('italic')) t = `*${t}*`
       if (t && has('strike')) t = `~~${t}~~`
@@ -111,6 +137,28 @@ function renderList(node: PMNode, marker: (index: number, item: PMNode) => strin
     loose = blocks !== ''
   })
   return out
+}
+
+// one line per cell, its blocks joined by <br>; every pipe in it is escaped, the one thing a cell cannot hold
+function renderCell(cell: PMNode): string {
+  return (cell.content ?? [])
+    .map((block) => renderInline(block.content, true))
+    .join('<br>')
+    .replace(/\|/g, '\\|')
+}
+
+// the first row is the header, and its cells carry each column's alignment
+function renderTable(node: PMNode): string {
+  const rows = (node.content ?? []).map((row) => (row.content ?? []).map(renderCell))
+  const width = Math.max(0, ...rows.map((r) => r.length))
+  if (width === 0) return ''
+  const head = node.content?.[0]?.content ?? []
+  const line = (cells: string[]): string => `| ${Array.from({ length: width }, (_v, i) => cells[i] ?? '').join(' | ')} |`
+  const rule = Array.from({ length: width }, (_v, i) => {
+    const align = head[i]?.attrs?.align
+    return align === 'center' ? ':---:' : align === 'right' ? '---:' : align === 'left' ? ':---' : '---'
+  })
+  return [line(rows[0]), `| ${rule.join(' | ')} |`, ...rows.slice(1).map(line)].join('\n')
 }
 
 // blocks are joined by one blank line, so none is added inside a block; a code block ends in its fence
@@ -156,6 +204,8 @@ function renderBlock(node: PMNode): string {
     }
     case 'horizontalRule':
       return '---'
+    case 'table':
+      return renderTable(node)
     default:
       return renderBlocks(node.content)
   }

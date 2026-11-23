@@ -15,6 +15,8 @@ import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
 import { keyLabel } from '@/lib/keys'
 import { focusBody, tickTodo } from '@/lib/editorKeys'
+import { openNote } from '@/lib/noteDoc'
+import { tableExtensions } from '@/lib/tables'
 import { stampNodeIds } from '@/lib/nodeIds'
 import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
@@ -86,6 +88,9 @@ function itemsEqual(a: NoteTaskItem[], b: NoteTaskItem[]): boolean {
 export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   const [title, setTitle] = useState('')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
+  // A note this build cannot read whole is shown, never edited or saved.
+  const [locked, setLocked] = useState(false)
+  const lockedRef = useRef(false)
   // Messages go to the app's toast, so the note never moves under them.
   const say = (message: string, durationMs: number): void => useApp.getState().showToast({ message, durationMs })
 
@@ -114,7 +119,8 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
       TaskList,
       LinkedTaskItem.configure({ nested: true }),
       CardLineId,
-      ToggleTodo
+      ToggleTodo,
+      ...tableExtensions
     ],
     onUpdate: () => {
       if (syncingRef.current) return
@@ -123,13 +129,14 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   })
 
   const scheduleSave = (): void => {
+    if (lockedRef.current) return
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => void doSave(), 400)
   }
 
   const save = async (): Promise<void> => {
     const notebookId = notebookIdRef.current
-    if (!editor || editor.isDestroyed || notebookId === null) return
+    if (!editor || editor.isDestroyed || notebookId === null || lockedRef.current) return
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
@@ -248,9 +255,12 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
     if (!editor) return
     syncingRef.current = true
     // Kept out of the undo history, or Ctrl+Z right after opening would empty the note.
-    editor.chain().setMeta('addToHistory', false).setContent(safeParse(note.content), { emitUpdate: false }).run()
-    editor.setEditable(true, false)
+    const opened = openNote(note.content, editor.schema)
+    editor.chain().setMeta('addToHistory', false).setContent(opened.doc, { emitUpdate: false }).run()
+    editor.setEditable(opened.editable, false)
     syncingRef.current = false
+    lockedRef.current = !opened.editable
+    setLocked(!opened.editable)
     setTitle(note.title ?? '')
     titleRef.current = note.title ?? ''
     notebookIdRef.current = note.notebook_id
@@ -326,7 +336,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
   }, [editor])
 
   const makeFlashcards = async (): Promise<void> => {
-    if (!editor || notebookIdRef.current === null) return
+    if (!editor || notebookIdRef.current === null || lockedRef.current) return
     const read = editor.state.doc
     const lines = extractNoteCardLines(editor.getJSON() as Record<string, unknown>)
     if (lines.length === 0) {
@@ -373,6 +383,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
           onExportMd={() => void exportMarkdown()}
           onDelete={() => void deleteNote(noteId, titleRef.current)}
           savedAt={savedAt}
+          locked={locked}
         />
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -382,6 +393,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
             ref={titleInputRef}
             rows={1}
             value={title}
+            readOnly={locked}
             onChange={(e) => {
               const next = oneLine(e.target.value)
               setTitle(next)
@@ -447,13 +459,15 @@ function Toolbar({
   onFlashcards,
   onExportMd,
   onDelete,
-  savedAt
+  savedAt,
+  locked
 }: {
   editor: Editor
   onFlashcards: () => void
   onExportMd: () => void
   onDelete: () => void
   savedAt: Date | null
+  locked: boolean
 }): React.JSX.Element {
   // subscribe to selection/transaction changes so active states repaint
   const [, setTick] = useState(0)
@@ -470,6 +484,17 @@ function Toolbar({
   // A fresh chain per click: a chain runs as it is built, so one made during render would
   // pull focus into the editor on every repaint.
   const run = (f: (c: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>): (() => void) => () => void f(editor.chain().focus()).run()
+
+  if (locked) {
+    return (
+      <div className="mx-auto flex w-full max-w-[720px] items-center gap-0.5 px-8 pt-3">
+        <span className="pl-2 text-sm text-faint">Read only in this version of Inkling.</span>
+        <IconBtn title="Delete note" onClick={onDelete} className="ml-auto hover:!text-danger">
+          <Trash2 size={16} />
+        </IconBtn>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-wrap items-center gap-0.5 px-8 pt-3">
