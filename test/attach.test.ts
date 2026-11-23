@@ -13,7 +13,7 @@ vi.mock('better-sqlite3', () => ({
   }
 }))
 
-const { attachDb, checkVersion, getDb, migrate } = await import('../src/main/db')
+const { attachDb, checkVersion, dataReady, getDb, migrate } = await import('../src/main/db')
 
 /** A database at the version this build expects, then moved by `delta`. */
 function atVersion(delta: number): { db: Database.Database; version: () => number } {
@@ -70,5 +70,52 @@ describe('attachDb', () => {
     opened.db = current.db
     expect(attachDb(dir)).toBe(current.db)
     expect(getDb()).toBe(current.db)
+  })
+})
+
+describe('dataReady', () => {
+  let dir: string
+  beforeEach(() => {
+    dir = fs.mkdtempSync(join(os.tmpdir(), 'inkling-ready-'))
+  })
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true })
+    opened.db = null
+  })
+
+  // A server waits on this while the app or another server sets up a fresh profile.
+  it('is false with no data, or with data still being set up', () => {
+    expect(dataReady(dir)).toBe(false)
+    fs.writeFileSync(join(dir, 'inkling.db'), '')
+    const { db } = openSqlite()
+    opened.db = db
+    vi.spyOn(db, 'close').mockImplementation(() => db)
+    expect(dataReady(dir)).toBe(false)
+    // Migrated, but the first run has not made its notebook yet.
+    migrate(db)
+    expect(dataReady(dir)).toBe(false)
+  })
+
+  it('is false for older data and true for newer, which the tools then refuse', () => {
+    fs.writeFileSync(join(dir, 'inkling.db'), '')
+    const older = atVersion(-1)
+    opened.db = older.db
+    vi.spyOn(older.db, 'close').mockImplementation(() => older.db)
+    expect(dataReady(dir)).toBe(false)
+    const newer = atVersion(1)
+    opened.db = newer.db
+    vi.spyOn(newer.db, 'close').mockImplementation(() => newer.db)
+    expect(dataReady(dir)).toBe(true)
+  })
+
+  it('is true once the first run is done, and never writes', () => {
+    fs.writeFileSync(join(dir, 'inkling.db'), '')
+    const current = atVersion(0)
+    current.db.exec(`INSERT INTO notebooks (name, color) VALUES ('Notes', 'teal')`)
+    opened.db = current.db
+    vi.spyOn(current.db, 'close').mockImplementation(() => current.db)
+    const before = current.version()
+    expect(dataReady(dir)).toBe(true)
+    expect(current.version()).toBe(before)
   })
 })

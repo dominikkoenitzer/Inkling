@@ -178,6 +178,24 @@ export function attachDb(dir: string): Database.Database {
   return d
 }
 
+/** Whether the data in `dir` is set up, to its first notebook, or from a newer Inkling; read without a write. */
+export function dataReady(dir: string): boolean {
+  const file = join(dir, 'inkling.db')
+  if (!fs.existsSync(file)) return false
+  try {
+    const d = new Database(file, { readonly: true, fileMustExist: true })
+    try {
+      const version = d.pragma('user_version', { simple: true }) as number
+      if (version !== CURRENT_VERSION) return version > CURRENT_VERSION
+      return !!d.prepare('SELECT 1 FROM notebooks LIMIT 1').get()
+    } finally {
+      d.close()
+    }
+  } catch {
+    return false
+  }
+}
+
 /** Throws a readable error when the schema on disk is not the one this build expects. */
 export function checkVersion(d: Database.Database): void {
   const version = d.pragma('user_version', { simple: true }) as number

@@ -12,6 +12,7 @@ import { watchOutsideWrites } from './watch'
 import { macMenu, plainMenu } from './menu'
 import { commandRelay } from './commands'
 import { contextMenu } from './context-menu'
+import { settleData } from './startup'
 import { DOWNLOAD_PAGE, noticesUpdates, updatesItself, versionToNotice } from './updates'
 import type { AppCommand } from '@shared/api'
 import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, firstSize, themeOf } from './window'
@@ -228,37 +229,7 @@ app.whenReady().then(() => {
     dialog.showErrorBox('Inkling could not start', startFailure(err))
     return app.quit()
   }
-  // Clear anything that has sat in the trash past the retention window.
-  try {
-    repos.purgeExpiredNotes()
-  } catch (err) {
-    console.error('trash purge failed', err)
-  }
-  // Notes left completely empty last time go without a trace.
-  try {
-    repos.dropEmptyNotes()
-  } catch (err) {
-    console.error('dropping empty notes failed', err)
-  }
-  if (devHooks && process.env['INKLING_SEED']) seedDemo()
-  // Tasks from before checkboxes lived only in notes get a note of their own, and rows for
-  // empty lines go. No step may keep the window from opening.
-  try {
-    repos.adoptLooseTasks()
-  } catch (err) {
-    console.error('adopting loose tasks failed', err)
-  }
-  try {
-    repos.dropBlankTasks()
-  } catch (err) {
-    console.error('dropping blank tasks failed', err)
-  }
-  // First run: a welcome note, no wizard.
-  try {
-    repos.bootstrapFirstRun()
-  } catch (err) {
-    console.error('first run setup failed', err)
-  }
+  settleData(devHooks && process.env['INKLING_SEED'] ? seedDemo : undefined)
   // Test hook: the profile is set up, no window needed (the MCP check uses it).
   if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
