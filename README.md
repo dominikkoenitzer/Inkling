@@ -100,7 +100,7 @@ Inkling sends nothing over the network here. The assistant app starts Inkling it
 
 Your notes, to-dos and cards live in one SQLite file, `inkling.db`, in `%APPDATA%\Inkling` on Windows, `~/Library/Application Support/Inkling` on macOS and `~/.config/Inkling` on Linux. Each time Inkling starts, a copy goes into `backups` next to it, and the last five are kept. An assistant adds its own, see above. The export button above a note saves it as Markdown.
 
-On Windows and Linux the installed app goes online for one thing: when it starts, it checks for a new version, downloads it in the background and installs it when you close Inkling. On macOS it does not check; run the install command above again to update.
+On Windows and Linux the installed app goes online for one thing: when it starts, it checks for a new version, downloads it in the background and installs it when you close Inkling. On macOS it only checks: when a new version is out, it says so once with a link to the download page, and running the install command above again updates it.
 
 To remove Inkling on Windows, uninstall it under Settings > Apps > Installed apps. Your notes stay. To delete them too, close Inkling and delete these folders:
 

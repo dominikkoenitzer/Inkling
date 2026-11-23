@@ -12,7 +12,7 @@ import { watchOutsideWrites } from './watch'
 import { macMenu, plainMenu } from './menu'
 import { commandRelay } from './commands'
 import { contextMenu } from './context-menu'
-import { updatesItself } from './updates'
+import { DOWNLOAD_PAGE, noticesUpdates, updatesItself, versionToNotice } from './updates'
 import type { AppCommand } from '@shared/api'
 import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, firstSize, themeOf } from './window'
 
@@ -194,6 +194,25 @@ function showMainWindow(): void {
   mainWindow.focus()
 }
 
+// The new version a Mac is told about this run, if any.
+let updateNotice: Promise<string | null> = Promise.resolve(null)
+
+/** One read of the update feed, nothing downloaded; a version is told once, and a failed read says nothing. */
+async function newVersion(): Promise<string | null> {
+  try {
+    autoUpdater.autoDownload = false
+    autoUpdater.autoInstallOnAppQuit = false
+    const result = await autoUpdater.checkForUpdates()
+    if (!result) return null
+    const version = versionToNotice(result.isUpdateAvailable, result.updateInfo.version, repos.getSetting('update_noticed'))
+    if (version) repos.setSetting('update_noticed', version)
+    return version
+  } catch (err) {
+    console.error('update check failed', err)
+    return null
+  }
+}
+
 app.on('second-instance', () => {
   if (mainWindow || process.platform === 'darwin') showMainWindow()
 })
@@ -243,6 +262,8 @@ app.whenReady().then(() => {
   // Test hook: the profile is set up, no window needed (the MCP check uses it).
   if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
   registerIpc()
+  ipcMain.handle('app.updateNotice', () => updateNotice)
+  ipcMain.handle('app.openDownloadPage', () => openExternalLink(DOWNLOAD_PAGE))
   ipcMain.on('app.listening', (event) => {
     if (event.sender === mainWindow?.webContents) commands.listening((command) => event.sender.send('app.command', command))
   })
@@ -259,6 +280,8 @@ app.whenReady().then(() => {
   // Packaged builds only, never in dev or during a headless capture.
   if (updatesItself(process.platform, app.isPackaged)) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
+  } else if (noticesUpdates(process.platform, app.isPackaged, DOWNLOAD_PAGE)) {
+    updateNotice = newVersion()
   }
 
   // The Dock icon: the window again after a close, and back from the Dock when minimised.
