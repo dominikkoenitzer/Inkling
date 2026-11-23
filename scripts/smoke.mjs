@@ -192,6 +192,107 @@ const clipChecks = (themes) => `
   }
 `
 
+/** The note editor driven through real DOM events: table keys, a pasted table, the title's Enter and the read-only guard. */
+const editorChecks = `
+  try {
+    await new Promise((res) => {
+      const tick = () => (window.__app ? res() : setTimeout(tick, 50))
+      tick()
+    })
+    const app = window.__app
+    const wait = (ms) => new Promise((res) => setTimeout(res, ms))
+    const home = await api.notebooks.home()
+    const cell = (type, text) => ({ type, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] })
+    const row = (type, a, b) => ({ type: 'tableRow', content: [cell(type, a), cell(type, b)] })
+    const content = JSON.stringify({ type: 'doc', content: [{ type: 'table', content: [row('tableHeader', 'Organ', 'Role'), row('tableCell', 'Liver', 'filters')] }, { type: 'paragraph' }] })
+    const note = await api.notes.create({ notebook_id: home, title: 'Table keys', content })
+    app.getState().openNote(note.id)
+    await wait(1500)
+    const dom = document.querySelector('.ProseMirror')
+    const editor = dom && dom.editor
+    ok('a stored table opens as a table', !!editor && dom.querySelectorAll('th, td').length === 4)
+    const at = (text) => {
+      let pos = -1
+      editor.state.doc.descendants((n, p) => {
+        if (pos < 0 && n.isText && n.text.includes(text)) pos = p + n.text.indexOf(text) + text.length
+      })
+      return pos
+    }
+    const key = (k, extra) => dom.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...extra }))
+    const inCell = () => {
+      const from = editor.state.selection.$from
+      for (let d = from.depth; d > 0; d--) {
+        const n = from.node(d)
+        if (n.type.name === 'tableCell' || n.type.name === 'tableHeader') return n.textContent
+      }
+      return null
+    }
+    const rows = () => {
+      let n = 0
+      editor.state.doc.descendants((x) => void (x.type.name === 'tableRow' && n++))
+      return n
+    }
+    editor.commands.focus()
+    editor.commands.setTextSelection(at('Organ'))
+    key('Tab')
+    ok('Tab goes to the next cell', inCell() === 'Role', inCell())
+    key('Tab', { shiftKey: true })
+    ok('Shift+Tab goes back a cell', inCell() === 'Organ', inCell())
+    editor.commands.setTextSelection(at('Organ'))
+    key('Enter')
+    ok('Enter goes down a cell', inCell() === 'Liver', inCell())
+    key('Enter')
+    ok('Enter in the last row leaves the table for the line under it', inCell() === null && editor.state.selection.$from.parent.type.name === 'paragraph', inCell())
+    editor.commands.setTextSelection(at('filters'))
+    key('Tab')
+    ok('Tab in the last cell adds a row', rows() === 3, rows() + ' rows')
+    editor.commands.setTextSelection(at('Liver'))
+    key('Enter', { shiftKey: true })
+    let breaks = 0
+    editor.state.doc.descendants((x) => void (x.type.name === 'hardBreak' && breaks++))
+    ok('Shift+Enter in a cell makes a line break in the same cell', breaks === 1 && rows() === 3)
+
+    // A table pasted from a web page: every word stays, each cell on one line with breaks.
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
+    const data = new DataTransfer()
+    data.setData('text/html', '<table><tr><th>Step</th><th>Note</th></tr><tr><td><p>first line</p><p>second line</p></td><td><ul><li>alpha</li><li>beta</li></ul></td></tr></table>')
+    data.setData('text/plain', 'Step Note')
+    dom.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    await wait(200)
+    const words = ['Step', 'Note', 'first line', 'second line', 'alpha', 'beta']
+    const pasted = []
+    editor.state.doc.descendants((x) => {
+      if (x.type.name === 'tableCell' || x.type.name === 'tableHeader') pasted.push(x)
+    })
+    const text = pasted.map((c) => c.textContent).join(' ')
+    ok('a pasted table keeps every word', words.every((w) => text.includes(w)), words.filter((w) => !text.includes(w)).join(', '))
+    const twoLines = pasted.find((c) => c.textContent.includes('first line'))
+    ok('a pasted cell of two paragraphs is one line with a break', !!twoLines && twoLines.childCount === 1 && twoLines.textContent.includes('second line') && JSON.stringify(twoLines.toJSON()).includes('hardBreak'))
+
+    // Enter in the title hands the caret to the body before the next key can land in the title.
+    app.getState().newNote()
+    await wait(900)
+    const titleBox = document.querySelector('textarea[aria-label=Title]')
+    titleBox.focus()
+    titleBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    const now = document.activeElement
+    ok('Enter in the title moves the caret to the body at once', !!now && !!now.closest('.ProseMirror'), now && now.tagName)
+
+    // A note this build cannot read whole opens read only with its text, and is never saved over.
+    const later = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'kept as it is' }] }, { type: 'boxFromLater', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'later words' }] }] }] })
+    const odd = await api.notes.create({ notebook_id: home, title: 'From a newer version', content: later })
+    app.getState().openNote(odd.id)
+    await wait(1500)
+    const shown = document.querySelector('.ProseMirror')
+    ok('an unreadable note opens read only with all its text', !!shown && shown.getAttribute('contenteditable') === 'false' && shown.textContent.includes('later words') && document.body.textContent.includes('Read only in this version of Inkling.'))
+    app.getState().setView('today')
+    await wait(500)
+    ok('and it is never saved over', (await api.notes.get(odd.id)).content === later)
+  } catch (e) {
+    r.push('FAIL the editor check threw: ' + (e && e.message ? e.message : String(e)))
+  }
+`
+
 /** One app run: the bridge first, then the checks, resolving to their result lines. */
 const evalOf = (body) => `
 (async function () {
@@ -239,7 +340,7 @@ function launch(scale, body) {
 }
 
 const lines = [
-  ...launch(1, apiChecks + clipChecks(['light', 'dark'])),
+  ...launch(1, apiChecks + editorChecks + clipChecks(['light', 'dark'])),
   ...[0.8, 1.25, 1.5, 2].flatMap((scale) => launch(scale, clipChecks(['light'])))
 ]
 console.log(lines.join('\n'))
