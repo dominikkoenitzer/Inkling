@@ -271,6 +271,18 @@ describe('Backspace in an empty table', () => {
 })
 
 describe('a pasted cell', () => {
+  it('keeps text that sits straight in the cell, as most web pages write it', () => {
+    expect(oneLineCell(Fragment.from(schema.text('Step')), schema).firstChild!.toJSON()).toEqual(p(t('Step')))
+    const mixed = Fragment.from([
+      schema.text('Lead', [schema.marks.bold.create()]),
+      schema.text(' in'),
+      schema.nodes.paragraph.create(null, schema.text('Middle')),
+      schema.text('  '),
+      schema.nodes.paragraph.create(null, schema.text('Last'))
+    ])
+    expect(oneLineCell(mixed, schema).firstChild!.toJSON()).toEqual(p(t('Lead', { type: 'bold' }), t(' in'), br, t('Middle'), br, t('Last')))
+  })
+
   it('keeps every line of its text as one line with breaks', () => {
     const blocks = Fragment.from([
       schema.nodes.paragraph.create(null, schema.text('One')),

@@ -59,9 +59,22 @@ export function dropEmptyTable(tr: Transaction, dispatch: boolean): boolean {
 
 /** A cell's blocks as one line: each block's text after a line break, marks kept. */
 export function oneLineCell(blocks: Fragment, schema: Schema): Fragment {
+  // Text straight in the cell, as most web pages write it, is a line of its own too.
+  const lines: PMNode[] = []
+  let run: PMNode[] = []
+  const endRun = (): void => {
+    if (run.some((n) => !n.isText || n.text!.trim())) lines.push(schema.nodes.paragraph.create(null, run))
+    run = []
+  }
+  blocks.forEach((node) => {
+    if (node.isInline) return void run.push(node)
+    endRun()
+    lines.push(node)
+  })
+  endRun()
   const inline: PMNode[] = []
   let first = true
-  blocks.descendants((node) => {
+  Fragment.from(lines).descendants((node) => {
     if (!node.isTextblock) return true
     if (!first) inline.push(schema.nodes.hardBreak.create())
     first = false
