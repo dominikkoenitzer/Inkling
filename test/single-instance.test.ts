@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MenuItemConstructorOptions } from 'electron'
+import fs from 'node:fs'
+import os from 'node:os'
+import { join } from 'node:path'
 
 /** Just enough of Electron for the main process to start up without a window on screen. */
 const electron = vi.hoisted(() => {
@@ -29,6 +32,7 @@ const electron = vi.hoisted(() => {
     disableHardwareAcceleration: vi.fn(),
     quit: vi.fn(),
     requestSingleInstanceLock: vi.fn(() => true),
+    releaseSingleInstanceLock: vi.fn(),
     on: vi.fn((event: string, fn: (...args: unknown[]) => void) => void handlers.set(event, fn)),
     whenReady: vi.fn(() => Promise.resolve())
   }
@@ -37,14 +41,14 @@ const electron = vi.hoisted(() => {
   // The db module as the app last loaded it, so errors raised from it match its own classes.
   const realDb: Partial<typeof import('../src/main/db')> = {}
   const Menu = { buildFromTemplate: vi.fn((template: unknown) => template), setApplicationMenu: vi.fn() }
-  return { app, BrowserWindow, dialog, handlers, windows, Menu, openDb: vi.fn(), realDb, spawn }
+  return { app, BrowserWindow, dialog, handlers, windows, Menu, openDb: vi.fn(), dataReady: vi.fn(() => true), realDb, spawn }
 })
 
 vi.mock('electron', () => ({
   app: electron.app,
   BrowserWindow: electron.BrowserWindow,
   dialog: electron.dialog,
-  ipcMain: { on: vi.fn() },
+  ipcMain: { on: vi.fn(), handle: vi.fn() },
   Menu: electron.Menu,
   nativeTheme: {},
   screen: { getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1040 } }) },
@@ -53,7 +57,7 @@ vi.mock('electron', () => ({
 vi.mock('electron-updater', () => ({ autoUpdater: { checkForUpdatesAndNotify: vi.fn(() => Promise.resolve(null)) } }))
 vi.mock('../src/main/db', async (importOriginal) => {
   Object.assign(electron.realDb, await importOriginal<typeof import('../src/main/db')>())
-  return { openDb: electron.openDb, getDb: vi.fn(), startFailure: electron.realDb.startFailure }
+  return { openDb: electron.openDb, dataReady: electron.dataReady, getDb: vi.fn(), startFailure: electron.realDb.startFailure }
 })
 vi.mock('../src/main/ipc', () => ({ registerIpc: vi.fn() }))
 vi.mock('child_process', () => ({ spawn: electron.spawn }))
@@ -61,13 +65,19 @@ vi.mock('../src/main/repos', () => ({ purgeExpiredNotes: vi.fn(), adoptLooseTask
 
 type FakeWindow = InstanceType<typeof electron.BrowserWindow>
 
-/** Load the main process as a fresh launch, with or without the lock another copy may hold. */
-async function launch(gotLock: boolean): Promise<void> {
+/** A fresh launch to come: with or without the lock another copy may hold, and with or without data in place. */
+function prepare(gotLock: boolean, ready = true): void {
   vi.resetModules()
   vi.clearAllMocks()
   electron.handlers.clear()
   electron.windows.length = 0
   electron.app.requestSingleInstanceLock.mockReturnValue(gotLock)
+  electron.dataReady.mockReturnValue(ready)
+}
+
+/** Load the main process as a fresh launch. */
+async function launch(gotLock: boolean, ready = true): Promise<void> {
+  prepare(gotLock, ready)
   await import('../src/main/index')
   await new Promise((resolve) => setTimeout(resolve, 0)) // let whenReady() settle
 }
@@ -76,6 +86,7 @@ const hostPlatform = process.platform
 const runOn = (platform: NodeJS.Platform): void => void Object.defineProperty(process, 'platform', { value: platform })
 
 afterEach(() => {
+  electron.app.getPath.mockImplementation(() => '/home/profile')
   delete process.env['INKLING_USERDATA']
   process.argv = process.argv.filter((a) => a !== '--mcp')
   electron.app.isPackaged = false
@@ -89,6 +100,21 @@ describe('one running copy per profile', () => {
     expect(electron.app.quit).toHaveBeenCalled()
     expect(electron.openDb).not.toHaveBeenCalled()
     expect(electron.windows).toHaveLength(0)
+    // The data is in place, so the lock is an open copy's: no second try.
+    expect(electron.app.requestSingleInstanceLock).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits while an assistant server sets up a fresh profile, then opens', async () => {
+    prepare(true, false)
+    // The server holds the lock for the first three tries, then lets go.
+    electron.app.requestSingleInstanceLock.mockReturnValueOnce(false).mockReturnValueOnce(false).mockReturnValueOnce(false)
+    await import('../src/main/index')
+    await vi.waitFor(() => expect(electron.windows).toHaveLength(1), { timeout: 2000 })
+
+    expect(electron.app.quit).not.toHaveBeenCalled()
+    expect(electron.openDb).toHaveBeenCalledWith('/home/profile')
+    expect(electron.app.requestSingleInstanceLock).toHaveBeenCalledTimes(4)
+    expect(electron.dataReady).toHaveBeenCalledWith('/home/profile')
   })
 
   it('brings the running window back when a second copy starts', async () => {
@@ -168,7 +194,16 @@ describe('the menu on Windows and Linux', () => {
 })
 
 describe('--mcp', () => {
-  it('starts the server in a Node-mode copy and leaves the lock, the window and the database alone', async () => {
+  let dir = ''
+  afterEach(() => {
+    if (dir) fs.rmSync(dir, { recursive: true, force: true })
+    dir = ''
+  })
+
+  it('with data in place, starts the server in a Node-mode copy and leaves the lock, the window and the database alone', async () => {
+    dir = fs.mkdtempSync(join(os.tmpdir(), 'inkling-single-'))
+    fs.writeFileSync(join(dir, 'inkling.db'), '')
+    electron.app.getPath.mockImplementation(() => dir)
     process.argv.push('--mcp')
     await launch(true)
 
@@ -181,7 +216,31 @@ describe('--mcp', () => {
     expect(args[0]).toMatch(/mcp\.js$/)
     expect(options.stdio).toBe('inherit')
     expect(options.env['ELECTRON_RUN_AS_NODE']).toBe('1')
-    expect(options.env['INKLING_MCP_DATA']).toBe('/home/profile')
+    expect(options.env['INKLING_MCP_DATA']).toBe(dir)
+  })
+
+  it('on a fresh profile, sets it up under the lock and lets go before it serves', async () => {
+    process.argv.push('--mcp')
+    await launch(true, false)
+
+    expect(electron.app.requestSingleInstanceLock).toHaveBeenCalledTimes(1)
+    expect(electron.openDb).toHaveBeenCalledWith('/home/profile')
+    expect(electron.app.releaseSingleInstanceLock).toHaveBeenCalledTimes(1)
+    const [releasedAt] = electron.app.releaseSingleInstanceLock.mock.invocationCallOrder
+    const [spawnedAt] = electron.spawn.mock.invocationCallOrder
+    expect(spawnedAt).toBeGreaterThan(releasedAt)
+    expect(electron.app.quit).not.toHaveBeenCalled()
+    expect(electron.windows).toHaveLength(0)
+  })
+
+  it('never makes a window when a copy starts while it sets up a profile', async () => {
+    runOn('darwin')
+    process.argv.push('--mcp')
+    await launch(true, false)
+
+    electron.handlers.get('second-instance')?.()
+
+    expect(electron.windows).toHaveLength(0)
   })
 
   it('serves the INKLING_USERDATA profile and keeps Chromium out of it', async () => {
