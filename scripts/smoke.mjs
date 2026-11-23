@@ -257,6 +257,8 @@ const editorChecks = `
     const data = new DataTransfer()
     data.setData('text/html', '<table><tr><th>Step</th><th>Note</th></tr><tr><td><p>first line</p><p>second line</p></td><td><ul><li>alpha</li><li>beta</li></ul></td></tr></table>')
     data.setData('text/plain', 'Step Note')
+    // Ctrl+V as a keyboard sends it; the editor otherwise still counts Shift as held from Shift+Enter and pastes plain text.
+    key('v', { ctrlKey: true })
     dom.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
     await wait(200)
     const words = ['Step', 'Note', 'first line', 'second line', 'alpha', 'beta']
