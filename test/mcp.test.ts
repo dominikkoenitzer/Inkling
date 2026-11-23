@@ -99,6 +99,107 @@ describe('search', () => {
   })
 })
 
+describe('findOrCreateNote', () => {
+  const live = (): number => count(`SELECT COUNT(*) AS n FROM notes WHERE deleted_at IS NULL`)
+
+  it('makes one note for a title, however often it is asked', () => {
+    const before = live()
+    const first = tools.findOrCreateNote({ title: '2026-03-14' })
+    const second = tools.findOrCreateNote({ title: ' 2026-03-14 ' })
+    expect(first).toMatchObject({ created: true, restored: false, withThisTitle: 1 })
+    expect(second).toEqual({ ...first, created: false })
+    expect(live()).toBe(before + 1)
+  })
+
+  it('stores the title without the spaces around it, and finds a stored one that has them', () => {
+    const made = tools.findOrCreateNote({ title: '  Groceries\t' })
+    expect(repos.getNote(made.id)!.title).toBe('Groceries')
+    const padded = repos.createNote({ notebook_id: repos.homeNotebookId(), title: ' Packing ' })
+    expect(tools.findOrCreateNote({ title: 'Packing' })).toMatchObject({ id: padded.id, created: false })
+  })
+
+  it('finds a note the app or create_note made, by its exact title only', () => {
+    const made = tools.createNote({ title: 'Reading list', markdown: 'Dune' })
+    expect(tools.findOrCreateNote({ title: 'Reading list' })).toMatchObject({ id: made.id, created: false })
+    expect(tools.findOrCreateNote({ title: 'reading list' }).id).not.toBe(made.id)
+    expect(tools.findOrCreateNote({ title: 'Reading' }).id).not.toBe(made.id)
+  })
+
+  it('leaves the found note as it is', () => {
+    const made = tools.createNote({ title: 'Plan', markdown: '- [ ] Buy agar' })
+    const before = repos.getNote(made.id)!
+    tools.findOrCreateNote({ title: 'Plan' })
+    expect(repos.getNote(made.id)).toEqual(before)
+  })
+
+  it('takes the note changed last when the title is there twice, says how many share it, and keeps both', () => {
+    const a = tools.createNote({ title: 'Twice', markdown: 'first' })
+    const b = tools.createNote({ title: 'Twice', markdown: 'second' })
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id = ?`).run('2026-01-01T00:00:00.000Z', b.id)
+    const before = [repos.getNote(a.id), repos.getNote(b.id)]
+    expect(tools.findOrCreateNote({ title: 'Twice' })).toMatchObject({ id: a.id, created: false, withThisTitle: 2 })
+    expect([repos.getNote(a.id), repos.getNote(b.id)]).toEqual(before)
+  })
+
+  it('breaks a tie in the last change by the newer note', () => {
+    const a = tools.createNote({ title: 'Same time' })
+    const b = tools.createNote({ title: 'Same time' })
+    raw.prepare(`UPDATE notes SET updated_at = ? WHERE id IN (?, ?)`).run('2026-01-01T00:00:00.000Z', a.id, b.id)
+    expect(tools.findOrCreateNote({ title: 'Same time' }).id).toBe(b.id)
+  })
+
+  it('restores the note when its only match is in the trash, and makes no second one', () => {
+    const gone = tools.createNote({ title: 'Binned', markdown: 'kept text' })
+    repos.removeNote(gone.id)
+    const before = live()
+    const found = tools.findOrCreateNote({ title: 'Binned' })
+    expect(found).toMatchObject({ id: gone.id, created: false, restored: true, withThisTitle: 1 })
+    expect(repos.getNote(gone.id)!.deleted_at).toBeNull()
+    expect(live()).toBe(before + 1)
+    expect(count(`SELECT COUNT(*) AS n FROM notes WHERE title = 'Binned'`)).toBe(1)
+  })
+
+  it('takes a live note over one in the trash', () => {
+    const gone = tools.createNote({ title: 'Both' })
+    repos.removeNote(gone.id)
+    const kept = tools.createNote({ title: 'Both' })
+    expect(tools.findOrCreateNote({ title: 'Both' })).toMatchObject({ id: kept.id, restored: false })
+    expect(repos.getNote(gone.id)!.deleted_at).not.toBeNull()
+  })
+
+  it('makes one note when the app and the server ask at the same moment', () => {
+    const asked = [tools.findOrCreateNote({ title: 'Race' }), otherProcess.findOrCreateNote({ title: 'Race' })]
+    expect(asked.map((r) => r.created).sort()).toEqual([false, true])
+    expect(asked[0].id).toBe(asked[1].id)
+    expect(count(`SELECT COUNT(*) AS n FROM notes WHERE title = 'Race'`)).toBe(1)
+  })
+
+  it('refuses a blank title', () => {
+    expect(() => tools.findOrCreateNote({ title: '   ' })).toThrow('A note needs a title.')
+  })
+})
+
+describe('a note written by a newer Inkling', () => {
+  const newer = (): number => {
+    const content = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Kept' }] }, { type: 'gallery', attrs: { src: 'a.png' } }] })
+    return repos.createNote({ notebook_id: repos.homeNotebookId(), title: 'Newer', content }).id
+  }
+
+  it('is never written over by an assistant', () => {
+    const id = newer()
+    const before = repos.getNote(id)!.content
+    expect(() => tools.appendToNote({ id, markdown: 'more' })).toThrow('written by a newer Inkling')
+    expect(() => tools.editNote({ id, oldText: 'Kept', newText: 'Gone' })).toThrow('written by a newer Inkling')
+    expect(() => tools.replaceNoteSection({ id, heading: 'Any', markdown: 'x' })).toThrow('written by a newer Inkling')
+    expect(() => tools.makeFlashcardsFromNote({ id })).toThrow('written by a newer Inkling')
+    expect(repos.getNote(id)!.content).toBe(before)
+  })
+
+  it('can still be read', () => {
+    expect(tools.readNote({ id: newer() }).markdown).toContain('Kept')
+  })
+})
+
 describe('listNotes', () => {
   it('lists live notes newest first, untitled ones as Untitled', () => {
     const a = tools.createNote({ title: 'Old' })

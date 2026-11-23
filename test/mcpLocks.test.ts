@@ -73,6 +73,7 @@ const cardId = async (): Promise<number> => {
 /** Every tool that writes, with what it needs made first. */
 const WRITES: Record<string, () => Promise<Record<string, unknown>>> = {
   create_note: async () => ({ title: 'Lab', markdown: '- [ ] Buy agar' }),
+  find_or_create_note: async () => ({ title: 'Lab day' }),
   append_to_note: async () => ({ id: await noteId('Intro'), markdown: '- [ ] Call back' }),
   replace_section: async () => ({ id: await noteId('# Plan\n\nOld line'), heading: 'Plan', markdown: 'New line' }),
   edit_note: async () => ({ id: await noteId('Old line'), oldText: 'Old', newText: 'New' }),
