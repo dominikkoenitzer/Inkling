@@ -14,7 +14,7 @@ import { tiptapDocToMarkdown } from '@shared/markdown'
 import { stampTaskIds } from '@shared/noteTasks'
 import { IconBtn, titleFieldCls } from '@/components/ui'
 import { keyLabel } from '@/lib/keys'
-import { tickTodo } from '@/lib/editorKeys'
+import { focusBody, tickTodo } from '@/lib/editorKeys'
 import { stampNodeIds } from '@/lib/nodeIds'
 import { mergeDocs, mergeTitle, replaceChanged, type DocJson } from '@/lib/mergeDoc'
 import type { Note, NoteTaskItem } from '@shared/types'
@@ -391,7 +391,7 @@ export function PageEditor({ noteId }: { noteId: number }): React.JSX.Element {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                 e.preventDefault()
-                editor?.commands.focus('start')
+                if (editor) focusBody(editor)
               }
             }}
             placeholder="Title"
