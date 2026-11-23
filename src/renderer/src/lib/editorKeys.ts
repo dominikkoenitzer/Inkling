@@ -25,3 +25,15 @@ export function tickTodo(tr: Transaction, dispatch: boolean): boolean {
   }
   return false
 }
+
+interface BodyEditor {
+  commands: { focus(position: 'start'): boolean }
+  view: { focus(): void }
+}
+
+/** Enter in the title: the caret moves to the start of the body at once, so text sent right after lands there. */
+export function focusBody(editor: BodyEditor): void {
+  editor.commands.focus('start')
+  // The command alone takes focus a frame later, and keys sent in between still reach the title.
+  editor.view.focus()
+}

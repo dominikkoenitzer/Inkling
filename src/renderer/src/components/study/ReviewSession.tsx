@@ -5,6 +5,7 @@ import { Inky } from '@/components/Inky'
 import { Button, IconBtn, Kbd } from '@/components/ui'
 import { endsReview, ignoresShortcut, onButton, reviewKey } from '@/lib/keys'
 import { loadDueCards, reviewCard } from '@/lib/calls'
+import { reviewDone, reviewPosition } from '@/lib/review'
 import { formatInterval, previewIntervals, RELEARN_MINUTES, type Rating } from '@shared/fsrs'
 import { renderCloze } from '@shared/cloze'
 import type { Deck, Card, ReviewGrade } from '@shared/types'
@@ -117,7 +118,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         <div className="flex items-center gap-3">
           <h2 className="truncate text-sm font-medium text-muted">{deck.name}</h2>
           <span className="text-xs tabular-nums text-faint">
-            {Math.min(index, queue.length)} of {queue.length}
+            {reviewPosition(index, queue.length)} of {queue.length}
           </span>
           <div className="ml-auto">
             <IconBtn title="End session (Esc)" onClick={finish}>
@@ -128,7 +129,7 @@ export function ReviewSession({ deck, onDone }: { deck: Deck; onDone: () => void
         <div className="mt-2 h-0.5 rounded-full bg-hover">
           <div
             className="motion-fill h-full rounded-full"
-            style={{ width: `${queue.length ? (Math.min(index, queue.length) / queue.length) * 100 : 0}%`, background: 'var(--accent)' }}
+            style={{ width: `${reviewDone(index, queue.length) * 100}%`, background: 'var(--accent)' }}
           />
         </div>
       </div>

@@ -11,6 +11,7 @@ import { markdownToDoc } from '@shared/markdownToDoc'
 import { extractNoteTaskItems, stampTaskIds } from '@shared/noteTasks'
 import { extractNoteCardLines, stampCardLines } from '@shared/noteCards'
 import { hasCloze, renderCloze } from '@shared/cloze'
+import { unknownType } from '@shared/docTypes'
 import type { Card, Note, ReviewGrade } from '@shared/types'
 import { appendBlocks, replaceSection, replaceText, sectionMarkdown, type Doc } from './doc'
 
@@ -61,10 +62,11 @@ function liveNote(id: number): Note {
   return note
 }
 
-/** A live note's doc, or an error when it cannot be read. */
+/** A live note's doc, or an error when it cannot be read or holds what this version cannot write back. */
 function docOf(note: Note): Doc {
   const doc = parseDoc(note.content)
   if (!doc) throw new Error(`The note with id ${note.id} cannot be read, so it was left as it is.`)
+  if (unknownType(doc)) throw new Error(`The note with id ${note.id} was written by a newer Inkling, so it was left as it is.`)
   return doc
 }
 
@@ -164,6 +166,33 @@ export function createNote(input: { title: string; markdown?: string }): NoteWri
     return saveWithTasks(note, doc, false)
   })()
   return { ...summary(note), todosCreated }
+}
+
+// SQLite's trim takes only spaces unless told, so the title is matched as JavaScript trims it.
+const TRIMMED_TITLE = `trim(title, ' ' || char(9) || char(10) || char(13))`
+
+/**
+ * The note with exactly this title: the live one changed last, else the one deleted last, taken
+ * out of the trash, else a new empty one. Never two notes for one title, even from two processes.
+ */
+export function findOrCreateNote(input: { title: string }): NoteSummary & { created: boolean; restored: boolean; withThisTitle: number } {
+  const title = input.title.trim()
+  if (!title) throw new Error('A note needs a title.')
+  // Immediate: a second server or the app waits here, and reads the note this call made.
+  return getDb()
+    .transaction(() => {
+      const live = getDb()
+        .prepare(`SELECT * FROM notes WHERE deleted_at IS NULL AND ${TRIMMED_TITLE} = ? ORDER BY julianday(updated_at) DESC, id DESC`)
+        .all(title) as Note[]
+      if (live.length > 0) return { ...summary(live[0]), created: false, restored: false, withThisTitle: live.length }
+      const trashed = getDb()
+        .prepare(`SELECT * FROM notes WHERE deleted_at IS NOT NULL AND ${TRIMMED_TITLE} = ? ORDER BY julianday(deleted_at) DESC, id DESC LIMIT 1`)
+        .get(title) as Note | undefined
+      if (trashed) return { ...summary(repos.restoreNote(trashed.id)!), created: false, restored: true, withThisTitle: 1 }
+      const note = repos.createNote({ notebook_id: repos.homeNotebookId(), title, content: JSON.stringify(markdownToDoc('')) })
+      return { ...summary(note), created: true, restored: false, withThisTitle: 1 }
+    })
+    .immediate()
 }
 
 export function appendToNote(input: { id: number; markdown: string; heading?: string }): NoteWrite {

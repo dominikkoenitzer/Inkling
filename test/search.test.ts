@@ -26,3 +26,17 @@ describe('tiptapToText', () => {
     expect(tiptapToText('not json')).toBe('')
   })
 })
+
+describe('tiptapToText in a table', () => {
+  it('keeps the words of neighbouring cells apart', () => {
+    const cell = (type: string, ...content: object[]): object => ({ type, content: [paragraph(...content)] })
+    const json = doc({
+      type: 'table',
+      content: [
+        { type: 'tableRow', content: [cell('tableHeader', text('Organ')), cell('tableHeader', text('Role'))] },
+        { type: 'tableRow', content: [cell('tableCell', text('Liver')), cell('tableCell', text('filters'), { type: 'hardBreak' }, text('stores'))] }
+      ]
+    })
+    expect(tiptapToText(json).split(/\s+/)).toEqual(['Organ', 'Role', 'Liver', 'filters', 'stores'])
+  })
+})

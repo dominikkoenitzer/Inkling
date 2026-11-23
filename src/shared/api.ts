@@ -87,5 +87,8 @@ export interface InklingApi {
     /** Matches the window buttons and background to the theme. */
     setTitlebar(theme: 'light' | 'dark'): Promise<void>
     saveFile(defaultName: string, contents: string): Promise<{ saved: boolean; path: string | null; error?: string }>
+    /** A new version this Mac has not been told about yet, else null. */
+    updateNotice(): Promise<string | null>
+    openDownloadPage(): Promise<void>
   }
 }

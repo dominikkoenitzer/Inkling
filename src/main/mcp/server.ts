@@ -191,7 +191,7 @@ export function createServer(dataDir: string, version: string): McpServer {
     {
       title: 'Create a note',
       description:
-        'Makes a new note from Markdown: headings, paragraphs (each line is one), bold, italic, ~~strike~~, ==highlight==, `code`, links, bullet and numbered lists, code blocks, quotes. "- [ ] text" lines become to-dos on Today ("- [x]" for done ones). "Term :: Definition" lines can become flashcards with make_flashcards_from_note.',
+        'Makes a new note from Markdown: headings, paragraphs (each line is one, so write one paragraph per line and do not hard-wrap), bold, italic, ~~strike~~, ==highlight==, `code`, links, bullet and numbered lists, tables, code blocks, quotes. "- [ ] text" lines become to-dos on Today ("- [x]" for done ones). "Term :: Definition" lines can become flashcards with make_flashcards_from_note. It always makes a new note, even when one with this title exists; to keep one note per title, use find_or_create_note and then append_to_note.',
       inputSchema: {
         title: z.string().min(1).max(300).describe('The note title.'),
         markdown: markdown.optional().describe('The body, without the title.')
@@ -203,11 +203,29 @@ export function createServer(dataDir: string, version: string): McpServer {
   )
 
   server.registerTool(
+    'find_or_create_note',
+    {
+      title: 'Find or create a note',
+      description:
+        'The note with exactly this title (spaces around it do not count), so calling it twice with the same title gives one note. When several notes share the title, returns the one changed last and says how many share it; none is merged or deleted. A note only in the trash is restored. With none at all, makes a new empty note. Returns its id for append_to_note, replace_section or read_note.',
+      inputSchema: { title: z.string().min(1).max(300).describe('The exact note title, like Reading list or 2026-03-14.') },
+      outputSchema: {
+        ...noteShape,
+        created: z.boolean().describe('True when the note was made by this call.'),
+        restored: z.boolean().describe('True when the note was taken out of the trash by this call.'),
+        withThisTitle: z.number().describe('How many notes outside the trash have this title.')
+      },
+      annotations: { ...WRITE, idempotentHint: true }
+    },
+    write(tools.findOrCreateNote)
+  )
+
+  server.registerTool(
     'append_to_note',
     {
       title: 'Add to a note',
       description:
-        'Adds Markdown to the end of a note, or to the end of the section under heading. Same Markdown as create_note. Everything already there stays as it is.',
+        'Adds Markdown to the end of a note, or to the end of the section under heading. Same Markdown as create_note: one paragraph per line, no hard-wrap. Everything already there stays as it is.',
       inputSchema: {
         id: id.describe('The note id.'),
         markdown: markdown.min(1).describe('What to add.'),
@@ -224,7 +242,7 @@ export function createServer(dataDir: string, version: string): McpServer {
     {
       title: 'Replace a section',
       description:
-        'Replaces what stands under one heading, up to the next heading of the same or a higher level. The heading itself stays. To-do lines that keep their text keep their to-do. Returns what the section held before; undo_edit puts it back.',
+        'Replaces what stands under one heading, up to the next heading of the same or a higher level. The heading itself stays. To-do lines that keep their text keep their to-do. Same Markdown as create_note: one paragraph per line, no hard-wrap. Returns what the section held before; undo_edit puts it back.',
       inputSchema: {
         id: id.describe('The note id.'),
         heading: z.string().min(1).max(300).describe('The heading text, without the # marks. Must be unique in the note.'),

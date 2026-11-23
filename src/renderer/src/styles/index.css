@@ -393,6 +393,31 @@ textarea:focus {
   border-top: 1px solid var(--border);
   margin: 1.4em 0;
 }
+.tiptap table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0.6em 0;
+}
+.tiptap th,
+.tiptap td {
+  border: 1px solid var(--border);
+  padding: 0.25em 0.6em;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.tiptap th {
+  background: var(--bg-panel);
+  font-weight: 600;
+  text-align: left;
+}
+.tiptap th > p,
+.tiptap td > p {
+  margin: 0;
+}
+.tiptap .selectedCell {
+  background: var(--bg-hover);
+}
 .tiptap mark {
   background: var(--mark);
   color: inherit;

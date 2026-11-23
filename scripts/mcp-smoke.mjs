@@ -14,6 +14,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const electronDir = join(root, 'node_modules', 'electron')
@@ -29,11 +30,11 @@ const sandbox = process.platform === 'linux' ? ['--no-sandbox'] : []
 const results = []
 const ok = (name, cond, detail) => results.push((cond ? 'PASS ' : 'FAIL ') + name + (detail ? ` (${detail})` : ''))
 
-/** One MCP session over the child's stdin and stdout. */
-function session() {
+/** One MCP session over the child's stdin and stdout, on `dir` as its profile. */
+function session(dir = profile, extra = {}) {
   const packaged = process.env['MCP_SMOKE_EXE']
   const [cmd, args] = packaged ? [packaged, ['--mcp', ...sandbox]] : [electron, [root, '--mcp', ...sandbox]]
-  const child = spawn(cmd, args, { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+  const child = spawn(cmd, args, { env: { ...env, INKLING_USERDATA: dir, ...extra }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
   const pending = new Map()
   const stray = []
   let buf = ''
@@ -98,25 +99,70 @@ function session() {
 }
 
 try {
-  // Before Inkling has ever run on this profile there is no data, and the server says so.
-  const empty = session()
-  await empty.start()
-  const refused = await empty.call('list_notes')
-  ok('without data the tools ask to open Inkling first', refused.isError === true && /Open Inkling once/.test(refused.content[0].text))
-  ok('the server makes no database of its own', !existsSync(join(profile, 'inkling.db')))
-  ok('closing stdin ends the server', (await empty.close()) === 0)
+  // Before Inkling has ever run on this profile the server sets it up the way a first start does.
+  const fresh = session()
+  await fresh.start()
+  const welcome = await fresh.call('list_notes')
+  ok('the server sets up a fresh profile, then serves it', !welcome.isError && existsSync(join(profile, 'inkling.db')), JSON.stringify(welcome).slice(0, 300))
+  ok('the fresh profile has its welcome note', welcome.structuredContent?.notes?.length === 1, JSON.stringify(welcome.structuredContent?.notes?.map((n) => n.title)))
+  ok('closing stdin ends the server', (await fresh.close()) === 0)
 
-  // The app sets the profile up the way a first start does, without a window.
-  const setup = spawnSync(electron, [root, ...sandbox], { env: { ...env, INKLING_NO_WINDOW: '1' }, stdio: 'ignore', timeout: 60_000 })
-  ok('the app sets up a fresh profile', setup.status === 0 && existsSync(join(profile, 'inkling.db')), `exit ${setup.status}`)
+  // Two servers started at once on a fresh profile: one sets it up, the other waits, both serve.
+  const twinProfile = mkdtempSync(join(tmpdir(), 'inkling-mcp-twins-'))
+  const twins = [session(twinProfile), session(twinProfile)]
+  await Promise.all(twins.map((t) => t.start()))
+  const lists = await Promise.all(twins.map((t) => t.call('list_notes')))
+  ok('two servers at once on a fresh profile both serve it', lists.every((l) => !l.isError), lists.map((l) => (l.isError ? l.content[0].text : 'ok')).join(' | '))
+  ok('and it is set up once', lists.every((l) => l.structuredContent?.notes?.length === 1), JSON.stringify(lists.map((l) => l.structuredContent?.notes?.length)))
+  const found = await Promise.all(twins.map((t) => t.call('find_or_create_note', { title: 'Twin day' })))
+  const ids = found.map((f) => f.structuredContent?.id)
+  ok('find_or_create_note from two servers at once makes one note', ids[0] > 0 && ids[0] === ids[1] && found.filter((f) => f.structuredContent?.created).length === 1, JSON.stringify(found.map((f) => f.structuredContent)))
+  await Promise.all(twins.map((t) => t.close()))
+  rmSync(twinProfile, { recursive: true, force: true })
+
+  // Data an older Inkling wrote is the app's to update: the server refuses it and leaves it as it is.
+  const olderProfile = mkdtempSync(join(tmpdir(), 'inkling-mcp-older-'))
+  const olderFile = join(olderProfile, 'inkling.db')
+  const older = new DatabaseSync(olderFile)
+  older.exec('CREATE TABLE notes (id INTEGER PRIMARY KEY, title TEXT); PRAGMA user_version = 1')
+  older.close()
+  const olderBytes = readFileSync(olderFile)
+  const stale = session(olderProfile)
+  await stale.start()
+  const refused = await stale.call('list_notes')
+  ok('older data: the tools ask to open Inkling once', refused.isError === true && /Open Inkling once/.test(refused.content[0].text), refused.content?.[0]?.text)
+  await stale.close()
+  ok('older data is left exactly as it was', readFileSync(olderFile).equals(olderBytes))
+  rmSync(olderProfile, { recursive: true, force: true })
+
+  // The app opens the profile the server set up, the way it starts without a window.
+  const setup = spawnSync(electron, [root, ...sandbox], { env: { ...env, INKLING_NO_WINDOW: '1' }, encoding: 'utf8', timeout: 60_000 })
+  ok('the app opens the profile the server set up', setup.status === 0 && setup.stdout.includes('profile opened'), `exit ${setup.status}`)
+
+  // Inkling started while a server sets up a fresh profile waits for it, then opens; the hold hook needs the unpackaged server.
+  if (!process.env['MCP_SMOKE_EXE']) {
+    const heldProfile = mkdtempSync(join(tmpdir(), 'inkling-mcp-held-'))
+    const held = session(heldProfile, { INKLING_SETUP_HOLD: '2000' })
+    const starting = held.start()
+    const holding = () => held.stderr().includes('setup holds the lock')
+    for (let waited = 0; waited < 30_000 && !holding(); waited += 50) await new Promise((r) => setTimeout(r, 50))
+    const inside = holding() && !existsSync(join(heldProfile, 'inkling.db'))
+    const launch = spawnSync(electron, [root, ...sandbox], { env: { ...env, INKLING_USERDATA: heldProfile, INKLING_NO_WINDOW: '1' }, encoding: 'utf8', timeout: 60_000 })
+    await starting
+    ok('the app started during a server first start opens after it', inside && launch.status === 0 && launch.stdout.includes('profile opened'), `inside the hold ${inside}, exit ${launch.status}`)
+    const heldNotes = await held.call('list_notes')
+    ok('that profile is set up once', heldNotes.structuredContent?.notes?.length === 1, JSON.stringify(heldNotes.structuredContent?.notes?.map((n) => n.title)))
+    await held.close()
+    rmSync(heldProfile, { recursive: true, force: true })
+  }
 
   const s = session()
   const init = await s.start()
   ok('initialize names the server', init.result?.serverInfo?.name === 'inkling', init.result?.serverInfo?.name)
   const tools = (await s.request('tools/list', {})).result.tools.map((t) => t.name).sort()
   const want = [
-    'add_flashcards', 'append_to_note', 'complete_todo', 'create_note', 'delete_note', 'edit_note', 'grade_flashcard',
-    'list_decks', 'list_due_flashcards', 'list_notes', 'list_open_todos', 'make_flashcards_from_note', 'read_note',
+    'add_flashcards', 'append_to_note', 'complete_todo', 'create_note', 'delete_note', 'edit_note', 'find_or_create_note',
+    'grade_flashcard', 'list_decks', 'list_due_flashcards', 'list_notes', 'list_open_todos', 'make_flashcards_from_note', 'read_note',
     'rename_note', 'reopen_todo', 'replace_section', 'restore_note', 'search', 'today', 'undo_edit'
   ]
   ok('tools/list has every tool', JSON.stringify(tools) === JSON.stringify(want), tools.join(','))
@@ -127,6 +173,10 @@ try {
   })
   const note = created.structuredContent
   ok('create_note makes the note and its to-dos', !created.isError && note.id > 0 && note.todosCreated === 2, JSON.stringify(note))
+
+  const day = (await s.call('find_or_create_note', { title: 'Smoke day' })).structuredContent
+  const again = (await s.call('find_or_create_note', { title: 'Smoke day' })).structuredContent
+  ok('find_or_create_note gives one note per title', day.created === true && again.created === false && again.id === day.id, JSON.stringify([day, again]))
 
   const read = (await s.call('read_note', { id: note.id })).structuredContent
   ok('read_note gives the Markdown back', read.markdown.includes('## Steps') && read.markdown.includes('**agar**') && read.markdown.includes('- [ ] Book the microscope'), JSON.stringify(read.markdown))

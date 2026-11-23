@@ -66,7 +66,9 @@ const api: InklingApi = {
   },
   app: {
     setTitlebar: invoke('app.setTitlebar'),
-    saveFile: invoke('app.saveFile')
+    saveFile: invoke('app.saveFile'),
+    updateNotice: invoke('app.updateNotice'),
+    openDownloadPage: invoke('app.openDownloadPage')
   }
 }
 

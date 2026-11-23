@@ -64,6 +64,16 @@ export default function App(): React.JSX.Element {
   useEffect(() => api.events.onDataChanged(() => window.dispatchEvent(new Event('inkling:outside-write'))), [])
   useEffect(() => api.events.onCommand(runCommand), [])
 
+  // A Mac is told once when a new version is out; anywhere else this answers null.
+  useEffect(() => {
+    void api.app.updateNotice().then(
+      (version) =>
+        version &&
+        useApp.getState().showToast({ message: `Inkling ${version} is out.`, actionLabel: 'Download', onAction: () => void api.app.openDownloadPage() }),
+      () => {}
+    )
+  }, [])
+
   // Cards answered "Again" come due again within minutes: recount every few minutes.
   // The day is checked too: after sleep the midnight timer can land late, with focus never lost.
   useEffect(() => {

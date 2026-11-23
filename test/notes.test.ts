@@ -79,3 +79,16 @@ describe('searchQuery', () => {
     expect(searchQuery('mitochondria')).toEqual([])
   })
 })
+
+describe('the note list grouped by day', () => {
+  it('still finds a note by search whatever group it is listed under', async () => {
+    const { groupLabels } = await import('../src/renderer/src/lib/noteGroups')
+    const { localDay } = await import('../src/shared/day')
+    const old = createNote({ notebook_id: 1, title: 'Field trip', content: doc('stalactites') })
+    createNote({ notebook_id: 1, title: 'Lab day', content: doc('titration') })
+    db.prepare(`UPDATE notes SET updated_at = '2025-03-04 10:00:00' WHERE id = ?`).run(old.id)
+    const notes = listNotes()
+    expect(groupLabels(notes, localDay())).toEqual(['Today', 'March 2025'])
+    expect(searchQuery('stalactites').map((r) => r.source_id)).toEqual([old.id])
+  })
+})

@@ -3,7 +3,8 @@ import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import fs from 'fs'
 import { pathToFileURL } from 'url'
-import { openDb, startFailure } from './db'
+import { dataReady, openDb, startFailure } from './db'
+import { takeLock } from './lock'
 import { registerIpc } from './ipc'
 import * as repos from './repos'
 import { seedDemo } from './seed'
@@ -12,7 +13,8 @@ import { watchOutsideWrites } from './watch'
 import { macMenu, plainMenu } from './menu'
 import { commandRelay } from './commands'
 import { contextMenu } from './context-menu'
-import { updatesItself } from './updates'
+import { settleData } from './startup'
+import { DOWNLOAD_PAGE, noticesUpdates, updatesItself, versionToNotice } from './updates'
 import type { AppCommand } from '@shared/api'
 import { CHROME, TITLEBAR_HEIGHT, WINDOW_BUTTONS, firstSize, themeOf } from './window'
 
@@ -24,15 +26,22 @@ if (process.env['INKLING_USERDATA']) {
 // The seed, screenshot and eval hooks below work in unpackaged builds only.
 const devHooks = !app.isPackaged
 
-// `--mcp` serves the data to an AI assistant instead of opening the app. It takes no lock,
-// so it runs next to an open window, and it never shows one.
+// `--mcp` serves the data to an AI assistant instead of opening the app. It takes the lock only
+// while it sets up a fresh profile, so it runs next to an open window, and it never shows one.
 const mcpMode = process.argv.includes('--mcp')
 if (mcpMode) startMcpHost()
 
 // Two copies on one database overwrite each other's notes. Electron keys this lock to the
 // userData path, so it is taken after the hook above: a separate profile gets its own.
-const isPrimary = !mcpMode && app.requestSingleInstanceLock()
-if (!isPrimary && !mcpMode) app.quit()
+const isPrimary: Promise<boolean> = mcpMode
+  ? Promise.resolve(false)
+  : takeLock(
+      () => app.requestSingleInstanceLock(),
+      () => dataReady(app.getPath('userData'))
+    )
+void isPrimary.then((primary) => {
+  if (!primary && !mcpMode) app.quit()
+})
 
 let mainWindow: BrowserWindow | null = null
 const commands = commandRelay()
@@ -194,12 +203,33 @@ function showMainWindow(): void {
   mainWindow.focus()
 }
 
+// The new version a Mac is told about this run, if any.
+let updateNotice: Promise<string | null> = Promise.resolve(null)
+
+/** One read of the update feed, nothing downloaded; a version is told once, and a failed read says nothing. */
+async function newVersion(): Promise<string | null> {
+  try {
+    autoUpdater.autoDownload = false
+    autoUpdater.autoInstallOnAppQuit = false
+    const result = await autoUpdater.checkForUpdates()
+    if (!result) return null
+    const version = versionToNotice(result.isUpdateAvailable, result.updateInfo.version, repos.getSetting('update_noticed'))
+    if (version) repos.setSetting('update_noticed', version)
+    return version
+  } catch (err) {
+    console.error('update check failed', err)
+    return null
+  }
+}
+
 app.on('second-instance', () => {
+  // A server holds the lock only while it sets up a fresh profile, and never shows a window.
+  if (mcpMode) return
   if (mainWindow || process.platform === 'darwin') showMainWindow()
 })
 
-app.whenReady().then(() => {
-  if (!isPrimary) return // quitting, or serving MCP: either way no window here
+app.whenReady().then(async () => {
+  if (!(await isPrimary)) return // quitting, or serving MCP: either way no window here
   const dataDir = app.getPath('userData')
   try {
     openDb(dataDir)
@@ -209,40 +239,15 @@ app.whenReady().then(() => {
     dialog.showErrorBox('Inkling could not start', startFailure(err))
     return app.quit()
   }
-  // Clear anything that has sat in the trash past the retention window.
-  try {
-    repos.purgeExpiredNotes()
-  } catch (err) {
-    console.error('trash purge failed', err)
-  }
-  // Notes left completely empty last time go without a trace.
-  try {
-    repos.dropEmptyNotes()
-  } catch (err) {
-    console.error('dropping empty notes failed', err)
-  }
-  if (devHooks && process.env['INKLING_SEED']) seedDemo()
-  // Tasks from before checkboxes lived only in notes get a note of their own, and rows for
-  // empty lines go. No step may keep the window from opening.
-  try {
-    repos.adoptLooseTasks()
-  } catch (err) {
-    console.error('adopting loose tasks failed', err)
-  }
-  try {
-    repos.dropBlankTasks()
-  } catch (err) {
-    console.error('dropping blank tasks failed', err)
-  }
-  // First run: a welcome note, no wizard.
-  try {
-    repos.bootstrapFirstRun()
-  } catch (err) {
-    console.error('first run setup failed', err)
-  }
+  settleData(devHooks && process.env['INKLING_SEED'] ? seedDemo : undefined)
   // Test hook: the profile is set up, no window needed (the MCP check uses it).
-  if (devHooks && process.env['INKLING_NO_WINDOW']) return app.quit()
+  if (devHooks && process.env['INKLING_NO_WINDOW']) {
+    console.log('profile opened')
+    return app.quit()
+  }
   registerIpc()
+  ipcMain.handle('app.updateNotice', () => updateNotice)
+  ipcMain.handle('app.openDownloadPage', () => openExternalLink(DOWNLOAD_PAGE))
   ipcMain.on('app.listening', (event) => {
     if (event.sender === mainWindow?.webContents) commands.listening((command) => event.sender.send('app.command', command))
   })
@@ -259,6 +264,8 @@ app.whenReady().then(() => {
   // Packaged builds only, never in dev or during a headless capture.
   if (updatesItself(process.platform, app.isPackaged)) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('update check failed', err))
+  } else if (noticesUpdates(process.platform, app.isPackaged, DOWNLOAD_PAGE)) {
+    updateNotice = newVersion()
   }
 
   // The Dock icon: the window again after a close, and back from the Dock when minimised.

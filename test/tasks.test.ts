@@ -126,6 +126,18 @@ describe('openTasks', () => {
 
     expect(openTasks().map((t) => t.note_title)).toEqual(['Late', 'Early'])
   })
+
+  it('keeps the to-dos of notes saved in the same millisecond together, in the same order every time', () => {
+    const a = createNote({ notebook_id: 1, title: 'A', content: docOf(list(item(null, 'a1'), item(null, 'a2'))) })
+    const b = createNote({ notebook_id: 1, title: 'B', content: docOf(list(item(null, 'b1'), item(null, 'b2'))) })
+    // Rows made in turns, as an assistant's batch or moving loose to-dos into one note makes them.
+    for (const [note, title] of [[a, 'a1'], [b, 'b1'], [a, 'a2'], [b, 'b2']] as const) {
+      raw.prepare(`INSERT INTO tasks (notebook_id, note_id, title, status) VALUES (1, ?, ?, 'todo')`).run(note.id, title)
+    }
+    raw.prepare(`UPDATE notes SET updated_at = '2026-11-20T10:00:00.000Z'`).run()
+
+    expect(openTasks().map((t) => t.title)).toEqual(['b1', 'b2', 'a1', 'a2'])
+  })
 })
 
 describe('a dated to-do that moves', () => {

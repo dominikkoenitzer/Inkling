@@ -1,3 +1,5 @@
+import { KNOWN_NODES } from './docTypes'
+
 interface DocNode {
   type?: string
   text?: string
@@ -5,10 +7,12 @@ interface DocNode {
 }
 
 /** Nodes that are something on the page even without any text. */
-const SOLID = new Set(['taskItem', 'horizontalRule', 'image'])
+const SOLID = new Set(['taskItem', 'horizontalRule', 'image', 'table'])
 
 function holdsSomething(node: DocNode): boolean {
   if (node.type && SOLID.has(node.type)) return true
+  // A newer Inkling's node may be something this one cannot see.
+  if (typeof node.type === 'string' && !KNOWN_NODES.has(node.type)) return true
   if (typeof node.text === 'string' && node.text.trim() !== '') return true
   return (node.content ?? []).some(holdsSomething)
 }
