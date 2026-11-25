@@ -1,7 +1,7 @@
 {
   "slug": "inkling",
   "name": "Inkling",
-  "url": "https://inkling.punds.ch/",
+  "url": "https://get-inkling.vercel.app/",
   "description": "A calm place for your notes, to-dos and flashcards. It works offline and you never sign up for anything.",
   "colours": {
     "light": {
@@ -43,7 +43,7 @@
   "terminal": {
     "mac": {
       "intro": "Paste this into Terminal and press Return. Inkling installs itself and opens.",
-      "command": "curl -fsSL https://inkling.punds.ch/install | sh",
+      "command": "curl -fsSL https://get-inkling.vercel.app/install | sh",
       "file": "You can also <a href=\"/download/mac\">download the disk image</a>. The first time you open it, macOS asks you to allow it in System Settings, under Privacy &amp; Security.",
       "button": "Install for macOS"
     }

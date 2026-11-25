@@ -1,6 +1,6 @@
 # Download page
 
-The page behind https://inkling.punds.ch: static files, no build step on the server.
+The page behind https://get-inkling.vercel.app: static files, no build step on the server.
 It names no author and does not link to this repository.
 
 - `page.json` holds every word on the page and which screenshots it shows.
@@ -25,7 +25,7 @@ It names no author and does not link to this repository.
   - `/update/latest-mac.yml`
   - `/update/latest-linux.yml`
   - `/update/:file`
-- `install` is the Mac install script behind `curl -fsSL https://inkling.punds.ch/install | sh`. It is plain
+- `install` is the Mac install script behind `curl -fsSL https://get-inkling.vercel.app/install | sh`. It is plain
   POSIX sh, and `vercel.json` serves it as text. `INKLING_ZIP_URL` points it at another zip for a test.
 - `llms.txt` describes the app for AI assistants.
 - `skill/inkling/` is the assistant skill, and `skill/inkling.zip` is that folder zipped. Rebuild the zip

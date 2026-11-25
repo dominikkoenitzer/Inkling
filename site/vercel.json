@@ -1,5 +1,7 @@
 {
   "redirects": [
+    { "source": "/", "destination": "https://portfolio-izanagi.vercel.app/projects/inkling", "permanent": true },
+    { "source": "/index.html", "destination": "https://portfolio-izanagi.vercel.app/projects/inkling", "permanent": true },
     { "source": "/download/windows", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-Setup.exe", "permanent": false },
     { "source": "/download/mac", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.dmg", "permanent": false },
     { "source": "/download/linux", "destination": "https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling.AppImage", "permanent": false },
