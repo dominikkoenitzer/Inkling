@@ -58,8 +58,7 @@ jobs:
       - name: Install script parses
         run: sh -n site/install
 
-  # Our merges are a local merge and a push with no pull request, so a push to main that changes
-  # the install script runs the Mac install check too.
+  # Our merges reach main as a push, so a push that changes the install script runs the Mac check too.
   install-script:
     name: Install script changed
     if: github.event_name == 'push'
