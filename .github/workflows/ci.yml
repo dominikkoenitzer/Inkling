@@ -55,6 +55,34 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Install script parses
+        run: sh -n site/install
+
+  # Our merges reach main as a push, so a push that changes the install script runs the Mac check too.
+  install-script:
+    name: Install script changed
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Exit 0 means unchanged. Anything else, a change or a commit git cannot find, counts as changed.
+      - name: Compare with the commit before the push
+        id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- site/install; then
+            echo changed=false >> "$GITHUB_OUTPUT"
+          else
+            echo changed=true >> "$GITHUB_OUTPUT"
+          fi
+
   smoke:
     name: Smoke (end to end)
     runs-on: ubuntu-latest
@@ -148,7 +176,8 @@ jobs:
   # build through the install command from a clean state, then this build as a browser gets it.
   mac-install:
     name: Mac install
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    needs: install-script
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || needs.install-script.outputs.changed == 'true') }}
     runs-on: macos-latest
     timeout-minutes: 60
     env:

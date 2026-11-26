@@ -82,7 +82,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://get-inkling.vercel.app/update"
+        "url": "https://portfolio-izanagi.vercel.app/get/inkling/update"
       }
     ],
     "directories": {

@@ -1,14 +1,15 @@
 #!/bin/sh
-# Installs or updates Inkling on a Mac: curl -fsSL https://get-inkling.vercel.app/install | sh
+# Installs or updates Inkling on a Mac: curl -fsSL https://portfolio-izanagi.vercel.app/get/inkling/install | sh
 # Everything runs inside main, so a half-downloaded copy of this script does nothing.
 
 main() {
   set -u
   app=""
   tmp=""
-  url="${INKLING_ZIP_URL:-https://github.com/dominikkoenitzer/Inkling/releases/latest/download/Inkling-mac.zip}"
+  site="https://portfolio-izanagi.vercel.app"
+  url="${INKLING_ZIP_URL:-$site/get/inkling/update/Inkling-mac.zip}"
 
-  [ "$(uname -s)" = "Darwin" ] || fail "This command is for macOS, so download Inkling from https://portfolio-izanagi.vercel.app/projects/inkling instead."
+  [ "$(uname -s)" = "Darwin" ] || fail "This command is for macOS, so download Inkling from $site/projects/inkling instead."
   [ "$(id -u)" -ne 0 ] || fail "Run the command without sudo, so Inkling belongs to you."
   for tool in curl ditto codesign; do
     command -v "$tool" >/dev/null 2>&1 || fail "This Mac is missing $tool, which the install needs."
