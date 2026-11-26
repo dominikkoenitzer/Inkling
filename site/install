@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs or updates Inkling on a Mac: curl -fsSL https://get-inkling.vercel.app/install | sh
+# Installs or updates Inkling on a Mac: curl -fsSL https://portfolio-izanagi.vercel.app/get/inkling/install | sh
 # Everything runs inside main, so a half-downloaded copy of this script does nothing.
 
 main() {

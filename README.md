@@ -49,7 +49,7 @@ On a Mac, press `Cmd` where the table says `Ctrl`, and `Cmd+/` for all shortcuts
 
 ## Other ways to install
 
-- macOS, Intel and Apple Silicon: paste `curl -fsSL https://get-inkling.vercel.app/install | sh` into Terminal. It puts Inkling into Applications and opens it, and running it again updates it. You can also download [Inkling-mac.dmg](https://portfolio-izanagi.vercel.app/projects/inkling), open it and drag Inkling into Applications; macOS then asks you to allow it once under System Settings, Privacy & Security.
+- macOS, Intel and Apple Silicon: paste `curl -fsSL https://portfolio-izanagi.vercel.app/get/inkling/install | sh` into Terminal. It puts Inkling into Applications and opens it, and running it again updates it. You can also download [Inkling-mac.dmg](https://portfolio-izanagi.vercel.app/projects/inkling), open it and drag Inkling into Applications; macOS then asks you to allow it once under System Settings, Privacy & Security.
 - Linux: [Inkling.AppImage](https://portfolio-izanagi.vercel.app/projects/inkling). Make it executable with `chmod +x Inkling.AppImage`, then run it.
 - Every version is on the [releases page](https://github.com/dominikkoenitzer/Inkling/releases).
 

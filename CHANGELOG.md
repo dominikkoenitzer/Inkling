@@ -4,6 +4,11 @@ All notable changes to Inkling are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Updates and the Mac install command come from Inkling's new address. Copies of 0.9.4 and older keep updating through the old one for now.
+
 ## [0.9.4] - 2026-10-29
 
 ### Added
