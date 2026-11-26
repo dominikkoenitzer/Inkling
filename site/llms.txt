@@ -11,15 +11,15 @@ It has an MCP server built in: started as `Inkling --mcp`, it lets an AI assista
 
 ## Download
 
-- [Inkling for Windows](/download/windows): the installer, Inkling-Setup.exe
-- Inkling for macOS, Intel and Apple Silicon: run `curl -fsSL https://get-inkling.vercel.app/install | sh` in Terminal; it installs into Applications, opens Inkling, and updates it when run again
-- [Inkling for macOS as a disk image](/download/mac): Inkling-mac.dmg
-- [Inkling for Linux](/download/linux): an AppImage, Inkling.AppImage
+- [Inkling for Windows](https://portfolio-izanagi.vercel.app/get/inkling/download/windows): the installer, Inkling-Setup.exe
+- Inkling for macOS, Intel and Apple Silicon: run `curl -fsSL https://portfolio-izanagi.vercel.app/get/inkling/install | sh` in Terminal; it installs into Applications, opens Inkling, and updates it when run again
+- [Inkling for macOS as a disk image](https://portfolio-izanagi.vercel.app/get/inkling/download/mac): Inkling-mac.dmg
+- [Inkling for Linux](https://portfolio-izanagi.vercel.app/get/inkling/download/linux): an AppImage, Inkling.AppImage
 
 ## For AI assistants
 
-- [Inkling skill](/skill/inkling.zip): a zipped skill folder that teaches an assistant how Inkling works and how to write notes, to-dos and flashcard lines it reads
-- [SKILL.md](/skill/inkling/SKILL.md): the skill's main file, readable on its own
+- [Inkling skill](https://portfolio-izanagi.vercel.app/get/inkling/skill/inkling.zip): a zipped skill folder that teaches an assistant how Inkling works and how to write notes, to-dos and flashcard lines it reads
+- [SKILL.md](https://portfolio-izanagi.vercel.app/get/inkling/skill/inkling/SKILL.md): the skill's main file, readable on its own
 
 ## MCP server
 
